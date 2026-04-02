@@ -50,6 +50,7 @@ export default function PollView() {
   const [showGuestModal, setShowGuestModal] = useState(false)
 
   const [busySlots, setBusySlots] = useState(new Set())
+  const [slotEvents, setSlotEvents] = useState({})
   const [calendarConnected, setCalendarConnected] = useState(false)
   const [connectingCalendar, setConnectingCalendar] = useState(false)
 
@@ -57,8 +58,9 @@ export default function PollView() {
     setConnectingCalendar(true)
     try {
       const token = await requestGoogleAccess()
-      const busy = await fetchBusyTimes(token, poll?.dates || [], poll?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone)
-      setBusySlots(busy)
+      const result = await fetchBusyTimes(token, poll?.dates || [], poll?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone)
+      setBusySlots(result.busySlots)
+      setSlotEvents(result.slotEvents)
       setCalendarConnected(true)
     } catch (err) {
       console.error('Google Calendar error:', err)
@@ -214,6 +216,7 @@ export default function PollView() {
     slotMinutes: poll.slotMinutes || poll.slotDuration || 30,
     responses,
     busySlots,
+    slotEvents,
     highlightName,
   }
 

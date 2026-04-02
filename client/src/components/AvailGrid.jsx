@@ -69,6 +69,7 @@ export default function AvailGrid({
   readOnly = false,
   highlightName = null,
   busySlots = new Set(),
+  slotEvents = {},
   onHoverSlot,
 }) {
   const containerRef = useRef(null)
@@ -242,17 +243,19 @@ export default function AvailGrid({
                 const isPendingAdd = dragState && !dragState.removing && dragState.pending.has(key)
                 const isPendingRemove = dragState && dragState.removing && dragState.pending.has(key)
 
+                const eventName = isBusy ? slotEvents[key] : null
+
                 const cell = (
                   <div
                     key={key}
                     className={cn(
-                      'avail-cell h-10 cursor-pointer',
+                      'avail-cell h-10 cursor-pointer overflow-hidden',
                       rowIdx === 0 && 'rounded-t',
                       rowIdx === times.length - 1 && 'rounded-b',
                       isMine && !isPendingRemove && !isPendingAdd && 'avail-cell--mine',
                       isHighlighted && !isMine && 'avail-cell--highlighted',
                       readOnly && 'avail-cell--readonly cursor-default',
-                      !isMine && !bgColor && !isPendingAdd && !isPendingRemove && 'avail-cell--empty',
+                      !isMine && !bgColor && !isPendingAdd && !isPendingRemove && !isBusy && 'avail-cell--empty',
                       isPendingAdd && 'avail-cell--pending-add',
                       isPendingRemove && 'avail-cell--pending-remove',
                     )}
@@ -264,7 +267,13 @@ export default function AvailGrid({
                     }}
                     onPointerDown={(e) => handlePointerDown(e, rowIdx, colIdx)}
                     onPointerEnter={(e) => handlePointerEnter(e, rowIdx, colIdx)}
-                  />
+                  >
+                    {eventName && (
+                      <span className="absolute inset-0 flex items-center px-1.5 text-[10px] leading-tight text-red-700/70 font-medium truncate pointer-events-none z-[1]">
+                        {eventName}
+                      </span>
+                    )}
+                  </div>
                 )
 
                 if (!tooltipText) return cell

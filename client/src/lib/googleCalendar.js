@@ -83,18 +83,17 @@ export async function fetchBusyTimes(accessToken, dates, timezone) {
 
   console.log('[avails] Total events across all calendars:', allEvents.length);
 
-  const events = allEvents;
   const busySlots = new Set();
+  // Map slot key → event name (for showing on grid)
+  const slotEvents = {};
 
-  for (const event of events) {
-    // Skip all-day events (they have date, not dateTime)
+  for (const event of allEvents) {
     const startStr = event.start?.dateTime;
     const endStr = event.end?.dateTime;
     if (!startStr || !endStr) continue;
-
-    // Skip cancelled/declined events
     if (event.status === 'cancelled') continue;
 
+    const summary = event.summary || 'Busy';
     const start = new Date(startStr);
     const end = new Date(endStr);
     let current = new Date(start);
@@ -105,11 +104,14 @@ export async function fetchBusyTimes(accessToken, dates, timezone) {
       const day = String(current.getDate()).padStart(2, '0');
       const hours = String(current.getHours()).padStart(2, '0');
       const mins = String(current.getMinutes()).padStart(2, '0');
-      busySlots.add(`${year}-${month}-${day}T${hours}:${mins}`);
+      const key = `${year}-${month}-${day}T${hours}:${mins}`;
+      busySlots.add(key);
+      // Store event name per slot (first event wins if overlap)
+      if (!slotEvents[key]) slotEvents[key] = summary;
       current = new Date(current.getTime() + 30 * 60 * 1000);
     }
   }
 
-  console.log('[avails] Busy slots:', [...busySlots]);
-  return busySlots;
+  console.log('[avails] Busy slots:', busySlots.size, 'from', allEvents.length, 'events');
+  return { busySlots, slotEvents };
 }
