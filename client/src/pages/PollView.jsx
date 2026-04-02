@@ -8,6 +8,7 @@ import PollHeader from '@/components/PollHeader'
 import ResponsePanel from '@/components/ResponsePanel'
 import FinalizeDialog from '@/components/FinalizeDialog'
 import EditPollDialog from '@/components/EditPollDialog'
+import DeletePollDialog from '@/components/DeletePollDialog'
 
 export default function PollView() {
   const { did, rkey } = useParams()
@@ -39,6 +40,7 @@ export default function PollView() {
   const [highlightName, setHighlightName] = useState(null)
   const [showFinalize, setShowFinalize] = useState(false)
   const [showEditPoll, setShowEditPoll] = useState(false)
+  const [showDeletePoll, setShowDeletePoll] = useState(false)
 
   const [busySlots, setBusySlots] = useState(new Set())
 
@@ -179,6 +181,7 @@ export default function PollView() {
           rkey={rkey}
           isCreator={isCreator}
           onEditClick={() => setShowEditPoll(true)}
+          onDeleteClick={() => setShowDeletePoll(true)}
         />
 
         {/* Finalized meeting banner */}
@@ -323,6 +326,13 @@ export default function PollView() {
           onSaved={fetchData}
         />
       )}
+
+      <DeletePollDialog
+        open={showDeletePoll}
+        onOpenChange={setShowDeletePoll}
+        did={did}
+        rkey={rkey}
+      />
     </div>
   )
 }

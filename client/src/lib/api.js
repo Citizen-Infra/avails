@@ -25,3 +25,4 @@ export async function finalizePoll(did, rkey, finalTime, finalDuration) { return
 export async function updatePoll(did, rkey, data) { return apiFetch(`/api/polls/${did}/${rkey}`, { method: 'PUT', body: JSON.stringify(data) }); }
 export async function getCommunities() { return apiFetch('/api/communities'); }
 export async function getMyPolls() { return apiFetch('/api/polls/my'); }
+export async function deletePoll(did, rkey) { return apiFetch(`/api/polls/${did}/${rkey}`, { method: 'DELETE' }); }

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 
-export default function PollHeader({ poll, did, rkey, isCreator, onEditClick }) {
+export default function PollHeader({ poll, did, rkey, isCreator, onEditClick, onDeleteClick }) {
   const [copied, setCopied] = useState(false)
 
   function copyLink() {
@@ -46,6 +46,11 @@ export default function PollHeader({ poll, did, rkey, isCreator, onEditClick }) 
         {isCreator && isOpen && onEditClick && (
           <Button variant="outline" size="sm" onClick={onEditClick} className="border-[#e8e5df] text-[#6b6560] hover:bg-[#f0eeea] hover:text-[#1a1a1a]">
             Edit poll
+          </Button>
+        )}
+        {isCreator && onDeleteClick && (
+          <Button variant="ghost" size="sm" onClick={onDeleteClick} className="text-red-600 hover:bg-red-50 hover:text-red-700">
+            Delete
           </Button>
         )}
       </div>
