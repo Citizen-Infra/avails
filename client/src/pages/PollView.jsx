@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'react-router'
 import { getPoll, getSession, submitResponse, updateResponse } from '@/lib/api'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import AvailGrid from '@/components/AvailGrid'
 import NameEntry from '@/components/NameEntry'
 import PollHeader from '@/components/PollHeader'
@@ -126,16 +125,16 @@ export default function PollView() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      <div className="min-h-screen bg-[#faf9f6] flex items-center justify-center">
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#1a1a1a] border-t-transparent" />
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">{error}</p>
+      <div className="min-h-screen bg-[#faf9f6] flex items-center justify-center">
+        <p className="text-[#8a8580]">{error}</p>
       </div>
     )
   }
@@ -155,15 +154,25 @@ export default function PollView() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#faf9f6]">
       {/* Header */}
-      <header className="border-b">
-        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center">
-          <a href="/" className="text-lg font-semibold tracking-tight">avails</a>
+      <header className="border-b border-[#e8e5df]">
+        <div className="max-w-5xl mx-auto px-6 h-16 flex items-center">
+          <a href="/" className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <rect x="2" y="2" width="5" height="5" rx="1" fill="#faf9f6" opacity="0.9"/>
+                <rect x="9" y="2" width="5" height="5" rx="1" fill="#faf9f6" opacity="0.6"/>
+                <rect x="2" y="9" width="5" height="5" rx="1" fill="#faf9f6" opacity="0.6"/>
+                <rect x="9" y="9" width="5" height="5" rx="1" fill="#faf9f6" opacity="0.3"/>
+              </svg>
+            </div>
+            <span className="text-lg font-semibold tracking-tight text-[#1a1a1a]">avails</span>
+          </a>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-8 space-y-6">
+      <main className="max-w-5xl mx-auto px-6 py-10 space-y-6">
         <PollHeader
           poll={poll}
           did={did}
@@ -174,18 +183,16 @@ export default function PollView() {
 
         {/* Finalized meeting banner */}
         {poll.finalTime && (
-          <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">
-            <CardContent className="py-4">
-              <p className="text-sm font-medium text-green-800 dark:text-green-200">
-                Meeting scheduled:{' '}
-                {new Date(poll.finalTime).toLocaleString(undefined, {
-                  dateStyle: 'full',
-                  timeStyle: 'short',
-                })}
-                {poll.finalDuration && ` (${poll.finalDuration} min)`}
-              </p>
-            </CardContent>
-          </Card>
+          <div className="rounded-lg border border-[#c8dfc8] bg-[#f0f7f0] px-5 py-4">
+            <p className="text-sm font-medium text-[#3a6b3a]">
+              Meeting scheduled:{' '}
+              {new Date(poll.finalTime).toLocaleString(undefined, {
+                dateStyle: 'full',
+                timeStyle: 'short',
+              })}
+              {poll.finalDuration && ` (${poll.finalDuration} min)`}
+            </p>
+          </div>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_14rem] gap-6">
@@ -193,8 +200,8 @@ export default function PollView() {
           <div className="space-y-4">
             {/* Name entry — only when poll is open and user hasn't set a name yet */}
             {isOpen && !participant && !submitted && (
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">
+              <div className="rounded-lg border border-[#e8e5df] bg-white p-5 space-y-3">
+                <p className="text-sm text-[#6b6560]">
                   Enter your name to mark your availability:
                 </p>
                 <NameEntry
@@ -208,7 +215,7 @@ export default function PollView() {
 
             {/* Instruction after name entry, before submit */}
             {isOpen && participant && !submitted && (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-[#8a8580]">
                 Click or drag to mark when you are available. Selected slots are shown in green.
               </p>
             )}
@@ -226,13 +233,14 @@ export default function PollView() {
                 <Button
                   onClick={handleSubmit}
                   disabled={submitting || mySlots.size === 0}
+                  className="bg-[#1a1a1a] text-[#faf9f6] hover:bg-[#333] transition-colors"
                 >
                   {submitting
                     ? 'Submitting...'
                     : `Submit availability (${mySlots.size} slot${mySlots.size !== 1 ? 's' : ''})`}
                 </Button>
                 {submitError && (
-                  <p className="text-sm text-destructive">{submitError}</p>
+                  <p className="text-sm text-red-600">{submitError}</p>
                 )}
               </div>
             )}
@@ -243,6 +251,7 @@ export default function PollView() {
                 <Button
                   onClick={handleUpdate}
                   disabled={submitting || mySlots.size === 0}
+                  className="bg-[#1a1a1a] text-[#faf9f6] hover:bg-[#333] transition-colors"
                 >
                   {submitting
                     ? 'Saving...'
@@ -252,23 +261,24 @@ export default function PollView() {
                   variant="ghost"
                   onClick={() => { setEditing(false); setSubmitted(true) }}
                   disabled={submitting}
+                  className="text-[#8a8580] hover:text-[#6b6560] hover:bg-[#f0eeea]"
                 >
                   Cancel
                 </Button>
                 {submitError && (
-                  <p className="text-sm text-destructive">{submitError}</p>
+                  <p className="text-sm text-red-600">{submitError}</p>
                 )}
               </div>
             )}
 
             {/* Post-submit confirmation */}
             {submitted && (
-              <div className="flex items-center gap-3">
-                <p className="text-sm text-muted-foreground">
+              <div className="flex items-center gap-3 rounded-lg border border-[#e8e5df] bg-white px-4 py-3">
+                <p className="text-sm text-[#6b6560]">
                   Your availability has been submitted.
                 </p>
                 {isOpen && responseRkey && (
-                  <Button variant="outline" size="sm" onClick={handleStartEdit}>
+                  <Button variant="outline" size="sm" onClick={handleStartEdit} className="border-[#e8e5df] text-[#6b6560] hover:bg-[#f0eeea] hover:text-[#1a1a1a]">
                     Edit my availability
                   </Button>
                 )}
@@ -277,7 +287,7 @@ export default function PollView() {
 
             {/* Finalize button for creator */}
             {isOpen && isCreator && (
-              <Button variant="outline" onClick={() => setShowFinalize(true)}>
+              <Button onClick={() => setShowFinalize(true)} className="bg-[#1a1a1a] text-[#faf9f6] hover:bg-[#333] transition-colors">
                 Pick a time
               </Button>
             )}

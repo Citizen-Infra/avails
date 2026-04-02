@@ -5,9 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Calendar } from '@/components/ui/calendar'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Separator } from '@/components/ui/separator'
 import { createPoll, getCommunities } from '@/lib/api'
 
 const TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -69,173 +67,170 @@ export default function PollCreator() {
   }
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle>New availability poll</CardTitle>
-        <CardDescription>
-          Fill in the details below. Participants will see all options on one page.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
+    <div className="w-full max-w-2xl mx-auto">
+      <form onSubmit={handleSubmit} className="space-y-8">
 
-          {/* Title */}
-          <div className="space-y-2">
-            <Label htmlFor="title">Title <span className="text-destructive">*</span></Label>
-            <Input
-              id="title"
-              placeholder="Team sync, coffee chat, project kickoff..."
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              required
-            />
-          </div>
+        {/* Title */}
+        <div className="space-y-2">
+          <Label htmlFor="title" className="text-sm font-medium text-[#1a1a1a]">Title <span className="text-red-500">*</span></Label>
+          <Input
+            id="title"
+            placeholder="Team sync, coffee chat, project kickoff..."
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            required
+            className="border-[#e8e5df] bg-white text-[#1a1a1a] placeholder:text-[#a09a94] focus-visible:ring-[#a09a94]"
+          />
+        </div>
 
-          {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="description">Description <span className="text-muted-foreground text-xs">(optional)</span></Label>
-            <Textarea
-              id="description"
-              placeholder="Any context participants should know..."
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              rows={3}
-            />
-          </div>
+        {/* Description */}
+        <div className="space-y-2">
+          <Label htmlFor="description" className="text-sm font-medium text-[#1a1a1a]">Description <span className="text-[#a09a94] text-xs font-normal">(optional)</span></Label>
+          <Textarea
+            id="description"
+            placeholder="Any context participants should know..."
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            rows={3}
+            className="border-[#e8e5df] bg-white text-[#1a1a1a] placeholder:text-[#a09a94] focus-visible:ring-[#a09a94]"
+          />
+        </div>
 
-          <Separator />
+        <div className="border-t border-[#e8e5df]" />
 
-          {/* Date picker */}
-          <div className="space-y-2">
-            <Label>
-              Possible dates <span className="text-destructive">*</span>
-              {selectedDates.length > 0 && (
-                <span className="ml-2 text-muted-foreground text-xs font-normal">
-                  {selectedDates.length} selected
-                </span>
-              )}
-            </Label>
-            <div className="flex justify-center">
-              <Calendar
-                mode="multiple"
-                selected={selectedDates}
-                onSelect={setSelectedDates}
-                disabled={{ before: new Date() }}
-                className="rounded-lg border"
-              />
-            </div>
+        {/* Date picker */}
+        <div className="space-y-3">
+          <Label className="text-sm font-medium text-[#1a1a1a]">
+            Possible dates <span className="text-red-500">*</span>
             {selectedDates.length > 0 && (
-              <p className="text-xs text-muted-foreground">
-                {selectedDates
-                  .slice()
-                  .sort((a, b) => a - b)
-                  .map(d => d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }))
-                  .join(', ')}
-              </p>
+              <span className="ml-2 text-[#a09a94] text-xs font-normal">
+                {selectedDates.length} selected
+              </span>
             )}
-          </div>
-
-          <Separator />
-
-          {/* Time range + slot duration */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="earliest">Earliest time</Label>
-              <Input
-                id="earliest"
-                type="time"
-                value={earliestTime}
-                onChange={e => setEarliestTime(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="latest">Latest time</Label>
-              <Input
-                id="latest"
-                type="time"
-                value={latestTime}
-                onChange={e => setLatestTime(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="slot-duration">Slot duration</Label>
-              <Select value={slotDuration} onValueChange={setSlotDuration}>
-                <SelectTrigger id="slot-duration">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="15">15 minutes</SelectItem>
-                  <SelectItem value="30">30 minutes</SelectItem>
-                  <SelectItem value="60">60 minutes</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Timezone display */}
-          <p className="text-xs text-muted-foreground">
-            Timezone: {TIMEZONE}
-          </p>
-
-          <Separator />
-
-          {/* Community */}
-          {communities.length > 0 && (
-            <div className="space-y-2">
-              <Label htmlFor="community">Community <span className="text-muted-foreground text-xs">(optional)</span></Label>
-              <Select value={communityId} onValueChange={setCommunityId}>
-                <SelectTrigger id="community">
-                  <SelectValue placeholder="None" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">None</SelectItem>
-                  {communities.map(c => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {/* Notify after N responses */}
-          <div className="space-y-2">
-            <Label>Notify me after <span className="text-muted-foreground text-xs">(optional)</span></Label>
-            <div className="flex items-center gap-3">
-              <Input
-                type="number"
-                min="1"
-                placeholder="e.g. 5"
-                value={notifyAfter}
-                onChange={e => setNotifyAfter(e.target.value)}
-                className="w-24"
-              />
-              <span className="text-sm text-muted-foreground">responses</span>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="notify-email">Notification email <span className="text-muted-foreground text-xs">(optional)</span></Label>
-            <Input
-              id="notify-email"
-              type="email"
-              placeholder="you@example.com"
-              value={notifyEmail}
-              onChange={e => setNotifyEmail(e.target.value)}
+          </Label>
+          <div className="flex justify-center">
+            <Calendar
+              mode="multiple"
+              selected={selectedDates}
+              onSelect={setSelectedDates}
+              disabled={{ before: new Date() }}
+              className="rounded-lg border border-[#e8e5df] bg-white"
             />
           </div>
-
-          {/* Error */}
-          {error && (
-            <p className="text-sm text-destructive">{error}</p>
+          {selectedDates.length > 0 && (
+            <p className="text-xs text-[#8a8580]">
+              {selectedDates
+                .slice()
+                .sort((a, b) => a - b)
+                .map(d => d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }))
+                .join(', ')}
+            </p>
           )}
+        </div>
 
-          {/* Submit */}
-          <Button type="submit" className="w-full" disabled={submitting}>
-            {submitting ? 'Creating poll...' : 'Create poll'}
-          </Button>
+        <div className="border-t border-[#e8e5df]" />
 
-        </form>
-      </CardContent>
-    </Card>
+        {/* Time range + slot duration */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="earliest" className="text-sm font-medium text-[#1a1a1a]">Earliest time</Label>
+            <Input
+              id="earliest"
+              type="time"
+              value={earliestTime}
+              onChange={e => setEarliestTime(e.target.value)}
+              className="border-[#e8e5df] bg-white text-[#1a1a1a] focus-visible:ring-[#a09a94]"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="latest" className="text-sm font-medium text-[#1a1a1a]">Latest time</Label>
+            <Input
+              id="latest"
+              type="time"
+              value={latestTime}
+              onChange={e => setLatestTime(e.target.value)}
+              className="border-[#e8e5df] bg-white text-[#1a1a1a] focus-visible:ring-[#a09a94]"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="slot-duration" className="text-sm font-medium text-[#1a1a1a]">Slot duration</Label>
+            <Select value={slotDuration} onValueChange={setSlotDuration}>
+              <SelectTrigger id="slot-duration" className="border-[#e8e5df] bg-white text-[#1a1a1a]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="15">15 minutes</SelectItem>
+                <SelectItem value="30">30 minutes</SelectItem>
+                <SelectItem value="60">60 minutes</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Timezone display */}
+        <p className="text-xs text-[#a09a94]">
+          Timezone: {TIMEZONE}
+        </p>
+
+        <div className="border-t border-[#e8e5df]" />
+
+        {/* Community */}
+        {communities.length > 0 && (
+          <div className="space-y-2">
+            <Label htmlFor="community" className="text-sm font-medium text-[#1a1a1a]">Community <span className="text-[#a09a94] text-xs font-normal">(optional)</span></Label>
+            <Select value={communityId} onValueChange={setCommunityId}>
+              <SelectTrigger id="community" className="border-[#e8e5df] bg-white text-[#1a1a1a]">
+                <SelectValue placeholder="None" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">None</SelectItem>
+                {communities.map(c => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {/* Notify after N responses */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium text-[#1a1a1a]">Notify me after <span className="text-[#a09a94] text-xs font-normal">(optional)</span></Label>
+          <div className="flex items-center gap-3">
+            <Input
+              type="number"
+              min="1"
+              placeholder="e.g. 5"
+              value={notifyAfter}
+              onChange={e => setNotifyAfter(e.target.value)}
+              className="w-24 border-[#e8e5df] bg-white text-[#1a1a1a] placeholder:text-[#a09a94] focus-visible:ring-[#a09a94]"
+            />
+            <span className="text-sm text-[#8a8580]">responses</span>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="notify-email" className="text-sm font-medium text-[#1a1a1a]">Notification email <span className="text-[#a09a94] text-xs font-normal">(optional)</span></Label>
+          <Input
+            id="notify-email"
+            type="email"
+            placeholder="you@example.com"
+            value={notifyEmail}
+            onChange={e => setNotifyEmail(e.target.value)}
+            className="border-[#e8e5df] bg-white text-[#1a1a1a] placeholder:text-[#a09a94] focus-visible:ring-[#a09a94]"
+          />
+        </div>
+
+        {/* Error */}
+        {error && (
+          <p className="text-sm text-red-600">{error}</p>
+        )}
+
+        {/* Submit */}
+        <Button type="submit" className="w-full bg-[#1a1a1a] text-[#faf9f6] hover:bg-[#333] transition-colors" disabled={submitting}>
+          {submitting ? 'Creating poll...' : 'Create poll'}
+        </Button>
+
+      </form>
+    </div>
   )
 }

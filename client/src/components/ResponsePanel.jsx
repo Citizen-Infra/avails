@@ -24,10 +24,10 @@ export default function ResponsePanel({ responses = [], highlightName, onHighlig
 
   return (
     <div className="space-y-3">
-      <div className="text-sm font-medium">
+      <div className="text-xs font-medium text-[#a09a94] uppercase tracking-wide">
         {responses.length} {responses.length === 1 ? 'response' : 'responses'}
       </div>
-      <ul className="space-y-1">
+      <ul className="space-y-0.5">
         {responses.map((r) => {
           const isActive = highlightName === r.name
           return (
@@ -36,15 +36,15 @@ export default function ResponsePanel({ responses = [], highlightName, onHighlig
                 type="button"
                 className={cn(
                   'w-full text-left px-3 py-2 rounded-md text-sm transition-colors',
-                  'hover:bg-muted',
-                  isActive && 'bg-blue-50 text-blue-800 dark:bg-blue-950 dark:text-blue-200'
+                  'hover:bg-[#f0eeea]',
+                  isActive ? 'bg-[#f0eeea] text-[#1a1a1a]' : 'text-[#6b6560]'
                 )}
                 onMouseEnter={() => handleMouseEnter(r.name)}
                 onMouseLeave={handleMouseLeave}
                 onClick={() => handleClick(r.name)}
               >
-                <span className="font-medium">{r.name}</span>
-                <span className="ml-2 text-muted-foreground text-xs">
+                <span className="font-medium text-[#1a1a1a]">{r.name}</span>
+                <span className="ml-2 text-[#a09a94] text-xs">
                   {r.slots.length} {r.slots.length === 1 ? 'slot' : 'slots'}
                 </span>
               </button>
@@ -52,7 +52,7 @@ export default function ResponsePanel({ responses = [], highlightName, onHighlig
           )
         })}
         {responses.length === 0 && (
-          <li className="text-sm text-muted-foreground px-3 py-2">
+          <li className="text-sm text-[#a09a94] px-3 py-2">
             No responses yet.
           </li>
         )}

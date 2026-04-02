@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 
 export default function PollHeader({ poll, did, rkey, isCreator, onEditClick }) {
@@ -14,35 +13,38 @@ export default function PollHeader({ poll, did, rkey, isCreator, onEditClick }) 
   }
 
   const isOpen = !poll.finalTime
-  const status = isOpen ? 'open' : 'closed'
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <div className="flex items-start gap-3 flex-wrap">
-        <h1 className="text-2xl font-bold tracking-tight flex-1 min-w-0">
+        <h1 className="text-3xl font-semibold tracking-tight text-[#1a1a1a] flex-1 min-w-0">
           {poll.title}
         </h1>
-        <Badge variant={isOpen ? 'default' : 'secondary'} className="shrink-0 mt-1">
-          {status}
-        </Badge>
+        <span className={`shrink-0 mt-1.5 text-xs px-2.5 py-1 rounded-full font-medium ${
+          isOpen
+            ? 'bg-[#e8f4e8] text-[#4a7c4a]'
+            : 'bg-[#f0eeea] text-[#8a8580]'
+        }`}>
+          {isOpen ? 'Open' : 'Closed'}
+        </span>
       </div>
 
       {poll.description && (
-        <p className="text-muted-foreground">{poll.description}</p>
+        <p className="text-[#6b6560] leading-relaxed">{poll.description}</p>
       )}
 
-      <div className="flex items-center gap-3 flex-wrap text-sm text-muted-foreground">
+      <div className="flex items-center gap-3 flex-wrap text-sm text-[#a09a94]">
         {poll.timezone && (
           <span>{poll.timezone}</span>
         )}
         {poll.community && (
-          <Badge variant="outline">{poll.community}</Badge>
+          <span className="px-2 py-0.5 rounded-full border border-[#e8e5df] text-xs font-medium text-[#6b6560]">{poll.community}</span>
         )}
-        <Button variant="outline" size="sm" onClick={copyLink}>
+        <Button variant="outline" size="sm" onClick={copyLink} className="border-[#e8e5df] text-[#6b6560] hover:bg-[#f0eeea] hover:text-[#1a1a1a]">
           {copied ? 'Copied!' : 'Copy link'}
         </Button>
         {isCreator && isOpen && onEditClick && (
-          <Button variant="outline" size="sm" onClick={onEditClick}>
+          <Button variant="outline" size="sm" onClick={onEditClick} className="border-[#e8e5df] text-[#6b6560] hover:bg-[#f0eeea] hover:text-[#1a1a1a]">
             Edit poll
           </Button>
         )}

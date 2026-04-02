@@ -6,7 +6,6 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Calendar } from '@/components/ui/calendar'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Separator } from '@/components/ui/separator'
 import {
   Dialog,
   DialogContent,
@@ -81,35 +80,37 @@ export default function EditPollDialog({ open, onOpenChange, poll, did, rkey, on
         <div className="space-y-5 py-2">
           {/* Title */}
           <div className="space-y-2">
-            <Label htmlFor="edit-title">Title <span className="text-destructive">*</span></Label>
+            <Label htmlFor="edit-title" className="text-sm font-medium text-[#1a1a1a]">Title <span className="text-red-500">*</span></Label>
             <Input
               id="edit-title"
               value={title}
               onChange={e => setTitle(e.target.value)}
+              className="border-[#e8e5df] bg-white text-[#1a1a1a] focus-visible:ring-[#a09a94]"
             />
           </div>
 
           {/* Description */}
           <div className="space-y-2">
-            <Label htmlFor="edit-description">
-              Description <span className="text-muted-foreground text-xs">(optional)</span>
+            <Label htmlFor="edit-description" className="text-sm font-medium text-[#1a1a1a]">
+              Description <span className="text-[#a09a94] text-xs font-normal">(optional)</span>
             </Label>
             <Textarea
               id="edit-description"
               value={description}
               onChange={e => setDescription(e.target.value)}
               rows={3}
+              className="border-[#e8e5df] bg-white text-[#1a1a1a] focus-visible:ring-[#a09a94]"
             />
           </div>
 
-          <Separator />
+          <div className="border-t border-[#e8e5df]" />
 
           {/* Date picker */}
           <div className="space-y-2">
-            <Label>
-              Possible dates <span className="text-destructive">*</span>
+            <Label className="text-sm font-medium text-[#1a1a1a]">
+              Possible dates <span className="text-red-500">*</span>
               {selectedDates.length > 0 && (
-                <span className="ml-2 text-muted-foreground text-xs font-normal">
+                <span className="ml-2 text-[#a09a94] text-xs font-normal">
                   {selectedDates.length} selected
                 </span>
               )}
@@ -119,11 +120,11 @@ export default function EditPollDialog({ open, onOpenChange, poll, did, rkey, on
                 mode="multiple"
                 selected={selectedDates}
                 onSelect={setSelectedDates}
-                className="rounded-lg border"
+                className="rounded-lg border border-[#e8e5df] bg-white"
               />
             </div>
             {selectedDates.length > 0 && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-[#8a8580]">
                 {selectedDates
                   .slice()
                   .sort((a, b) => a - b)
@@ -133,32 +134,34 @@ export default function EditPollDialog({ open, onOpenChange, poll, did, rkey, on
             )}
           </div>
 
-          <Separator />
+          <div className="border-t border-[#e8e5df]" />
 
           {/* Time range + slot duration */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="edit-earliest">Earliest time</Label>
+              <Label htmlFor="edit-earliest" className="text-sm font-medium text-[#1a1a1a]">Earliest time</Label>
               <Input
                 id="edit-earliest"
                 type="time"
                 value={earliestTime}
                 onChange={e => setEarliestTime(e.target.value)}
+                className="border-[#e8e5df] bg-white text-[#1a1a1a] focus-visible:ring-[#a09a94]"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-latest">Latest time</Label>
+              <Label htmlFor="edit-latest" className="text-sm font-medium text-[#1a1a1a]">Latest time</Label>
               <Input
                 id="edit-latest"
                 type="time"
                 value={latestTime}
                 onChange={e => setLatestTime(e.target.value)}
+                className="border-[#e8e5df] bg-white text-[#1a1a1a] focus-visible:ring-[#a09a94]"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-slot-duration">Slot duration</Label>
+              <Label htmlFor="edit-slot-duration" className="text-sm font-medium text-[#1a1a1a]">Slot duration</Label>
               <Select value={slotDuration} onValueChange={setSlotDuration}>
-                <SelectTrigger id="edit-slot-duration">
+                <SelectTrigger id="edit-slot-duration" className="border-[#e8e5df] bg-white text-[#1a1a1a]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -171,15 +174,15 @@ export default function EditPollDialog({ open, onOpenChange, poll, did, rkey, on
           </div>
 
           {error && (
-            <p className="text-sm text-destructive">{error}</p>
+            <p className="text-sm text-red-600">{error}</p>
           )}
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving} className="border-[#e8e5df] text-[#6b6560] hover:bg-[#f0eeea] hover:text-[#1a1a1a]">
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={saving}>
+          <Button onClick={handleSave} disabled={saving} className="bg-[#1a1a1a] text-[#faf9f6] hover:bg-[#333] transition-colors">
             {saving ? 'Saving...' : 'Save changes'}
           </Button>
         </DialogFooter>
