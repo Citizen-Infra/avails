@@ -97,8 +97,8 @@ export default function PollView() {
 
   const gridProps = {
     dates: poll.dates || [],
-    timeRange: poll.timeRange || { start: '09:00', end: '17:00' },
-    slotMinutes: poll.slotMinutes || 30,
+    timeRange: poll.timeRange || (poll.earliestTime ? { start: poll.earliestTime, end: poll.latestTime } : { start: '09:00', end: '17:00' }),
+    slotMinutes: poll.slotMinutes || poll.slotDuration || 30,
     responses,
     busySlots,
     highlightName,
