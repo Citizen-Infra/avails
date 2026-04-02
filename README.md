@@ -103,17 +103,34 @@ Avails is part of the [Citizen Infrastructure](https://github.com/Citizen-Infra)
 - [community-admin](https://github.com/Citizen-Infra/community-admin) — shared admin platform
 - [navidrome-jam](https://github.com/zhiganov/navidrome-jam) — synchronized music listening
 
-### Roadmap: shared ATProto identity across the ecosystem
+### Roadmap
+
+**Now — get it working:**
+- [End-to-end testing](https://github.com/Citizen-Infra/avails/issues/4) of the full ATProto flow (sign in, create poll, respond, finalize)
+- [Polish PollCreator and PollView styling](https://github.com/Citizen-Infra/avails/issues/5) to match the landing page design
+- [Grid UX improvements](https://github.com/Citizen-Infra/avails/issues/1) — better borders, cursor states, hover feedback
+
+**Next — better calendar integration:**
+- [Show calendar event names on the grid](https://github.com/Citizen-Infra/avails/issues/2) instead of just hatching busy slots
+- [Server-side calendar OAuth](https://github.com/Citizen-Infra/avails/issues/6) so tokens persist across sessions
+- [Create calendar events directly](https://github.com/Citizen-Infra/avails/issues/7) via API on finalize (not just .ics email)
+- [Microsoft/Outlook calendar support](https://github.com/Citizen-Infra/avails/issues/3)
+
+**Later — ecosystem integration:**
+- [Telegram bot](https://github.com/Citizen-Infra/avails/issues/9) for reminders and invites (Railway service #2)
+- [Dear Neighbors integration](https://github.com/Citizen-Infra/avails/issues/10) — poll banners in DN participation feed
+- [CI pipeline](https://github.com/Citizen-Infra/avails/issues/8) with GitHub Actions
+
+**Vision — shared ATProto identity across the ecosystem:**
 
 Today, My Community uses Bluesky app passwords for the Bluesky feed, and avails has its own ATProto OAuth login. These are separate auth sessions. When the ecosystem adopts ATProto OAuth as the shared identity layer, several things unlock:
 
-- **Zero-friction scheduling from MC/DN.** Click an avails poll banner in the participation feed and go straight to painting availability — your identity is already known, no name entry needed.
-- **Create polls without leaving the dashboard.** Embed the poll creator directly in MC. Your OAuth session writes to your PDS — same auth, no redirect to another app.
-- **Smarter banners.** MC can show "You haven't responded yet" vs "You responded (3 slots)" by checking poll responses against your DID.
-- **One login for everything.** Sign into MC once with your Bluesky handle, and you're authenticated for avails, community-admin, navidrome-jam. ATProto DID becomes the universal identity across all Citizen Infra tools.
-- **Activity in the feed.** Polls you created or responded to appear as activity items, not just as community-scoped API results.
+- **Zero-friction scheduling from MC/DN.** Click an avails poll banner and go straight to painting availability — your identity is already known.
+- **Create polls without leaving the dashboard.** Embed the poll creator directly in MC. Your OAuth session writes to your PDS.
+- **Smarter banners.** MC shows "You haven't responded yet" vs "You responded (3 slots)" by checking responses against your DID.
+- **One login for everything.** Sign into MC once, authenticated everywhere. ATProto DID as universal identity.
 
-This is the ATProto promise at the ecosystem level: identity and data are protocol primitives, not per-app silos. Each tool in the ecosystem becomes more useful as more tools share the same identity and data layer.
+Identity and data as protocol primitives, not per-app silos.
 
 ## License
 
