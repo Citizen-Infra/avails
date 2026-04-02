@@ -5,6 +5,9 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import authRoutes from './routes/auth.js';
+import pollRoutes from './routes/polls.js';
+import responseRoutes from './routes/responses.js';
+import communityRoutes from './routes/communities.js';
 
 dotenv.config();
 
@@ -21,6 +24,15 @@ app.use(cookieParser());
 
 // Auth routes (login, callback, session, logout, client-metadata, jwks)
 app.use('/api/auth', authRoutes);
+
+// Poll CRUD + community listing
+app.use('/api/polls', pollRoutes);
+
+// Response submission (nested: /api/polls/:did/:rkey/responses)
+app.use('/api/polls', responseRoutes);
+
+// Communities proxy
+app.use('/api/communities', communityRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
