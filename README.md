@@ -11,13 +11,27 @@ Open-source group scheduling on the AT Protocol. An alternative to [LettuceMeet]
 3. **Share the link** — participants paint their availability on a drag-to-select grid. No account needed.
 4. **Pick a time** — the heatmap shows where everyone overlaps. Finalize and calendar invites (.ics) are sent automatically.
 
-## What makes this different
+## Why ATProto?
 
-- **Your data, your PDS.** Polls are ATProto records ([`chat.avails.scheduling.poll`](lexicons/chat/avails/scheduling/poll.json)), stored in the creator's Personal Data Server. No vendor lock-in.
-- **No account to respond.** Participants just open the link and paint their availability. Optional email for calendar invites.
-- **Community-scoped.** Polls can be tagged to a community and discovered in [My Community](https://github.com/Citizen-Infra/my-community) and [Dear Neighbors](https://github.com/Citizen-Infra/dear-neighbors) dashboards.
-- **Calendar invites.** When a time is picked, everyone who left their email gets an `.ics` invite — it shows up in Google Calendar, Outlook, Apple Calendar.
-- **Google Calendar overlay.** Participants can connect their Google Calendar to see busy times on the grid before marking availability.
+Most scheduling tools store your data on their servers. If the company shuts down, pivots, or gets acquired — your polls, your history, your community's scheduling patterns disappear with it.
+
+Avails is built on the [AT Protocol](https://atproto.com/) (the open protocol behind [Bluesky](https://bsky.app)). This means:
+
+- **You own your data.** When you create a poll, it's stored as a record in your Personal Data Server (PDS) — the same place your Bluesky posts live. It's your data, on your account, under your control.
+- **No lock-in.** If avails disappears tomorrow, your polls are still in your PDS. Anyone can build another client that reads the same data using the same [open lexicon schema](lexicons/).
+- **Portable identity.** You sign in with your Bluesky handle. No new account, no new password. Your identity works across every ATProto app.
+- **Interoperable by design.** The poll and response formats are defined as [Lexicons](https://atproto.com/guides/lexicon) — open schemas that any developer can use. Other scheduling tools, community dashboards, or bots can read and create the same records.
+
+You don't need to know or care about any of this to use avails. It works like any other scheduling tool. But under the hood, your data isn't trapped in someone else's database.
+
+## Features
+
+- **Drag-to-paint availability grid** — click and drag to mark when you're free, like LettuceMeet and When2Meet
+- **No account to respond** — participants just open the link and paint. Optional email for calendar invites.
+- **Calendar invites** — when a time is picked, everyone who left their email gets an `.ics` invite that shows up in Google Calendar, Outlook, Apple Calendar
+- **Google Calendar overlay** — connect your calendar to see busy times on the grid before marking availability
+- **Community-scoped** — tag polls to a community. They show up in [My Community](https://github.com/Citizen-Infra/my-community) and [Dear Neighbors](https://github.com/Citizen-Infra/dear-neighbors) dashboards.
+- **Creator notifications** — get an email when enough people have responded
 
 ## Stack
 
