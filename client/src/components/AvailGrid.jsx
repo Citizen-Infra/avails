@@ -68,6 +68,7 @@ export default function AvailGrid({
   readOnly = false,
   highlightName = null,
   busySlots = new Set(),
+  onHoverSlot,
 }) {
   const containerRef = useRef(null)
 
@@ -134,12 +135,19 @@ export default function AvailGrid({
 
   const handlePointerEnter = useCallback(
     (e, row, col) => {
-      if (!downCell.current || readOnly) return
-      curCell.current = { row, col }
-      const pending = computePendingKeys(downCell.current, { row, col })
-      setDragState({ pending, removing: downCellWasSelected.current })
+      if (downCell.current) {
+        // Drag in progress — update selection rectangle
+        if (readOnly) return
+        curCell.current = { row, col }
+        const pending = computePendingKeys(downCell.current, { row, col })
+        setDragState({ pending, removing: downCellWasSelected.current })
+      } else {
+        // Not dragging — fire hover slot callback
+        const key = `${dates[col]}T${times[row]}`
+        onHoverSlot?.(key)
+      }
     },
-    [readOnly, computePendingKeys]
+    [readOnly, computePendingKeys, dates, times, onHoverSlot]
   )
 
   // Commit on pointerup — attached to document so it fires even outside the grid
@@ -184,6 +192,7 @@ export default function AvailGrid({
         ref={containerRef}
         className={cn('select-none overflow-x-auto', dragState && 'avail-grid--dragging')}
         style={{ touchAction: 'none' }}
+        onPointerLeave={() => { if (!downCell.current) onHoverSlot?.(null) }}
       >
         <div
           className="grid w-full"

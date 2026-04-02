@@ -38,6 +38,7 @@ export default function PollView() {
   })
 
   const [highlightName, setHighlightName] = useState(null)
+  const [hoverSlot, setHoverSlot] = useState(null)
   const [showFinalize, setShowFinalize] = useState(false)
   const [showEditPoll, setShowEditPoll] = useState(false)
   const [showDeletePoll, setShowDeletePoll] = useState(false)
@@ -228,6 +229,7 @@ export default function PollView() {
               mySlots={mySlots}
               onSlotsChange={setMySlots}
               readOnly={readOnly(isOpen, participant, submitted, editing)}
+              onHoverSlot={setHoverSlot}
             />
 
             {/* Submit area — initial submission */}
@@ -302,6 +304,7 @@ export default function PollView() {
               responses={responses}
               highlightName={highlightName}
               onHighlight={setHighlightName}
+              hoverSlot={hoverSlot}
             />
           </aside>
         </div>
