@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install client dependencies
+        run: cd client && npm install
+      - name: Build client
+        run: cd client && npm run build
+      - name: Check server syntax
+        run: |
+          node --check server/src/index.js
+          node --check server/src/routes/auth.js
+          node --check server/src/routes/polls.js
+          node --check server/src/routes/responses.js
+          node --check server/src/routes/communities.js
+          node --check server/src/lib/sessionStore.js
+          node --check server/src/lib/pollIndex.js
+          node --check server/src/lib/email.js
+          node --check server/src/lib/ical.js
+          node --check server/src/lib/persistence.js
+          node --check server/src/middleware/auth.js
