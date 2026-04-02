@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useMemo } from 'react'
+import { useRef, useState, useCallback, useMemo, useEffect } from 'react'
 import {
   Tooltip,
   TooltipContent,
@@ -69,10 +69,15 @@ export default function AvailGrid({
   highlightName = null,
   busySlots = new Set(),
 }) {
-  const isDragging = useRef(false)
-  const dragMode = useRef('add') // 'add' | 'remove'
   const containerRef = useRef(null)
-  const [draggingState, setDraggingState] = useState(false)
+
+  // Drag state refs (not state — avoid re-renders on every pointermove)
+  const downCell = useRef(null)   // { row, col } | null
+  const curCell = useRef(null)    // { row, col } | null
+  const downCellWasSelected = useRef(false)
+
+  // Only this triggers re-renders — for CSS class + pending visual
+  const [dragState, setDragState] = useState(null) // null | { pending: Set<string>, removing: boolean }
 
   const times = useMemo(
     () => generateSlots(dates, timeRange, slotMinutes),
@@ -92,36 +97,74 @@ export default function AvailGrid({
 
   const totalRespondents = responses.length
 
+  // Compute pending keys from rectangle between downCell and curCell
+  const computePendingKeys = useCallback(
+    (down, cur) => {
+      const minRow = Math.min(down.row, cur.row)
+      const maxRow = Math.max(down.row, cur.row)
+      const minCol = Math.min(down.col, cur.col)
+      const maxCol = Math.max(down.col, cur.col)
+      const keys = new Set()
+      for (let r = minRow; r <= maxRow; r++) {
+        for (let c = minCol; c <= maxCol; c++) {
+          if (r < times.length && c < dates.length) {
+            keys.add(`${dates[c]}T${times[r]}`)
+          }
+        }
+      }
+      return keys
+    },
+    [dates, times]
+  )
+
   const handlePointerDown = useCallback(
-    (e, key) => {
+    (e, row, col) => {
       if (readOnly) return
       e.preventDefault()
-      isDragging.current = true
-      setDraggingState(true)
-      dragMode.current = mySlots.has(key) ? 'remove' : 'add'
-      const next = new Set(mySlots)
-      if (dragMode.current === 'add') next.add(key)
-      else next.delete(key)
-      onSlotsChange?.(next)
+      const key = `${dates[col]}T${times[row]}`
+      const wasSelected = mySlots.has(key)
+      downCell.current = { row, col }
+      curCell.current = { row, col }
+      downCellWasSelected.current = wasSelected
+      const pending = new Set([key])
+      setDragState({ pending, removing: wasSelected })
     },
-    [readOnly, mySlots, onSlotsChange]
+    [readOnly, mySlots, dates, times]
   )
 
   const handlePointerEnter = useCallback(
-    (e, key) => {
-      if (!isDragging.current || readOnly) return
-      const next = new Set(mySlots)
-      if (dragMode.current === 'add') next.add(key)
-      else next.delete(key)
-      onSlotsChange?.(next)
+    (e, row, col) => {
+      if (!downCell.current || readOnly) return
+      curCell.current = { row, col }
+      const pending = computePendingKeys(downCell.current, { row, col })
+      setDragState({ pending, removing: downCellWasSelected.current })
     },
-    [readOnly, mySlots, onSlotsChange]
+    [readOnly, computePendingKeys]
   )
 
-  const endDrag = useCallback(() => {
-    isDragging.current = false
-    setDraggingState(false)
-  }, [])
+  // Commit on pointerup — attached to document so it fires even outside the grid
+  const commitDrag = useCallback(() => {
+    if (!downCell.current) return
+    const pending = computePendingKeys(downCell.current, curCell.current)
+    const next = new Set(mySlots)
+    if (downCellWasSelected.current) {
+      // Remove mode
+      for (const k of pending) next.delete(k)
+    } else {
+      // Add mode
+      for (const k of pending) next.add(k)
+    }
+    onSlotsChange?.(next)
+    downCell.current = null
+    curCell.current = null
+    setDragState(null)
+  }, [mySlots, onSlotsChange, computePendingKeys])
+
+  // Document-level pointerup listener
+  useEffect(() => {
+    document.addEventListener('pointerup', commitDrag)
+    return () => document.removeEventListener('pointerup', commitDrag)
+  }, [commitDrag])
 
   function getTooltipContent(date, time) {
     const key = `${date}T${time}`
@@ -139,10 +182,8 @@ export default function AvailGrid({
     <TooltipProvider delayDuration={300}>
       <div
         ref={containerRef}
-        className={cn('select-none overflow-x-auto', draggingState && 'avail-grid--dragging')}
+        className={cn('select-none overflow-x-auto', dragState && 'avail-grid--dragging')}
         style={{ touchAction: 'none' }}
-        onPointerUp={endDrag}
-        onPointerLeave={endDrag}
       >
         <div
           className="grid w-full"
@@ -166,7 +207,7 @@ export default function AvailGrid({
           })}
 
           {/* Time rows */}
-          {times.map((time, timeIdx) => (
+          {times.map((time, rowIdx) => (
             <>
               {/* Time label */}
               <div
@@ -179,7 +220,7 @@ export default function AvailGrid({
               </div>
 
               {/* Slot cells for each date */}
-              {dates.map((date) => {
+              {dates.map((date, colIdx) => {
                 const key = `${date}T${time}`
                 const isMine = mySlots.has(key)
                 const isBusy = busySlots.has(key)
@@ -188,24 +229,29 @@ export default function AvailGrid({
                 const bgColor = heatCount > 0 ? slotColor(heatCount, totalRespondents) : undefined
                 const tooltipText = getTooltipContent(date, time)
 
+                const isPendingAdd = dragState && !dragState.removing && dragState.pending.has(key)
+                const isPendingRemove = dragState && dragState.removing && dragState.pending.has(key)
+
                 const cell = (
                   <div
                     key={key}
                     className={cn(
                       'avail-cell h-8 cursor-pointer',
-                      timeIdx === 0 && 'rounded-t',
-                      timeIdx === times.length - 1 && 'rounded-b',
-                      isMine && 'ring-2 ring-inset ring-green-500',
+                      rowIdx === 0 && 'rounded-t',
+                      rowIdx === times.length - 1 && 'rounded-b',
+                      isMine && !isPendingRemove && 'ring-2 ring-inset ring-green-500',
                       isHighlighted && !isMine && 'ring-2 ring-inset ring-blue-500',
                       readOnly && 'avail-cell--readonly cursor-default',
-                      !isMine && !bgColor && 'bg-muted/30'
+                      !isMine && !bgColor && !isPendingAdd && 'bg-muted/30',
+                      isPendingAdd && 'avail-cell--pending-add',
+                      isPendingRemove && 'avail-cell--pending-remove',
                     )}
                     style={{
-                      backgroundColor: bgColor,
+                      backgroundColor: (!isPendingAdd && !isPendingRemove) ? bgColor : undefined,
                       backgroundImage: isBusy ? BUSY_PATTERN : undefined,
                     }}
-                    onPointerDown={(e) => handlePointerDown(e, key)}
-                    onPointerEnter={(e) => handlePointerEnter(e, key)}
+                    onPointerDown={(e) => handlePointerDown(e, rowIdx, colIdx)}
+                    onPointerEnter={(e) => handlePointerEnter(e, rowIdx, colIdx)}
                   />
                 )
 

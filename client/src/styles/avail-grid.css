@@ -28,9 +28,21 @@
 
 /* Drag cursor on the grid container */
 .avail-grid--dragging {
-  cursor: ns-resize;
+  cursor: crosshair;
 }
 
 .avail-grid--dragging .avail-cell {
-  cursor: ns-resize;
+  cursor: crosshair;
+}
+
+/* Pending add — green tinted preview */
+.avail-cell--pending-add {
+  background-color: hsl(142, 60%, 80%);
+  ring: none;
+}
+
+/* Pending remove — red/dimmed tint */
+.avail-cell--pending-remove {
+  background-color: hsl(0, 60%, 88%);
+  opacity: 0.7;
 }
