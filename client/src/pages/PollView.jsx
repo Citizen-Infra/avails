@@ -1,12 +1,12 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'react-router'
-import { getPoll, getSession, submitResponse, updateResponse } from '@/lib/api'
+import { getPoll, getSession, submitResponse, updateResponse, finalizePoll } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import AvailGrid from '@/components/AvailGrid'
+import SchedulingGrid from '@/components/SchedulingGrid'
 import NameEntry from '@/components/NameEntry'
 import PollHeader from '@/components/PollHeader'
 import ResponsePanel from '@/components/ResponsePanel'
-import FinalizeDialog from '@/components/FinalizeDialog'
 import EditPollDialog from '@/components/EditPollDialog'
 import DeletePollDialog from '@/components/DeletePollDialog'
 
@@ -39,7 +39,10 @@ export default function PollView() {
 
   const [highlightName, setHighlightName] = useState(null)
   const [hoverSlot, setHoverSlot] = useState(null)
-  const [showFinalize, setShowFinalize] = useState(false)
+  const [schedulingMode, setSchedulingMode] = useState(false)
+  const [schedulingSlots, setSchedulingSlots] = useState([])
+  const [schedulingLoading, setSchedulingLoading] = useState(false)
+  const [schedulingError, setSchedulingError] = useState(null)
   const [showEditPoll, setShowEditPoll] = useState(false)
   const [showDeletePoll, setShowDeletePoll] = useState(false)
 
@@ -122,8 +125,23 @@ export default function PollView() {
     setSubmitted(false)
   }
 
-  function handleFinalized() {
-    fetchData()
+  async function handleScheduleConfirm() {
+    if (schedulingSlots.length === 0) return
+    setSchedulingLoading(true)
+    setSchedulingError(null)
+    try {
+      const mins = poll.slotMinutes || poll.slotDuration || 30
+      const finalTime = new Date(schedulingSlots[0]).toISOString()
+      const finalDuration = schedulingSlots.length * mins
+      await finalizePoll(did, rkey, finalTime, finalDuration)
+      setSchedulingMode(false)
+      setSchedulingSlots([])
+      fetchData()
+    } catch (err) {
+      setSchedulingError(err.message)
+    } finally {
+      setSchedulingLoading(false)
+    }
   }
 
   if (loading) {
@@ -227,13 +245,28 @@ export default function PollView() {
               </p>
             )}
 
-            <AvailGrid
-              {...gridProps}
-              mySlots={mySlots}
-              onSlotsChange={setMySlots}
-              readOnly={readOnly(isOpen, participant, submitted, editing)}
-              onHoverSlot={setHoverSlot}
-            />
+            {schedulingMode ? (
+              <SchedulingGrid
+                dates={gridProps.dates}
+                timeRange={gridProps.timeRange}
+                slotMinutes={gridProps.slotMinutes}
+                responses={responses}
+                onSelect={setSchedulingSlots}
+                onCancel={() => { setSchedulingMode(false); setSchedulingSlots([]) }}
+                onConfirm={handleScheduleConfirm}
+                confirmDisabled={schedulingSlots.length === 0}
+                confirmLoading={schedulingLoading}
+                error={schedulingError}
+              />
+            ) : (
+              <AvailGrid
+                {...gridProps}
+                mySlots={mySlots}
+                onSlotsChange={setMySlots}
+                readOnly={readOnly(isOpen, participant, submitted, editing)}
+                onHoverSlot={setHoverSlot}
+              />
+            )}
 
             {/* Submit area — initial submission */}
             {isOpen && participant && !submitted && !editing && (
@@ -293,10 +326,10 @@ export default function PollView() {
               </div>
             )}
 
-            {/* Finalize button for creator */}
-            {isOpen && isCreator && (
-              <Button onClick={() => setShowFinalize(true)} className="bg-[#0d9488] text-white hover:bg-[#0f766e] text-base px-6 py-3 rounded-lg transition-colors">
-                Pick a time
+            {/* Schedule button for creator */}
+            {isOpen && isCreator && !schedulingMode && (
+              <Button onClick={() => setSchedulingMode(true)} className="bg-[#0d9488] text-white hover:bg-[#0f766e] text-base px-6 py-3 rounded-lg transition-colors">
+                Schedule meeting
               </Button>
             )}
           </div>
@@ -312,15 +345,6 @@ export default function PollView() {
           </aside>
         </div>
       </main>
-
-      <FinalizeDialog
-        open={showFinalize}
-        onOpenChange={setShowFinalize}
-        poll={poll}
-        did={did}
-        rkey={rkey}
-        onFinalized={handleFinalized}
-      />
 
       {showEditPoll && (
         <EditPollDialog
