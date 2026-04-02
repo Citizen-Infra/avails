@@ -216,7 +216,7 @@ export default function PollView() {
     <div className="min-h-screen bg-[#faf9f6]">
       {/* Header */}
       <header className="border-b border-[#e8e5df]">
-        <div className="max-w-5xl mx-auto px-6 h-16 flex items-center">
+        <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
           <a href="/" className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -228,6 +228,9 @@ export default function PollView() {
             </div>
             <span className="text-xl font-bold tracking-tight text-[#1a1a1a]">avails</span>
           </a>
+          <nav className="flex items-center gap-6 text-base text-[#6b6560]">
+            <a href="/about" className="hover:text-[#1a1a1a] transition-colors">About</a>
+          </nav>
         </div>
       </header>
 
