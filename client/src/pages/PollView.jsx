@@ -65,8 +65,21 @@ export default function PollView() {
   }, [did, rkey])
 
   useEffect(() => {
-    fetchData()
+    fetchData().then(() => {
+      // Auto-set participant for signed-in users — skip name entry
+    })
   }, [fetchData])
+
+  // When session loads, auto-populate participant from ATProto identity
+  useEffect(() => {
+    if (session?.did && session?.handle && !participant && !submitted) {
+      setParticipant({
+        name: session.handle,
+        email: '', // ATProto doesn't expose email
+        did: session.did,
+      })
+    }
+  }, [session, participant, submitted])
 
   async function handleSubmit() {
     if (!participant || mySlots.size === 0) return
@@ -225,8 +238,8 @@ export default function PollView() {
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_14rem] gap-6">
           {/* Main grid area */}
           <div className="space-y-4">
-            {/* Name entry — only when poll is open and user hasn't set a name yet */}
-            {isOpen && !participant && !submitted && (
+            {/* Name entry — only for unauthenticated users who haven't entered their name */}
+            {isOpen && !participant && !submitted && !session?.did && (
               <div className="rounded-lg border-l-4 border-l-[#0d9488] border border-[#e8e5df] bg-white p-6 space-y-4">
                 <p className="text-base text-[#6b6560]">
                   Enter your name to mark your availability:
@@ -238,6 +251,13 @@ export default function PollView() {
                   onBusySlots={setBusySlots}
                 />
               </div>
+            )}
+
+            {/* Signed-in user greeting */}
+            {isOpen && participant && !submitted && session?.did && (
+              <p className="text-base text-[#8a8580]">
+                Signed in as <span className="text-[#1a1a1a] font-medium">@{session.handle}</span> — click or drag to mark your availability.
+              </p>
             )}
 
             {/* Instruction after name entry, before submit */}
