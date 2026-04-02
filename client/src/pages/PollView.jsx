@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'react-router'
-import { getPoll, getSession, submitResponse, updateResponse, finalizePoll } from '@/lib/api'
+import { getPoll, getSession, submitResponse, updateResponse, finalizePoll, deleteResponse } from '@/lib/api'
 import { isGoogleConfigured, requestGoogleAccess, fetchBusyTimes } from '@/lib/googleCalendar'
 import { Button } from '@/components/ui/button'
 import AvailGrid from '@/components/AvailGrid'
@@ -166,8 +166,32 @@ export default function PollView() {
   }
 
   function handleStartEdit() {
+    // Load existing slots into the grid for editing
+    if (participant?.name) {
+      const existing = responses.find(r => r.name === participant.name)
+      if (existing) {
+        setMySlots(new Set(existing.slots))
+      }
+    }
     setEditing(true)
     setSubmitted(false)
+  }
+
+  async function handleDeleteResponse() {
+    if (!responseRkey) return
+    if (!confirm('Delete your availability?')) return
+    try {
+      await deleteResponse(did, rkey, responseRkey)
+      setResponseRkey(null)
+      setMySlots(new Set())
+      setSubmitted(false)
+      setParticipant(null)
+      localStorage.removeItem(`avails:response:${window.location.pathname}`)
+      const updated = await getPoll(did, rkey)
+      setResponses(updated.responses || [])
+    } catch (err) {
+      setSubmitError(err.message)
+    }
   }
 
   async function handleScheduleConfirm() {
@@ -363,12 +387,17 @@ export default function PollView() {
 
             {/* Post-save */}
             {submitted && (
-              <div className="rounded-lg border border-[#e8e5df] bg-white p-4 space-y-1">
+              <div className="rounded-lg border border-[#e8e5df] bg-white p-4 space-y-2">
                 <p className="text-sm text-[#6b6560]">Availability saved</p>
                 {isOpen && responseRkey && (
-                  <button onClick={handleStartEdit} className="text-sm text-[#0d9488] hover:text-[#0f766e] underline underline-offset-2">
-                    Edit
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button onClick={handleStartEdit} className="text-sm text-[#0d9488] hover:text-[#0f766e] underline underline-offset-2">
+                      Edit
+                    </button>
+                    <button onClick={handleDeleteResponse} className="text-sm text-red-500 hover:text-red-600 underline underline-offset-2">
+                      Delete
+                    </button>
+                  </div>
                 )}
               </div>
             )}

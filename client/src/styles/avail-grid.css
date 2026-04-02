@@ -38,9 +38,13 @@
   pointer-events: none;
 }
 
-/* My selected slots — solid green fill, not just a ring */
+/* My selected slots — solid teal fill, distinct from heatmap green */
 .avail-cell--mine {
-  background-color: hsl(142, 55%, 65%);
+  background-color: #0d9488 !important;
+  background-image: none !important;
+}
+.avail-cell--mine span {
+  display: none; /* hide event names on your own selected slots */
 }
 
 /* Drag cursor */

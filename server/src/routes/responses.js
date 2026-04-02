@@ -138,4 +138,38 @@ router.put('/:did/:rkey/responses/:responseRkey', async (req, res, next) => {
   }
 });
 
+// DELETE /:did/:rkey/responses/:responseRkey — delete a response
+router.delete('/:did/:rkey/responses/:responseRkey', async (req, res, next) => {
+  try {
+    const { did, responseRkey } = req.params;
+
+    const creatorSession = findCreatorSession(did);
+    if (!creatorSession) {
+      return res.status(503).json({ error: 'Creator is not currently logged in' });
+    }
+
+    const deleteResult = await creatorSession.fetchHandler(
+      `/xrpc/com.atproto.repo.deleteRecord`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          repo: did,
+          collection: RESPONSE_COLLECTION,
+          rkey: responseRkey,
+        }),
+      }
+    );
+
+    if (!deleteResult.ok) {
+      const text = await deleteResult.text();
+      throw new Error(`Failed to delete response: ${deleteResult.status} ${text}`);
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;
