@@ -55,9 +55,7 @@ function slotColor(count, total) {
   return `hsl(142, 60%, ${lightness}%)`
 }
 
-const BUSY_BG = 'rgba(239, 68, 68, 0.12)' // light red background for busy slots
-const BUSY_PATTERN =
-  'repeating-linear-gradient(45deg, rgba(239,68,68,0.25) 0px, rgba(239,68,68,0.25) 2px, transparent 2px, transparent 6px)'
+const BUSY_BG = '#fce4e4' // soft rose background for busy slots
 
 export default function AvailGrid({
   dates = [],
@@ -243,7 +241,11 @@ export default function AvailGrid({
                 const isPendingAdd = dragState && !dragState.removing && dragState.pending.has(key)
                 const isPendingRemove = dragState && dragState.removing && dragState.pending.has(key)
 
+                // Only show event name on the first slot of a contiguous event
                 const eventName = isBusy ? slotEvents[key] : null
+                const prevKey = rowIdx > 0 ? `${date}T${times[rowIdx - 1]}` : null
+                const prevEventName = prevKey ? slotEvents[prevKey] : null
+                const showEventName = eventName && eventName !== prevEventName
 
                 const cell = (
                   <div
@@ -256,20 +258,20 @@ export default function AvailGrid({
                       isHighlighted && !isMine && 'avail-cell--highlighted',
                       readOnly && 'avail-cell--readonly cursor-default',
                       !isMine && !bgColor && !isPendingAdd && !isPendingRemove && !isBusy && 'avail-cell--empty',
+                      isBusy && 'avail-cell--busy',
                       isPendingAdd && 'avail-cell--pending-add',
                       isPendingRemove && 'avail-cell--pending-remove',
                     )}
                     style={{
-                      backgroundColor: isBusy && !isMine && !bgColor
+                      backgroundColor: isBusy
                         ? BUSY_BG
                         : ((!isPendingAdd && !isPendingRemove && !isMine) ? bgColor : undefined),
-                      backgroundImage: isBusy ? BUSY_PATTERN : undefined,
                     }}
                     onPointerDown={(e) => handlePointerDown(e, rowIdx, colIdx)}
                     onPointerEnter={(e) => handlePointerEnter(e, rowIdx, colIdx)}
                   >
-                    {eventName && (
-                      <span className="absolute inset-0 flex items-center px-1.5 text-[10px] leading-tight text-red-700/70 font-medium truncate pointer-events-none z-[1]">
+                    {showEventName && (
+                      <span className="absolute left-1 right-1 top-0.5 bottom-0.5 flex items-start rounded bg-rose-400/90 px-1.5 py-0.5 text-[11px] leading-tight text-white font-medium truncate pointer-events-none z-[1] shadow-sm">
                         {eventName}
                       </span>
                     )}

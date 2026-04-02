@@ -22,6 +22,12 @@
   background-color: #f5f3ef;
 }
 
+/* Busy cells — rose background with left accent */
+.avail-cell--busy {
+  background-color: #fce4e4;
+  border-left: 3px solid #f87171 !important;
+}
+
 /* Hover: dashed outline via ::before (above background) */
 .avail-cell:not(.avail-cell--readonly):hover::before {
   content: '';
