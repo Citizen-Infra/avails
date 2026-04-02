@@ -1,0 +1,45 @@
+{
+  "lexicon": 1,
+  "id": "chat.avails.scheduling.poll",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "A scheduling poll with date/time options",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["title", "dates", "timeRange", "slotMinutes", "timezone", "status", "createdAt"],
+        "properties": {
+          "title": { "type": "string", "maxLength": 200 },
+          "description": { "type": "string", "maxLength": 1000 },
+          "dates": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minLength": 1,
+            "maxLength": 31
+          },
+          "timeRange": { "type": "ref", "ref": "#timeRange" },
+          "slotMinutes": { "type": "integer", "minimum": 15, "maximum": 120 },
+          "timezone": { "type": "string", "maxLength": 100 },
+          "community": { "type": "string", "maxLength": 100 },
+          "status": { "type": "string", "knownValues": ["open", "closed"] },
+          "finalTime": { "type": "string" },
+          "finalDuration": { "type": "integer", "minimum": 15 },
+          "notifyAfter": { "type": "integer", "minimum": 1 },
+          "notifyVia": { "type": "string", "knownValues": ["email", "telegram"] },
+          "notifyEmail": { "type": "string" },
+          "notifyTelegram": { "type": "string" },
+          "createdAt": { "type": "string", "format": "datetime" }
+        }
+      }
+    },
+    "timeRange": {
+      "type": "object",
+      "required": ["start", "end"],
+      "properties": {
+        "start": { "type": "string", "description": "HH:MM format" },
+        "end": { "type": "string", "description": "HH:MM format" }
+      }
+    }
+  }
+}

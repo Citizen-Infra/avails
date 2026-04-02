@@ -1,0 +1,27 @@
+{
+  "lexicon": 1,
+  "id": "chat.avails.scheduling.response",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "A participant's availability response to a poll",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["poll", "name", "slots", "createdAt"],
+        "properties": {
+          "poll": { "type": "string", "format": "at-uri" },
+          "name": { "type": "string", "maxLength": 100 },
+          "did": { "type": "string", "format": "did" },
+          "email": { "type": "string", "maxLength": 200 },
+          "slots": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "ISO datetime strings for start of each selected slot"
+          },
+          "createdAt": { "type": "string", "format": "datetime" }
+        }
+      }
+    }
+  }
+}

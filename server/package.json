@@ -10,6 +10,7 @@
   },
   "license": "AGPL-3.0",
   "dependencies": {
+    "@atproto/lex": "^0.0.23",
     "@atproto/oauth-client-node": "^0.2.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
