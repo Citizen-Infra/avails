@@ -124,10 +124,19 @@ router.get('/callback', async (req, res, next) => {
     const params = new URLSearchParams(req.url.split('?')[1] || '');
     const client = await getClient();
 
-    const { session } = await client.callback(params);
+    const result = await client.callback(params);
+    const session = result.session;
+
+    console.log('OAuth callback result keys:', Object.keys(result));
+    console.log('Session keys:', Object.keys(session));
+    console.log('session.did:', session.did);
+    console.log('session.sub:', session.sub);
+
+    // The DID might be on .sub or .did depending on SDK version
+    const did = session.did || session.sub;
 
     // Resolve the handle from the DID for display
-    let handle = session.did;
+    let handle = did;
     try {
       const { Agent } = await import('@atproto/api');
       const agent = new Agent(session);
@@ -137,7 +146,8 @@ router.get('/callback', async (req, res, next) => {
       // Handle resolution failed — fall back to DID
     }
 
-    const sessionId = createSession(session, session.did, handle);
+    const sessionId = createSession(session, did, handle);
+    console.log('Created app session for DID:', did, 'handle:', handle);
 
     const isProduction = process.env.NODE_ENV === 'production';
     res.cookie('avails_session', sessionId, {
