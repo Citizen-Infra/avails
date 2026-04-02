@@ -10,8 +10,8 @@
   content: '';
   position: absolute;
   inset: 0;
-  border-top: 1px solid hsl(var(--border) / 0.4);
-  border-left: 1px solid hsl(var(--border) / 0.4);
+  border-top: 1px solid #e0ddd8;
+  border-left: 1px solid #e0ddd8;
   z-index: -1;
   pointer-events: none;
 }

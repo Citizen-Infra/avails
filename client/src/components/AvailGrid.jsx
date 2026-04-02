@@ -196,7 +196,7 @@ export default function AvailGrid({
       >
         <div
           className="grid w-full"
-          style={{ gridTemplateColumns: `4.5rem repeat(${dates.length}, minmax(5rem, 1fr))` }}
+          style={{ gridTemplateColumns: `5rem repeat(${dates.length}, minmax(8rem, 1fr))` }}
         >
           {/* Header row */}
           <div /> {/* empty corner */}
@@ -207,10 +207,10 @@ export default function AvailGrid({
                 key={date}
                 className="flex flex-col items-center pb-2 pt-1 text-center"
               >
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                <span className="text-sm font-medium text-[#6b6560] uppercase tracking-wide">
                   {dayName}
                 </span>
-                <span className="text-xs text-foreground">{monthDay}</span>
+                <span className="text-sm text-[#1a1a1a] font-medium">{monthDay}</span>
               </div>
             )
           })}
@@ -223,7 +223,7 @@ export default function AvailGrid({
                 key={`label-${time}`}
                 className="pr-2 flex items-center justify-end"
               >
-                <span className="text-xs text-muted-foreground tabular-nums leading-none">
+                <span className="text-sm text-[#6b6560] tabular-nums leading-none">
                   {time}
                 </span>
               </div>
@@ -245,13 +245,13 @@ export default function AvailGrid({
                   <div
                     key={key}
                     className={cn(
-                      'avail-cell h-8 cursor-pointer',
+                      'avail-cell h-10 cursor-pointer',
                       rowIdx === 0 && 'rounded-t',
                       rowIdx === times.length - 1 && 'rounded-b',
                       isMine && !isPendingRemove && 'ring-2 ring-inset ring-green-500',
                       isHighlighted && !isMine && 'ring-2 ring-inset ring-blue-500',
                       readOnly && 'avail-cell--readonly cursor-default',
-                      !isMine && !bgColor && !isPendingAdd && 'bg-muted/30',
+                      !isMine && !bgColor && !isPendingAdd && 'bg-white',
                       isPendingAdd && 'avail-cell--pending-add',
                       isPendingRemove && 'avail-cell--pending-remove',
                     )}

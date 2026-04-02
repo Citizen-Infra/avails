@@ -159,7 +159,7 @@ export default function SchedulingGrid({
       >
         <div
           className="grid w-full"
-          style={{ gridTemplateColumns: `4.5rem repeat(${dates.length}, minmax(5rem, 1fr))` }}
+          style={{ gridTemplateColumns: `5rem repeat(${dates.length}, minmax(8rem, 1fr))` }}
         >
           {/* Header */}
           <div />
@@ -167,8 +167,8 @@ export default function SchedulingGrid({
             const { dayName, monthDay } = formatDate(date)
             return (
               <div key={date} className="flex flex-col items-center pb-2 pt-1 text-center">
-                <span className="text-xs font-medium text-[#a09a94] uppercase tracking-wide">{dayName}</span>
-                <span className="text-xs text-[#1a1a1a]">{monthDay}</span>
+                <span className="text-sm font-medium text-[#6b6560] uppercase tracking-wide">{dayName}</span>
+                <span className="text-sm text-[#1a1a1a] font-medium">{monthDay}</span>
               </div>
             )
           })}
@@ -177,7 +177,7 @@ export default function SchedulingGrid({
           {times.map((time, rowIdx) => (
             <>
               <div key={`label-${time}`} className="pr-2 flex items-center justify-end">
-                <span className="text-xs text-[#a09a94] tabular-nums leading-none">{time}</span>
+                <span className="text-sm text-[#6b6560] tabular-nums leading-none">{time}</span>
               </div>
               {dates.map((date, colIdx) => {
                 const key = `${date}T${time}`
@@ -190,7 +190,7 @@ export default function SchedulingGrid({
                   <div
                     key={key}
                     className={cn(
-                      'avail-cell h-8',
+                      'avail-cell h-10',
                       rowIdx === 0 && 'rounded-t',
                       rowIdx === times.length - 1 && 'rounded-b',
                       !bgColor && !isPending && !isSelected && 'bg-muted/30',
