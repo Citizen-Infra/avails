@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 
-export default function PollHeader({ poll, did, rkey }) {
+export default function PollHeader({ poll, did, rkey, isCreator, onEditClick }) {
   const [copied, setCopied] = useState(false)
 
   function copyLink() {
@@ -41,6 +41,11 @@ export default function PollHeader({ poll, did, rkey }) {
         <Button variant="outline" size="sm" onClick={copyLink}>
           {copied ? 'Copied!' : 'Copy link'}
         </Button>
+        {isCreator && isOpen && onEditClick && (
+          <Button variant="outline" size="sm" onClick={onEditClick}>
+            Edit poll
+          </Button>
+        )}
       </div>
     </div>
   )

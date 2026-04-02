@@ -8,6 +8,7 @@ import NameEntry from '@/components/NameEntry'
 import PollHeader from '@/components/PollHeader'
 import ResponsePanel from '@/components/ResponsePanel'
 import FinalizeDialog from '@/components/FinalizeDialog'
+import EditPollDialog from '@/components/EditPollDialog'
 
 export default function PollView() {
   const { did, rkey } = useParams()
@@ -38,6 +39,7 @@ export default function PollView() {
 
   const [highlightName, setHighlightName] = useState(null)
   const [showFinalize, setShowFinalize] = useState(false)
+  const [showEditPoll, setShowEditPoll] = useState(false)
 
   const [busySlots, setBusySlots] = useState(new Set())
 
@@ -162,7 +164,13 @@ export default function PollView() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-8 space-y-6">
-        <PollHeader poll={poll} did={did} rkey={rkey} />
+        <PollHeader
+          poll={poll}
+          did={did}
+          rkey={rkey}
+          isCreator={isCreator}
+          onEditClick={() => setShowEditPoll(true)}
+        />
 
         {/* Finalized meeting banner */}
         {poll.finalTime && (
@@ -294,6 +302,17 @@ export default function PollView() {
         rkey={rkey}
         onFinalized={handleFinalized}
       />
+
+      {showEditPoll && (
+        <EditPollDialog
+          open={showEditPoll}
+          onOpenChange={setShowEditPoll}
+          poll={poll}
+          did={did}
+          rkey={rkey}
+          onSaved={fetchData}
+        />
+      )}
     </div>
   )
 }
