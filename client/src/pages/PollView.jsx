@@ -172,9 +172,12 @@ export default function PollView() {
 
   const slotMinutes = poll?.slotMinutes || poll?.slotDuration || 30
 
+  // Stable empty set — avoids creating new objects in useMemo that trigger re-renders
+  const EMPTY = useMemo(() => new Set(), [])
+
   // Compute scheduled slots from finalized time (must be before early returns — Rules of Hooks)
   const scheduledSlots = useMemo(() => {
-    if (!poll?.finalTime || !poll?.finalDuration) return new Set()
+    if (!poll?.finalTime || !poll?.finalDuration) return EMPTY
     const start = new Date(poll.finalTime)
     const totalSlots = Math.ceil(poll.finalDuration / slotMinutes)
     const slots = new Set()
@@ -186,7 +189,7 @@ export default function PollView() {
       slots.add(`${date}T${hh}:${mm}`)
     }
     return slots
-  }, [poll?.finalTime, poll?.finalDuration, slotMinutes])
+  }, [poll?.finalTime, poll?.finalDuration, slotMinutes, EMPTY])
 
   // In scheduling mode, also show the pending selection as scheduledSlots for preview
   const activeScheduledSlots = useMemo(() => {
@@ -203,9 +206,15 @@ export default function PollView() {
 
   const gridMode = schedulingMode ? 'schedule' : (isOpen ? 'respond' : 'view')
 
+  const timeRange = useMemo(() => {
+    if (poll.timeRange) return poll.timeRange
+    if (poll.earliestTime) return { start: poll.earliestTime, end: poll.latestTime }
+    return { start: '09:00', end: '17:00' }
+  }, [poll.timeRange, poll.earliestTime, poll.latestTime])
+
   const gridProps = {
     dates: poll.dates || [],
-    timeRange: poll.timeRange || (poll.earliestTime ? { start: poll.earliestTime, end: poll.latestTime } : { start: '09:00', end: '17:00' }),
+    timeRange,
     slotMinutes,
     responses,
     busySlots,
