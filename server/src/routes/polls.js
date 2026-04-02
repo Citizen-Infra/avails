@@ -79,6 +79,36 @@ router.get('/', (req, res) => {
   res.json({ polls });
 });
 
+// GET /my — list authenticated user's polls from their PDS
+router.get('/my', requireAuth, async (req, res, next) => {
+  try {
+    const did = req.userDid;
+    const pds = await resolvePds(did);
+
+    // Fetch all poll records from the user's PDS
+    const listUrl = `${pds}/xrpc/com.atproto.repo.listRecords?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(POLL_COLLECTION)}&limit=100`;
+    const listRes = await fetch(listUrl);
+    if (!listRes.ok) {
+      return res.status(listRes.status).json({ error: 'Failed to fetch polls' });
+    }
+    const data = await listRes.json();
+
+    const polls = (data.records || [])
+      .map((r) => ({
+        uri: r.uri,
+        cid: r.cid,
+        rkey: r.uri.split('/').pop(),
+        did,
+        ...r.value,
+      }))
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    res.json({ polls });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /:did/:rkey — read poll + responses from PDS (unauthenticated)
 router.get('/:did/:rkey', async (req, res, next) => {
   try {
@@ -106,6 +136,61 @@ router.get('/:did/:rkey', async (req, res, next) => {
     }
 
     res.json({ poll: poll.value, uri: poll.uri, cid: poll.cid, responses });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /:did/:rkey — update poll fields (creator only, open polls only)
+router.put('/:did/:rkey', requireAuth, async (req, res, next) => {
+  try {
+    const { did, rkey } = req.params;
+
+    if (req.userDid !== did) {
+      return res.status(403).json({ error: 'Only the poll creator can edit' });
+    }
+
+    const pds = await resolvePds(did);
+    const getUrl = `${pds}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(POLL_COLLECTION)}&rkey=${encodeURIComponent(rkey)}`;
+    const existing = await fetch(getUrl);
+    if (!existing.ok) return res.status(404).json({ error: 'Poll not found' });
+    const existingData = await existing.json();
+
+    if (existingData.value.finalTime) {
+      return res.status(400).json({ error: 'Cannot edit a finalized poll' });
+    }
+
+    // Allow editing: title, description, dates, timeRange, slotMinutes
+    const { title, description, dates, timeRange, slotMinutes } = req.body;
+    const updatedRecord = {
+      ...existingData.value,
+      ...(title !== undefined && { title }),
+      ...(description !== undefined && { description }),
+      ...(dates !== undefined && { dates }),
+      ...(timeRange !== undefined && { timeRange }),
+      ...(slotMinutes !== undefined && { slotMinutes }),
+    };
+
+    await xrpcCall(req.oauthSession, 'com.atproto.repo.putRecord', {
+      repo: did,
+      collection: POLL_COLLECTION,
+      rkey,
+      record: updatedRecord,
+      swapRecord: existingData.cid,
+    });
+
+    // Update in-memory index if title changed
+    if (title !== undefined) {
+      indexPoll(did, rkey, {
+        title: updatedRecord.title,
+        community: updatedRecord.community,
+        status: updatedRecord.status || 'open',
+        responseCount: 0,
+        createdAt: updatedRecord.createdAt,
+      });
+    }
+
+    res.json({ ok: true, poll: updatedRecord });
   } catch (err) {
     next(err);
   }

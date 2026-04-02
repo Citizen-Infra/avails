@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'react-router'
-import { getPoll, getSession, submitResponse } from '@/lib/api'
+import { getPoll, getSession, submitResponse, updateResponse } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import AvailGrid from '@/components/AvailGrid'
@@ -23,6 +23,18 @@ export default function PollView() {
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
+  const [editing, setEditing] = useState(false)
+  const [responseRkey, setResponseRkey] = useState(() => {
+    // Restore saved response rkey from localStorage on mount
+    try {
+      const saved = localStorage.getItem(`avails:response:${window.location.pathname}`)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        return parsed.responseRkey || null
+      }
+    } catch {}
+    return null
+  })
 
   const [highlightName, setHighlightName] = useState(null)
   const [showFinalize, setShowFinalize] = useState(false)
@@ -54,11 +66,20 @@ export default function PollView() {
     setSubmitting(true)
     setSubmitError(null)
     try {
-      await submitResponse(did, rkey, {
+      const result = await submitResponse(did, rkey, {
         name: participant.name,
         email: participant.email,
         slots: Array.from(mySlots),
       })
+      if (result.responseRkey) {
+        setResponseRkey(result.responseRkey)
+        try {
+          localStorage.setItem(
+            `avails:response:${window.location.pathname}`,
+            JSON.stringify({ responseRkey: result.responseRkey })
+          )
+        } catch {}
+      }
       setSubmitted(true)
       // Refresh responses
       const updated = await getPoll(did, rkey)
@@ -68,6 +89,33 @@ export default function PollView() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  async function handleUpdate() {
+    if (!participant || mySlots.size === 0 || !responseRkey) return
+    setSubmitting(true)
+    setSubmitError(null)
+    try {
+      await updateResponse(did, rkey, responseRkey, {
+        name: participant.name,
+        email: participant.email,
+        slots: Array.from(mySlots),
+      })
+      setEditing(false)
+      setSubmitted(true)
+      // Refresh responses
+      const updated = await getPoll(did, rkey)
+      setResponses(updated.responses || [])
+    } catch (err) {
+      setSubmitError(err.message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  function handleStartEdit() {
+    setEditing(true)
+    setSubmitted(false)
   }
 
   function handleFinalized() {
@@ -161,11 +209,11 @@ export default function PollView() {
               {...gridProps}
               mySlots={mySlots}
               onSlotsChange={setMySlots}
-              readOnly={readOnly(isOpen, participant, submitted)}
+              readOnly={readOnly(isOpen, participant, submitted, editing)}
             />
 
-            {/* Submit area */}
-            {isOpen && participant && !submitted && (
+            {/* Submit area — initial submission */}
+            {isOpen && participant && !submitted && !editing && (
               <div className="flex items-center gap-3">
                 <Button
                   onClick={handleSubmit}
@@ -181,11 +229,42 @@ export default function PollView() {
               </div>
             )}
 
+            {/* Submit area — editing an existing response */}
+            {isOpen && participant && !submitted && editing && (
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={handleUpdate}
+                  disabled={submitting || mySlots.size === 0}
+                >
+                  {submitting
+                    ? 'Saving...'
+                    : `Save changes (${mySlots.size} slot${mySlots.size !== 1 ? 's' : ''})`}
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => { setEditing(false); setSubmitted(true) }}
+                  disabled={submitting}
+                >
+                  Cancel
+                </Button>
+                {submitError && (
+                  <p className="text-sm text-destructive">{submitError}</p>
+                )}
+              </div>
+            )}
+
             {/* Post-submit confirmation */}
             {submitted && (
-              <p className="text-sm text-muted-foreground">
-                Your availability has been submitted.
-              </p>
+              <div className="flex items-center gap-3">
+                <p className="text-sm text-muted-foreground">
+                  Your availability has been submitted.
+                </p>
+                {isOpen && responseRkey && (
+                  <Button variant="outline" size="sm" onClick={handleStartEdit}>
+                    Edit my availability
+                  </Button>
+                )}
+              </div>
             )}
 
             {/* Finalize button for creator */}
@@ -219,9 +298,10 @@ export default function PollView() {
   )
 }
 
-function readOnly(isOpen, participant, submitted) {
+function readOnly(isOpen, participant, submitted, editing) {
   if (!isOpen) return true
   if (!participant) return true
+  if (editing) return false
   if (submitted) return true
   return false
 }

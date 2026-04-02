@@ -1,15 +1,69 @@
 import AuthButton from '@/components/AuthButton'
 import PollCreator from '@/components/PollCreator'
+import { Card, CardContent } from '@/components/ui/card'
 import { useEffect, useState } from 'react'
-import { getSession } from '@/lib/api'
+import { getSession, getMyPolls } from '@/lib/api'
+
+function formatDates(dates) {
+  if (!dates || dates.length === 0) return null
+  const sorted = [...dates].sort()
+  const fmt = (iso) => {
+    const d = new Date(iso)
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  }
+  if (sorted.length === 1) return fmt(sorted[0])
+  return `${fmt(sorted[0])} – ${fmt(sorted[sorted.length - 1])}`
+}
+
+function PollCard({ poll }) {
+  const isFinalized = poll.status === 'finalized'
+  const datesSummary = formatDates(poll.dates)
+
+  return (
+    <a href={`/p/${poll.did}/${poll.rkey}`} className="block group">
+      <Card className="border-[#e8e5df] bg-white ring-0 shadow-none hover:border-[#c8c4be] transition-colors rounded-lg py-0">
+        <CardContent className="px-4 py-3.5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-[#1a1a1a] truncate group-hover:text-[#3a3a3a]">
+                {poll.title}
+              </p>
+              {datesSummary && (
+                <p className="text-xs text-[#a09a94] mt-0.5">{datesSummary}</p>
+              )}
+            </div>
+            <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${
+              isFinalized
+                ? 'bg-[#f0eeea] text-[#8a8580]'
+                : 'bg-[#e8f4e8] text-[#4a7c4a]'
+            }`}>
+              {isFinalized ? 'Finalized' : 'Open'}
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+    </a>
+  )
+}
 
 export default function Landing() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [polls, setPolls] = useState([])
+  const [pollsLoading, setPollsLoading] = useState(false)
 
   useEffect(() => {
     getSession()
-      .then(setSession)
+      .then((s) => {
+        setSession(s)
+        if (s?.did) {
+          setPollsLoading(true)
+          getMyPolls()
+            .then((data) => setPolls(data.polls || []))
+            .catch(() => setPolls([]))
+            .finally(() => setPollsLoading(false))
+        }
+      })
       .catch(() => setSession(null))
       .finally(() => setLoading(false))
   }, [])
@@ -41,12 +95,51 @@ export default function Landing() {
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#1a1a1a] border-t-transparent" />
           </div>
         ) : session?.did ? (
-          <div className="py-10">
-            <div className="mb-8">
-              <h1 className="text-2xl font-semibold text-[#1a1a1a] tracking-tight">New poll</h1>
-              <p className="text-[#8a8580] mt-1">Create a scheduling poll. Share the link. Find the best time.</p>
+          <div className="py-10 space-y-12">
+            {/* My Polls */}
+            <div>
+              <h2 className="text-lg font-semibold text-[#1a1a1a] tracking-tight mb-4">My polls</h2>
+              {pollsLoading ? (
+                <div className="flex items-center gap-2 text-sm text-[#a09a94] py-2">
+                  <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[#a09a94] border-t-transparent" />
+                  Loading…
+                </div>
+              ) : polls.length === 0 ? (
+                <p className="text-sm text-[#a09a94]">No polls yet — create your first one below.</p>
+              ) : (() => {
+                const active = polls.filter((p) => p.status !== 'finalized')
+                const completed = polls.filter((p) => p.status === 'finalized')
+                return (
+                  <div className="space-y-6">
+                    {active.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-[#a09a94] uppercase tracking-wide mb-2">Active</p>
+                        <div className="space-y-2">
+                          {active.map((p) => <PollCard key={p.uri} poll={p} />)}
+                        </div>
+                      </div>
+                    )}
+                    {completed.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-[#a09a94] uppercase tracking-wide mb-2">Completed</p>
+                        <div className="space-y-2">
+                          {completed.map((p) => <PollCard key={p.uri} poll={p} />)}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
             </div>
-            <PollCreator />
+
+            {/* New Poll */}
+            <div>
+              <div className="mb-8">
+                <h1 className="text-2xl font-semibold text-[#1a1a1a] tracking-tight">New poll</h1>
+                <p className="text-[#8a8580] mt-1">Create a scheduling poll. Share the link. Find the best time.</p>
+              </div>
+              <PollCreator />
+            </div>
           </div>
         ) : (
           <div className="py-24 max-w-xl">

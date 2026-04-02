@@ -64,11 +64,15 @@ router.post('/:did/:rkey/responses', async (req, res, next) => {
       createdAt: new Date().toISOString(),
     };
 
-    await xrpcCall(creatorSession, 'com.atproto.repo.createRecord', {
+    const createResult = await xrpcCall(creatorSession, 'com.atproto.repo.createRecord', {
       repo: did,
       collection: RESPONSE_COLLECTION,
       record,
     });
+
+    // Extract the rkey of the newly created response record
+    // AT URI format: at://did/collection/rkey
+    const createdResponseRkey = createResult?.uri?.split('/').pop() || null;
 
     // Increment response count in index and check notifyAfter threshold
     const newCount = incrementResponseCount(did, rkey);
@@ -95,7 +99,40 @@ router.post('/:did/:rkey/responses', async (req, res, next) => {
       console.warn('Failed to check/send creator notification:', notifyErr.message);
     }
 
-    res.status(201).json({ ok: true, responseCount: newCount });
+    res.status(201).json({ ok: true, responseCount: newCount, responseRkey: createdResponseRkey });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/polls/:did/:rkey/responses/:responseRkey — update an existing response
+router.put('/:did/:rkey/responses/:responseRkey', async (req, res, next) => {
+  try {
+    const { did, rkey, responseRkey } = req.params;
+
+    const creatorSession = findOauthSessionByDid(did);
+    if (!creatorSession) {
+      return res.status(503).json({
+        error: 'Creator is not currently logged in — responses cannot be updated at this time',
+      });
+    }
+
+    const pollUri = `at://${did}/${POLL_COLLECTION}/${rkey}`;
+    const record = {
+      $type: RESPONSE_COLLECTION,
+      pollUri,
+      ...req.body,
+      createdAt: new Date().toISOString(),
+    };
+
+    await xrpcCall(creatorSession, 'com.atproto.repo.putRecord', {
+      repo: did,
+      collection: RESPONSE_COLLECTION,
+      rkey: responseRkey,
+      record,
+    });
+
+    res.json({ ok: true });
   } catch (err) {
     next(err);
   }
