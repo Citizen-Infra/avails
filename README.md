@@ -121,6 +121,18 @@ Avails is part of the [Citizen Infrastructure](https://github.com/Citizen-Infra)
 - [Dear Neighbors integration](https://github.com/Citizen-Infra/avails/issues/10) — poll banners in DN participation feed
 - [CI pipeline](https://github.com/Citizen-Infra/avails/issues/8) with GitHub Actions
 
+**Endgame — [instant scheduling from chat](https://github.com/Citizen-Infra/avails/issues/11):**
+
+Team members connect their calendars once. Then anyone can run a command in Telegram or Discord:
+
+```
+@avails schedule @alice @bob @carol next week 1 hour
+```
+
+The bot queries everyone's calendars, finds the first open slot, and books it. No poll, no grid, no back-and-forth. This turns avails from an async scheduling tool into a real-time scheduling engine for teams that already share calendar access.
+
+Requires: [#6](https://github.com/Citizen-Infra/avails/issues/6) (persistent calendar tokens) + [#9](https://github.com/Citizen-Infra/avails/issues/9) (Telegram bot) + identity linking.
+
 **Vision — shared ATProto identity across the ecosystem:**
 
 Today, My Community uses Bluesky app passwords for the Bluesky feed, and avails has its own ATProto OAuth login. These are separate auth sessions. When the ecosystem adopts ATProto OAuth as the shared identity layer, several things unlock:
