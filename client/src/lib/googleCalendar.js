@@ -42,6 +42,7 @@ export async function fetchBusyTimes(accessToken, dates, timezone) {
   });
 
   const data = await res.json();
+  console.log('[avails] FreeBusy response:', JSON.stringify(data));
   const busyPeriods = data.calendars?.primary?.busy || [];
   const busySlots = new Set();
 
@@ -49,12 +50,16 @@ export async function fetchBusyTimes(accessToken, dates, timezone) {
     let current = new Date(period.start);
     const end = new Date(period.end);
     while (current < end) {
-      const date = current.toISOString().split('T')[0];
+      // Use local time for both date and time to match grid slot key format
+      const year = current.getFullYear();
+      const month = String(current.getMonth() + 1).padStart(2, '0');
+      const day = String(current.getDate()).padStart(2, '0');
       const hours = String(current.getHours()).padStart(2, '0');
       const mins = String(current.getMinutes()).padStart(2, '0');
-      busySlots.add(`${date}T${hours}:${mins}`);
+      busySlots.add(`${year}-${month}-${day}T${hours}:${mins}`);
       current = new Date(current.getTime() + 30 * 60 * 1000);
     }
   }
+  console.log('[avails] Busy slots:', [...busySlots]);
   return busySlots;
 }
