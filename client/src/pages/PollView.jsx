@@ -91,16 +91,31 @@ export default function PollView() {
     })
   }, [fetchData])
 
-  // When session loads, auto-populate participant from ATProto identity
+  // When session + responses load, auto-populate participant and find existing response
   useEffect(() => {
     if (session?.did && session?.handle && !participant && !submitted) {
       setParticipant({
         name: session.handle,
-        email: '', // ATProto doesn't expose email
+        email: '',
         did: session.did,
       })
+
+      // Find existing response by this user (match by DID or name/handle)
+      const myResponse = responses.find(r =>
+        r.did === session.did ||
+        r.name === session.handle ||
+        r.name === session.did
+      )
+      if (myResponse) {
+        const rk = myResponse.uri?.split('/').pop()
+        if (rk) {
+          setResponseRkey(rk)
+          setMySlots(new Set(myResponse.slots))
+          setSubmitted(true)
+        }
+      }
     }
-  }, [session, participant, submitted])
+  }, [session, responses, participant, submitted])
 
   async function handleGuestSubmit(guestInfo) {
     setParticipant(guestInfo)
