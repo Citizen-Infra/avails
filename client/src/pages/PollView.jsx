@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'react-router'
 import { getPoll, getSession, submitResponse, updateResponse, finalizePoll } from '@/lib/api'
+import { isGoogleConfigured, requestGoogleAccess, fetchBusyTimes } from '@/lib/googleCalendar'
 import { Button } from '@/components/ui/button'
 import AvailGrid from '@/components/AvailGrid'
 import SchedulingGrid from '@/components/SchedulingGrid'
@@ -47,6 +48,22 @@ export default function PollView() {
   const [showDeletePoll, setShowDeletePoll] = useState(false)
 
   const [busySlots, setBusySlots] = useState(new Set())
+  const [calendarConnected, setCalendarConnected] = useState(false)
+  const [connectingCalendar, setConnectingCalendar] = useState(false)
+
+  async function connectCalendar() {
+    setConnectingCalendar(true)
+    try {
+      const token = await requestGoogleAccess()
+      const busy = await fetchBusyTimes(token, poll?.dates || [], poll?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone)
+      setBusySlots(busy)
+      setCalendarConnected(true)
+    } catch (err) {
+      console.error('Google Calendar error:', err)
+    } finally {
+      setConnectingCalendar(false)
+    }
+  }
 
   const fetchData = useCallback(async () => {
     try {
@@ -253,15 +270,29 @@ export default function PollView() {
               </div>
             )}
 
-            {/* Signed-in user greeting */}
+            {/* Signed-in user — greeting + optional calendar connect */}
             {isOpen && participant && !submitted && session?.did && (
-              <p className="text-base text-[#8a8580]">
-                Signed in as <span className="text-[#1a1a1a] font-medium">@{session.handle}</span> — click or drag to mark your availability.
-              </p>
+              <div className="flex items-center gap-4 flex-wrap">
+                <p className="text-base text-[#8a8580]">
+                  Signed in as <span className="text-[#1a1a1a] font-medium">@{session.handle}</span> — click or drag to mark your availability.
+                </p>
+                {isGoogleConfigured() && !calendarConnected && (
+                  <button
+                    onClick={connectCalendar}
+                    disabled={connectingCalendar}
+                    className="text-sm text-[#0d9488] hover:text-[#0f766e] underline underline-offset-2"
+                  >
+                    {connectingCalendar ? 'Connecting...' : 'Connect Google Calendar'}
+                  </button>
+                )}
+                {calendarConnected && (
+                  <span className="text-sm text-[#0d9488]">Calendar connected</span>
+                )}
+              </div>
             )}
 
-            {/* Instruction after name entry, before submit */}
-            {isOpen && participant && !submitted && (
+            {/* Instruction after name entry (anonymous users), before submit */}
+            {isOpen && participant && !submitted && !session?.did && (
               <p className="text-base text-[#8a8580]">
                 Click or drag to mark when you are available. Selected slots are shown in green.
               </p>
