@@ -39,8 +39,10 @@ export async function fetchBusyTimes(accessToken, dates, timezone) {
   });
   const calListData = await calListRes.json();
   const calendarIds = (calListData.items || [])
-    .filter(c => c.accessRole === 'owner' || c.accessRole === 'reader' || c.accessRole === 'writer')
+    .filter(c => (c.accessRole === 'owner' || c.accessRole === 'writer') && !c.deleted)
     .map(c => c.id);
+
+  console.log('[avails] Calendars:', (calListData.items || []).map(c => `${c.summary} (${c.accessRole})`));
 
   console.log('[avails] Found', calendarIds.length, 'calendars');
 
@@ -62,9 +64,12 @@ export async function fetchBusyTimes(accessToken, dates, timezone) {
       });
       const data = await res.json();
       if (data.items) {
-        // Only include events the user has accepted or not responded to (not declined)
+        // Only include events that actually block time
         const accepted = data.items.filter(e => {
           if (e.status === 'cancelled') return false;
+          // Skip "show as available" events (transparency: transparent)
+          if (e.transparency === 'transparent') return false;
+          // Skip declined events
           const self = e.attendees?.find(a => a.self);
           if (self && self.responseStatus === 'declined') return false;
           return true;
