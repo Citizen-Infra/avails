@@ -63,7 +63,7 @@ router.post('/', requireAuth, async (req, res, next) => {
       createdAt: record.createdAt,
     });
 
-    res.status(201).json({ uri: result.uri, cid: result.cid, rkey });
+    res.status(201).json({ uri: result.uri, cid: result.cid, rkey, did: req.userDid });
   } catch (err) {
     next(err);
   }
