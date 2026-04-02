@@ -1,0 +1,36 @@
+/* Avail Grid — pseudo-element borders, cursor states, hover feedback */
+
+/* Base cell: position relative required for ::after pseudo-elements */
+.avail-cell {
+  position: relative;
+}
+
+/* Grid lines via ::after with z-index: -1 so heatmap background renders on top */
+.avail-cell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-top: 1px solid hsl(var(--border) / 0.4);
+  border-left: 1px solid hsl(var(--border) / 0.4);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Hover: dashed outline via ::before so it renders above the background */
+.avail-cell:not(.avail-cell--readonly):hover::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 2px dashed rgba(0, 0, 0, 0.4);
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Drag cursor on the grid container */
+.avail-grid--dragging {
+  cursor: ns-resize;
+}
+
+.avail-grid--dragging .avail-cell {
+  cursor: ns-resize;
+}

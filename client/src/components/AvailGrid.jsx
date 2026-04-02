@@ -6,6 +6,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import '../styles/avail-grid.css'
 
 function generateSlots(dates, timeRange, slotMinutes) {
   const slots = []
@@ -71,6 +72,7 @@ export default function AvailGrid({
   const isDragging = useRef(false)
   const dragMode = useRef('add') // 'add' | 'remove'
   const containerRef = useRef(null)
+  const [draggingState, setDraggingState] = useState(false)
 
   const times = useMemo(
     () => generateSlots(dates, timeRange, slotMinutes),
@@ -95,6 +97,7 @@ export default function AvailGrid({
       if (readOnly) return
       e.preventDefault()
       isDragging.current = true
+      setDraggingState(true)
       dragMode.current = mySlots.has(key) ? 'remove' : 'add'
       const next = new Set(mySlots)
       if (dragMode.current === 'add') next.add(key)
@@ -117,6 +120,7 @@ export default function AvailGrid({
 
   const endDrag = useCallback(() => {
     isDragging.current = false
+    setDraggingState(false)
   }, [])
 
   function getTooltipContent(date, time) {
@@ -135,7 +139,7 @@ export default function AvailGrid({
     <TooltipProvider delayDuration={300}>
       <div
         ref={containerRef}
-        className="select-none overflow-x-auto"
+        className={cn('select-none overflow-x-auto', draggingState && 'avail-grid--dragging')}
         style={{ touchAction: 'none' }}
         onPointerUp={endDrag}
         onPointerLeave={endDrag}
@@ -188,12 +192,12 @@ export default function AvailGrid({
                   <div
                     key={key}
                     className={cn(
-                      'relative h-6 cursor-pointer border border-border/40',
+                      'avail-cell h-6 cursor-pointer',
                       timeIdx === 0 && 'rounded-t',
                       timeIdx === times.length - 1 && 'rounded-b',
                       isMine && 'ring-2 ring-inset ring-green-500',
                       isHighlighted && !isMine && 'ring-2 ring-inset ring-blue-500',
-                      readOnly && 'cursor-default',
+                      readOnly && 'avail-cell--readonly cursor-default',
                       !isMine && !bgColor && 'bg-muted/30'
                     )}
                     style={{
