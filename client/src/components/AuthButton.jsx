@@ -26,8 +26,9 @@ export default function AuthButton() {
     window.location.href = `/api/auth/login?handle=${encodeURIComponent(h)}`
   }
 
-  function handleSignOut() {
-    window.location.href = '/api/auth/logout'
+  async function handleSignOut() {
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+    window.location.href = '/'
   }
 
   if (loading) {
