@@ -38,11 +38,14 @@ export async function fetchBusyTimes(accessToken, dates, timezone) {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   const calListData = await calListRes.json();
+  // Include all calendars except known noise (holidays, birthdays)
+  const SKIP_PATTERNS = /^(holidays|birthdays|contacts)/i;
   const calendarIds = (calListData.items || [])
-    .filter(c => (c.accessRole === 'owner' || c.accessRole === 'writer') && !c.deleted)
+    .filter(c => !c.deleted && !SKIP_PATTERNS.test(c.summary || ''))
     .map(c => c.id);
 
   console.log('[avails] Calendars:', (calListData.items || []).map(c => `${c.summary} (${c.accessRole})`));
+  console.log('[avails] Querying', calendarIds.length, 'calendars (skipped holidays/birthdays)');
 
   console.log('[avails] Found', calendarIds.length, 'calendars');
 
