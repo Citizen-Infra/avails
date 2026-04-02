@@ -26,10 +26,12 @@ async function getClient() {
   // Derive base URL from the client ID URL (e.g. https://avails.zhgnv.com)
   const clientUri = new URL(clientId).origin;
 
-  // Generate an ephemeral key for private_key_jwt auth.
-  // In production you'd persist this key across restarts.
-  // For a single-instance app the session store is already in-memory anyway.
-  const key = await JoseKey.generate(['ES256']);
+  // Load the signing key from env var. Generate one with:
+  // node --input-type=module -e "import{generateKeyPair,exportJWK}from'jose';import crypto from'crypto';const{privateKey}=await generateKeyPair('ES256',{extractable:true});const j=await exportJWK(privateKey);j.kid=crypto.randomUUID();j.alg='ES256';j.use='sig';console.log(JSON.stringify(j))"
+  if (!process.env.ATPROTO_PRIVATE_KEY) {
+    throw new Error('ATPROTO_PRIVATE_KEY env var required (JSON-encoded ES256 JWK)');
+  }
+  const key = await JoseKey.fromImportable(process.env.ATPROTO_PRIVATE_KEY);
 
   _client = new NodeOAuthClient({
     clientMetadata: {
@@ -41,6 +43,7 @@ async function getClient() {
       response_types: ['code'],
       application_type: 'web',
       token_endpoint_auth_method: 'private_key_jwt',
+      token_endpoint_auth_signing_alg: 'ES256',
       dpop_bound_access_tokens: true,
       scope: 'atproto transition:generic',
       jwks_uri: `${clientUri}/api/auth/jwks.json`,
