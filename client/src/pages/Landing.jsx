@@ -16,7 +16,7 @@ function formatDates(dates) {
 }
 
 function PollCard({ poll }) {
-  const isFinalized = poll.status === 'finalized'
+  const isScheduled = !!poll.finalTime
   const datesSummary = formatDates(poll.dates)
 
   return (
@@ -33,11 +33,11 @@ function PollCard({ poll }) {
               )}
             </div>
             <span className={`shrink-0 text-sm px-3 py-1 rounded-full font-medium ${
-              isFinalized
+              isScheduled
                 ? 'bg-[#f0eeea] text-[#8a8580]'
                 : 'bg-[#ccfbf1] text-[#0d9488]'
             }`}>
-              {isFinalized ? 'Finalized' : 'Open'}
+              {isScheduled ? 'Scheduled' : 'Open'}
             </span>
           </div>
         </CardContent>
@@ -112,8 +112,8 @@ export default function Landing() {
               ) : polls.length === 0 ? (
                 <p className="text-base text-[#a09a94]">No polls yet — create your first one below.</p>
               ) : (() => {
-                const active = polls.filter((p) => p.status !== 'finalized')
-                const completed = polls.filter((p) => p.status === 'finalized')
+                const active = polls.filter((p) => !p.finalTime)
+                const completed = polls.filter((p) => !!p.finalTime)
                 return (
                   <div className="space-y-6">
                     {active.length > 0 && (

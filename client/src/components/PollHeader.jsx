@@ -25,7 +25,7 @@ export default function PollHeader({ poll, did, rkey, isCreator, onEditClick, on
             ? 'bg-[#ccfbf1] text-[#0d9488]'
             : 'bg-[#f0eeea] text-[#8a8580]'
         }`}>
-          {isOpen ? 'Open' : 'Closed'}
+          {isOpen ? 'Open' : 'Scheduled'}
         </span>
       </div>
 
