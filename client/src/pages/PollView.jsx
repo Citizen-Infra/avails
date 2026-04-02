@@ -204,6 +204,8 @@ export default function PollView() {
           isCreator={isCreator}
           onEditClick={() => setShowEditPoll(true)}
           onDeleteClick={() => setShowDeletePoll(true)}
+          onScheduleClick={() => setSchedulingMode(true)}
+          schedulingMode={schedulingMode}
         />
 
         {/* Finalized meeting banner */}
@@ -326,12 +328,6 @@ export default function PollView() {
               </div>
             )}
 
-            {/* Schedule button for creator */}
-            {isOpen && isCreator && !schedulingMode && (
-              <Button onClick={() => setSchedulingMode(true)} className="bg-[#0d9488] text-white hover:bg-[#0f766e] text-base px-6 py-3 rounded-lg transition-colors">
-                Schedule meeting
-              </Button>
-            )}
           </div>
 
           {/* Sidebar */}
