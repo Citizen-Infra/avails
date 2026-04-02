@@ -38,12 +38,9 @@
   pointer-events: none;
 }
 
-/* My selected slots — teal outline on top of heatmap, so green alpha shows through */
+/* My selected slots — solid teal fill at higher opacity than heatmap */
 .avail-cell--mine {
-  outline: 3px solid #0d9488;
-  outline-offset: -3px;
-  z-index: 1;
-  background-color: rgba(13, 148, 136, 0.15) !important;
+  background-color: rgba(13, 148, 136, 0.45) !important;
 }
 .avail-cell--mine span {
   display: none;
