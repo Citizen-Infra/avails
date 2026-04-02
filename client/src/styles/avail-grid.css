@@ -38,13 +38,15 @@
   pointer-events: none;
 }
 
-/* My selected slots — solid teal fill, distinct from heatmap green */
+/* My selected slots — teal outline on top of heatmap, so green alpha shows through */
 .avail-cell--mine {
-  background-color: #0d9488 !important;
-  background-image: none !important;
+  outline: 3px solid #0d9488;
+  outline-offset: -3px;
+  z-index: 1;
+  background-color: rgba(13, 148, 136, 0.15) !important;
 }
 .avail-cell--mine span {
-  display: none; /* hide event names on your own selected slots */
+  display: none;
 }
 
 /* Drag cursor */
