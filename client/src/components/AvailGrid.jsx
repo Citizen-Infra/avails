@@ -58,20 +58,24 @@ function slotColor(count, total) {
 const BUSY_PATTERN =
   'repeating-linear-gradient(45deg, rgba(0,0,0,0.08) 0px, rgba(0,0,0,0.08) 2px, transparent 2px, transparent 8px)'
 
+const DEFAULT_TIME_RANGE = { start: '09:00', end: '17:00' }
+const EMPTY_SET = new Set()
+const EMPTY_ARRAY = []
+
 export default function AvailGrid({
-  dates = [],
-  timeRange = { start: '09:00', end: '17:00' },
+  dates = EMPTY_ARRAY,
+  timeRange = DEFAULT_TIME_RANGE,
   slotMinutes = 30,
-  responses = [],
-  mySlots = new Set(),
+  responses = EMPTY_ARRAY,
+  mySlots = EMPTY_SET,
   onSlotsChange,
   readOnly = false,
   highlightName = null,
-  busySlots = new Set(),
+  busySlots = EMPTY_SET,
   onHoverSlot,
   mode = 'respond', // 'respond' | 'view' | 'schedule'
   onScheduleSelect,
-  scheduledSlots = new Set(),
+  scheduledSlots = EMPTY_SET,
 }) {
   const containerRef = useRef(null)
 
