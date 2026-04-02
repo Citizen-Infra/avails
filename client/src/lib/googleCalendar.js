@@ -33,31 +33,52 @@ export async function fetchBusyTimes(accessToken, dates, timezone) {
   const timeMin = new Date(`${sortedDates[0]}T00:00:00`).toISOString();
   const timeMax = new Date(`${sortedDates[sortedDates.length - 1]}T23:59:59`).toISOString();
 
-  // Use Events list API instead of FreeBusy — more reliable and returns event details
-  const params = new URLSearchParams({
-    timeMin,
-    timeMax,
-    timeZone: timezone,
-    singleEvents: 'true',
-    orderBy: 'startTime',
-    maxResults: '250',
+  // First get all calendars the user has access to
+  const calListRes = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
+    headers: { Authorization: `Bearer ${accessToken}` },
   });
+  const calListData = await calListRes.json();
+  const calendarIds = (calListData.items || [])
+    .filter(c => c.accessRole === 'owner' || c.accessRole === 'reader' || c.accessRole === 'writer')
+    .map(c => c.id);
 
-  const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?${params}`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
+  console.log('[avails] Found', calendarIds.length, 'calendars');
 
-  const data = await res.json();
-  console.log('[avails] Calendar events response:', data.items?.length, 'events');
+  // Fetch events from all calendars
+  const allEvents = [];
+  for (const calId of calendarIds) {
+    const params = new URLSearchParams({
+      timeMin,
+      timeMax,
+      timeZone: timezone,
+      singleEvents: 'true',
+      orderBy: 'startTime',
+      maxResults: '100',
+    });
 
-  if (data.error) {
-    console.error('[avails] Calendar API error:', data.error);
-    return new Set();
+    try {
+      const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events?${params}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const data = await res.json();
+      if (data.items) {
+        // Only include events the user has accepted or not responded to (not declined)
+        const accepted = data.items.filter(e => {
+          if (e.status === 'cancelled') return false;
+          const self = e.attendees?.find(a => a.self);
+          if (self && self.responseStatus === 'declined') return false;
+          return true;
+        });
+        allEvents.push(...accepted);
+      }
+    } catch (err) {
+      console.warn('[avails] Failed to fetch calendar', calId, err.message);
+    }
   }
 
-  const events = data.items || [];
+  console.log('[avails] Total events across all calendars:', allEvents.length);
+
+  const events = allEvents;
   const busySlots = new Set();
 
   for (const event of events) {

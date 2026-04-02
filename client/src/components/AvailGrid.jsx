@@ -55,8 +55,9 @@ function slotColor(count, total) {
   return `hsl(142, 60%, ${lightness}%)`
 }
 
+const BUSY_BG = 'rgba(239, 68, 68, 0.12)' // light red background for busy slots
 const BUSY_PATTERN =
-  'repeating-linear-gradient(45deg, rgba(0,0,0,0.08) 0px, rgba(0,0,0,0.08) 2px, transparent 2px, transparent 8px)'
+  'repeating-linear-gradient(45deg, rgba(239,68,68,0.25) 0px, rgba(239,68,68,0.25) 2px, transparent 2px, transparent 6px)'
 
 export default function AvailGrid({
   dates = [],
@@ -256,7 +257,9 @@ export default function AvailGrid({
                       isPendingRemove && 'avail-cell--pending-remove',
                     )}
                     style={{
-                      backgroundColor: (!isPendingAdd && !isPendingRemove && !isMine) ? bgColor : undefined,
+                      backgroundColor: isBusy && !isMine && !bgColor
+                        ? BUSY_BG
+                        : ((!isPendingAdd && !isPendingRemove && !isMine) ? bgColor : undefined),
                       backgroundImage: isBusy ? BUSY_PATTERN : undefined,
                     }}
                     onPointerDown={(e) => handlePointerDown(e, rowIdx, colIdx)}
