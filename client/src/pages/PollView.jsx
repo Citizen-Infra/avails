@@ -10,6 +10,7 @@ import PollHeader from '@/components/PollHeader'
 import ResponsePanel from '@/components/ResponsePanel'
 import EditPollDialog from '@/components/EditPollDialog'
 import DeletePollDialog from '@/components/DeletePollDialog'
+import GuestModal from '@/components/GuestModal'
 
 export default function PollView() {
   const { did, rkey } = useParams()
@@ -46,6 +47,7 @@ export default function PollView() {
   const [schedulingError, setSchedulingError] = useState(null)
   const [showEditPoll, setShowEditPoll] = useState(false)
   const [showDeletePoll, setShowDeletePoll] = useState(false)
+  const [showGuestModal, setShowGuestModal] = useState(false)
 
   const [busySlots, setBusySlots] = useState(new Set())
   const [calendarConnected, setCalendarConnected] = useState(false)
@@ -98,14 +100,25 @@ export default function PollView() {
     }
   }, [session, participant, submitted])
 
+  async function handleGuestSubmit(guestInfo) {
+    setParticipant(guestInfo)
+    setShowGuestModal(false)
+    await doSubmit(guestInfo)
+  }
+
   async function handleSubmit() {
     if (!participant || mySlots.size === 0) return
+    await doSubmit(participant)
+  }
+
+  async function doSubmit(info) {
+    if (!info || mySlots.size === 0) return
     setSubmitting(true)
     setSubmitError(null)
     try {
       const result = await submitResponse(did, rkey, {
-        name: participant.name,
-        email: participant.email,
+        name: info.name,
+        email: info.email,
         slots: Array.from(mySlots),
       })
       if (result.responseRkey) {
@@ -255,27 +268,16 @@ export default function PollView() {
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_14rem] gap-6">
           {/* Main grid area */}
           <div className="space-y-4">
-            {/* Name entry — only for unauthenticated users who haven't entered their name */}
-            {isOpen && !participant && !submitted && !session?.did && (
-              <div className="rounded-lg border-l-4 border-l-[#0d9488] border border-[#e8e5df] bg-white p-6 space-y-4">
-                <p className="text-base text-[#6b6560]">
-                  Enter your name to mark your availability:
-                </p>
-                <NameEntry
-                  onSubmit={setParticipant}
-                  dates={poll.dates}
-                  timezone={poll.timezone}
-                  onBusySlots={setBusySlots}
-                />
-              </div>
-            )}
-
-            {/* Signed-in user — greeting + optional calendar connect */}
-            {isOpen && participant && !submitted && session?.did && (
-              <div className="flex items-center gap-4 flex-wrap">
-                <p className="text-base text-[#8a8580]">
-                  Signed in as <span className="text-[#1a1a1a] font-medium">@{session.handle}</span> — click or drag to mark your availability.
-                </p>
+            {/* Info bar above grid — identity + calendar connect */}
+            {isOpen && !submitted && (
+              <div className="flex items-center gap-4 flex-wrap text-base">
+                {session?.did ? (
+                  <span className="text-[#8a8580]">
+                    Signed in as <span className="text-[#1a1a1a] font-medium">@{session.handle}</span>
+                  </span>
+                ) : (
+                  <span className="text-[#8a8580]">Mark your availability below</span>
+                )}
                 {isGoogleConfigured() && !calendarConnected && (
                   <button
                     onClick={connectCalendar}
@@ -289,13 +291,6 @@ export default function PollView() {
                   <span className="text-sm text-[#0d9488]">Calendar connected</span>
                 )}
               </div>
-            )}
-
-            {/* Instruction after name entry (anonymous users), before submit */}
-            {isOpen && participant && !submitted && !session?.did && (
-              <p className="text-base text-[#8a8580]">
-                Click or drag to mark when you are available. Selected slots are shown in green.
-              </p>
             )}
 
             {schedulingMode ? (
@@ -316,16 +311,22 @@ export default function PollView() {
                 {...gridProps}
                 mySlots={mySlots}
                 onSlotsChange={setMySlots}
-                readOnly={readOnly(isOpen, participant, submitted, editing)}
+                readOnly={readOnly(isOpen, submitted, editing)}
                 onHoverSlot={setHoverSlot}
               />
             )}
 
             {/* Save button — appears after painting slots */}
-            {isOpen && participant && !submitted && !editing && mySlots.size > 0 && (
+            {isOpen && !submitted && !editing && mySlots.size > 0 && (
               <div className="flex items-center gap-3">
                 <Button
-                  onClick={handleSubmit}
+                  onClick={() => {
+                    if (participant) {
+                      handleSubmit()
+                    } else {
+                      setShowGuestModal(true)
+                    }
+                  }}
                   disabled={submitting}
                   className="bg-[#0d9488] text-white hover:bg-[#0f766e] text-base px-5 py-2 rounded-lg transition-colors"
                 >
@@ -399,13 +400,19 @@ export default function PollView() {
         did={did}
         rkey={rkey}
       />
+
+      <GuestModal
+        open={showGuestModal}
+        onOpenChange={setShowGuestModal}
+        onSubmit={handleGuestSubmit}
+        submitting={submitting}
+      />
     </div>
   )
 }
 
-function readOnly(isOpen, participant, submitted, editing) {
+function readOnly(isOpen, submitted, editing) {
   if (!isOpen) return true
-  if (!participant) return true
   if (editing) return false
   if (submitted) return true
   return false
