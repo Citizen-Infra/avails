@@ -8,7 +8,7 @@ export async function sendEmail({ to, subject, html, attachments }) {
     return;
   }
   return resend.emails.send({
-    from: 'Avails <noreply@zhgnv.com>',
+    from: process.env.RESEND_FROM_EMAIL || 'Avails <noreply@cibc.zhgnv.com>',
     to,
     subject,
     html,
