@@ -108,13 +108,14 @@ export default function PollCreator() {
               </span>
             )}
           </Label>
-          <div className="flex justify-center">
+          <div>
             <Calendar
               mode="multiple"
               selected={selectedDates}
               onSelect={setSelectedDates}
               disabled={{ before: new Date() }}
-              className="rounded-lg border border-[#e8e5df] bg-white"
+              numberOfMonths={2}
+              className="rounded-lg border border-[#e8e5df] bg-white p-4 w-full [&_table]:w-full [&_td]:p-0 [&_th]:p-0 [&_.rdp-months]:flex [&_.rdp-months]:gap-6 [&_.rdp-month]:flex-1 [&_button]:h-10 [&_button]:w-full [&_button]:text-base"
             />
           </div>
           {selectedDates.length > 0 && (
