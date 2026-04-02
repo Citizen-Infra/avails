@@ -316,51 +316,52 @@ export default function PollView() {
               />
             )}
 
-            {/* Save button — appears after painting slots */}
+
+          </div>
+
+          {/* Sidebar */}
+          <aside className="space-y-4">
+            {/* Save card — appears when slots are painted */}
             {isOpen && !submitted && !editing && mySlots.size > 0 && (
-              <div className="flex items-center gap-3">
-                <Button
-                  onClick={() => {
-                    if (participant) {
-                      handleSubmit()
-                    } else {
-                      setShowGuestModal(true)
-                    }
-                  }}
+              <div className="rounded-lg bg-[#0d9488] p-4 text-white space-y-3">
+                <p className="text-sm font-medium">{mySlots.size} slot{mySlots.size !== 1 ? 's' : ''} selected</p>
+                <button
+                  onClick={() => participant ? handleSubmit() : setShowGuestModal(true)}
                   disabled={submitting}
-                  className="bg-[#0d9488] text-white hover:bg-[#0f766e] text-base px-5 py-2 rounded-lg transition-colors"
+                  className="w-full py-2.5 rounded-lg bg-white text-[#0d9488] font-semibold text-base hover:bg-white/90 transition-colors disabled:opacity-50"
                 >
-                  {submitting ? 'Saving...' : 'Save'}
-                </Button>
-                {submitError && <p className="text-sm text-red-600">{submitError}</p>}
+                  {submitting ? 'Saving...' : 'Save availability'}
+                </button>
+                {submitError && <p className="text-xs text-red-200">{submitError}</p>}
               </div>
             )}
 
-            {/* Save button — editing existing response */}
-            {isOpen && participant && !submitted && editing && mySlots.size > 0 && (
-              <div className="flex items-center gap-3">
-                <Button
+            {/* Save card — editing */}
+            {isOpen && !submitted && editing && mySlots.size > 0 && (
+              <div className="rounded-lg bg-[#0d9488] p-4 text-white space-y-3">
+                <p className="text-sm font-medium">{mySlots.size} slot{mySlots.size !== 1 ? 's' : ''} selected</p>
+                <button
                   onClick={handleUpdate}
                   disabled={submitting}
-                  className="bg-[#0d9488] text-white hover:bg-[#0f766e] text-base px-5 py-2 rounded-lg transition-colors"
+                  className="w-full py-2.5 rounded-lg bg-white text-[#0d9488] font-semibold text-base hover:bg-white/90 transition-colors disabled:opacity-50"
                 >
-                  {submitting ? 'Saving...' : 'Save'}
-                </Button>
+                  {submitting ? 'Saving...' : 'Save changes'}
+                </button>
                 <button
                   onClick={() => { setEditing(false); setSubmitted(true) }}
                   disabled={submitting}
-                  className="text-sm text-[#8a8580] hover:text-[#6b6560] underline underline-offset-2"
+                  className="w-full text-sm text-white/80 hover:text-white underline underline-offset-2"
                 >
                   Cancel
                 </button>
-                {submitError && <p className="text-sm text-red-600">{submitError}</p>}
+                {submitError && <p className="text-xs text-red-200">{submitError}</p>}
               </div>
             )}
 
-            {/* Post-save — show edit link */}
+            {/* Post-save */}
             {submitted && (
-              <div className="flex items-center gap-3">
-                <p className="text-sm text-[#8a8580]">Availability saved.</p>
+              <div className="rounded-lg border border-[#e8e5df] bg-white p-4 space-y-1">
+                <p className="text-sm text-[#6b6560]">Availability saved</p>
                 {isOpen && responseRkey && (
                   <button onClick={handleStartEdit} className="text-sm text-[#0d9488] hover:text-[#0f766e] underline underline-offset-2">
                     Edit
@@ -369,10 +370,6 @@ export default function PollView() {
               </div>
             )}
 
-          </div>
-
-          {/* Sidebar */}
-          <aside>
             <ResponsePanel
               responses={responses}
               highlightName={highlightName}
