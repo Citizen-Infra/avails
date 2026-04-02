@@ -99,10 +99,10 @@ router.get('/:did/:rkey', async (req, res, next) => {
     let responses = [];
     if (responsesRes.ok) {
       const data = await responsesRes.json();
-      // Filter to only responses belonging to this poll
-      responses = (data.records || []).filter(
-        (r) => r.value?.pollUri && r.value.pollUri.includes(`/${rkey}`)
-      );
+      // Filter to only responses belonging to this poll, unwrap value
+      responses = (data.records || [])
+        .filter((r) => r.value?.pollUri && r.value.pollUri.includes(`/${rkey}`))
+        .map((r) => ({ ...r.value, uri: r.uri, cid: r.cid }));
     }
 
     res.json({ poll: poll.value, uri: poll.uri, cid: poll.cid, responses });
