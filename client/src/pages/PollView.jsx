@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useParams } from 'react-router'
 import { getPoll, getSession, submitResponse, updateResponse, finalizePoll } from '@/lib/api'
 import { Button } from '@/components/ui/button'
@@ -124,9 +124,9 @@ export default function PollView() {
     setSubmitted(false)
   }
 
-  function handleScheduleSelect(slots) {
+  const handleScheduleSelect = useCallback((slots) => {
     setSchedulingSlots(slots)
-  }
+  }, [])
 
   async function handleScheduleConfirm() {
     if (schedulingSlots.length === 0) return
@@ -172,12 +172,12 @@ export default function PollView() {
 
   const slotMinutes = poll?.slotMinutes || poll?.slotDuration || 30
 
-  // Stable empty set — avoids creating new objects in useMemo that trigger re-renders
-  const EMPTY = useMemo(() => new Set(), [])
+  // Stable refs to avoid re-render loops from object identity changes
+  const emptySet = useRef(new Set()).current
 
   // Compute scheduled slots from finalized time (must be before early returns — Rules of Hooks)
   const scheduledSlots = useMemo(() => {
-    if (!poll?.finalTime || !poll?.finalDuration) return EMPTY
+    if (!poll?.finalTime || !poll?.finalDuration) return emptySet
     const start = new Date(poll.finalTime)
     const totalSlots = Math.ceil(poll.finalDuration / slotMinutes)
     const slots = new Set()
@@ -189,15 +189,12 @@ export default function PollView() {
       slots.add(`${date}T${hh}:${mm}`)
     }
     return slots
-  }, [poll?.finalTime, poll?.finalDuration, slotMinutes, EMPTY])
+  }, [poll?.finalTime, poll?.finalDuration, slotMinutes, emptySet])
 
-  // In scheduling mode, also show the pending selection as scheduledSlots for preview
-  const activeScheduledSlots = useMemo(() => {
-    if (schedulingMode && schedulingSlots.length > 0) {
-      return new Set(schedulingSlots)
-    }
-    return scheduledSlots
-  }, [schedulingMode, schedulingSlots, scheduledSlots])
+  // In scheduling mode, show pending selection; otherwise show finalized slots
+  const activeScheduledSlots = schedulingMode && schedulingSlots.length > 0
+    ? new Set(schedulingSlots)
+    : scheduledSlots
 
   if (!poll) return null
 
