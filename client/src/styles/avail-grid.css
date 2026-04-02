@@ -1,62 +1,78 @@
-/* Avail Grid — pseudo-element borders, cursor states, hover feedback */
+/* Avail Grid — styling for availability cells */
 
-/* Base cell: position relative required for ::after pseudo-elements */
+/* Base cell */
 .avail-cell {
   position: relative;
+  transition: background-color 0.1s ease;
 }
 
-/* Grid lines via ::after with z-index: -1 so heatmap background renders on top */
+/* Grid lines via ::after — z-index -1 so cell background renders on top */
 .avail-cell::after {
   content: '';
   position: absolute;
   inset: 0;
-  border-top: 1px solid #e0ddd8;
-  border-left: 1px solid #e0ddd8;
+  border-top: 1px solid #d8d4cf;
+  border-left: 1px solid #d8d4cf;
   z-index: -1;
   pointer-events: none;
 }
 
-/* Hover: dashed outline via ::before so it renders above the background */
+/* Empty cells — subtle warm tint, not white void */
+.avail-cell--empty {
+  background-color: #f5f3ef;
+}
+
+/* Hover: dashed outline via ::before (above background) */
 .avail-cell:not(.avail-cell--readonly):hover::before {
   content: '';
   position: absolute;
   inset: 0;
-  border: 2px dashed rgba(0, 0, 0, 0.4);
+  border: 2px dashed rgba(0, 0, 0, 0.3);
   z-index: 1;
   pointer-events: none;
 }
 
-/* Drag cursor on the grid container */
+/* My selected slots — solid green fill, not just a ring */
+.avail-cell--mine {
+  background-color: hsl(142, 55%, 65%);
+}
+
+/* Drag cursor */
 .avail-grid--dragging {
   cursor: crosshair;
 }
-
 .avail-grid--dragging .avail-cell {
   cursor: crosshair;
 }
 
-/* Pending add — green tinted preview */
+/* Pending add — lighter green preview */
 .avail-cell--pending-add {
-  background-color: hsl(142, 60%, 80%);
-  ring: none;
+  background-color: hsl(142, 55%, 78%);
 }
 
-/* Pending remove — red/dimmed tint */
+/* Pending remove — red tint preview */
 .avail-cell--pending-remove {
-  background-color: hsl(0, 60%, 88%);
+  background-color: hsl(0, 50%, 85%);
   opacity: 0.7;
 }
 
-/* Pending schedule — teal tinted preview for scheduling mode */
+/* Pending schedule — teal preview */
 .avail-cell--pending-schedule {
-  background-color: rgba(13, 148, 136, 0.3);
+  background-color: rgba(13, 148, 136, 0.35);
   outline: 2px solid #0d9488;
   outline-offset: -2px;
 }
 
-/* Scheduled — finalized time block on the grid */
+/* Scheduled — finalized time block */
 .avail-cell--scheduled {
   background-color: rgba(13, 148, 136, 0.5);
   outline: 2px solid #0d9488;
   outline-offset: -2px;
+}
+
+/* Highlighted respondent */
+.avail-cell--highlighted {
+  outline: 2px solid #3b82f6;
+  outline-offset: -2px;
+  z-index: 1;
 }

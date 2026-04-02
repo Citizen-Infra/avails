@@ -195,7 +195,7 @@ export default function AvailGrid({
         onPointerLeave={() => { if (!downCell.current) onHoverSlot?.(null) }}
       >
         <div
-          className="grid w-full"
+          className="grid w-full rounded-lg border border-[#d8d4cf] overflow-hidden"
           style={{ gridTemplateColumns: `5rem repeat(${dates.length}, minmax(8rem, 1fr))` }}
         >
           {/* Header row */}
@@ -248,15 +248,15 @@ export default function AvailGrid({
                       'avail-cell h-10 cursor-pointer',
                       rowIdx === 0 && 'rounded-t',
                       rowIdx === times.length - 1 && 'rounded-b',
-                      isMine && !isPendingRemove && 'ring-2 ring-inset ring-green-500',
-                      isHighlighted && !isMine && 'ring-2 ring-inset ring-blue-500',
+                      isMine && !isPendingRemove && !isPendingAdd && 'avail-cell--mine',
+                      isHighlighted && !isMine && 'avail-cell--highlighted',
                       readOnly && 'avail-cell--readonly cursor-default',
-                      !isMine && !bgColor && !isPendingAdd && 'bg-white',
+                      !isMine && !bgColor && !isPendingAdd && !isPendingRemove && 'avail-cell--empty',
                       isPendingAdd && 'avail-cell--pending-add',
                       isPendingRemove && 'avail-cell--pending-remove',
                     )}
                     style={{
-                      backgroundColor: (!isPendingAdd && !isPendingRemove) ? bgColor : undefined,
+                      backgroundColor: (!isPendingAdd && !isPendingRemove && !isMine) ? bgColor : undefined,
                       backgroundImage: isBusy ? BUSY_PATTERN : undefined,
                     }}
                     onPointerDown={(e) => handlePointerDown(e, rowIdx, colIdx)}
