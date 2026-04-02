@@ -145,8 +145,8 @@ export default function AvailGrid({
         onPointerLeave={endDrag}
       >
         <div
-          className="inline-grid min-w-max"
-          style={{ gridTemplateColumns: `4rem repeat(${dates.length}, minmax(2.5rem, 1fr))` }}
+          className="grid w-full"
+          style={{ gridTemplateColumns: `4.5rem repeat(${dates.length}, minmax(5rem, 1fr))` }}
         >
           {/* Header row */}
           <div /> {/* empty corner */}
@@ -192,7 +192,7 @@ export default function AvailGrid({
                   <div
                     key={key}
                     className={cn(
-                      'avail-cell h-6 cursor-pointer',
+                      'avail-cell h-8 cursor-pointer',
                       timeIdx === 0 && 'rounded-t',
                       timeIdx === times.length - 1 && 'rounded-b',
                       isMine && 'ring-2 ring-inset ring-green-500',
