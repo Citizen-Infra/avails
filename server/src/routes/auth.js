@@ -29,9 +29,18 @@ async function getClient() {
   // Load the signing key from env var. Generate one with:
   // node --input-type=module -e "import{generateKeyPair,exportJWK}from'jose';import crypto from'crypto';const{privateKey}=await generateKeyPair('ES256',{extractable:true});const j=await exportJWK(privateKey);j.kid=crypto.randomUUID();j.alg='ES256';j.use='sig';console.log(JSON.stringify(j))"
   if (!process.env.ATPROTO_PRIVATE_KEY) {
-    throw new Error('ATPROTO_PRIVATE_KEY env var required (JSON-encoded ES256 JWK)');
+    throw new Error('ATPROTO_PRIVATE_KEY env var required (base64-encoded JSON ES256 JWK)');
   }
-  const key = await JoseKey.fromImportable(process.env.ATPROTO_PRIVATE_KEY);
+  // Base64-decode the key to avoid Railway env var escaping issues with JSON
+  let keyJson;
+  try {
+    keyJson = Buffer.from(process.env.ATPROTO_PRIVATE_KEY, 'base64').toString('utf8');
+    JSON.parse(keyJson); // validate it's valid JSON
+  } catch {
+    // Fall back to treating it as raw JSON (for local dev)
+    keyJson = process.env.ATPROTO_PRIVATE_KEY;
+  }
+  const key = await JoseKey.fromImportable(keyJson);
 
   _client = new NodeOAuthClient({
     clientMetadata: {
