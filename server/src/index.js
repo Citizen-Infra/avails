@@ -52,17 +52,18 @@ app.get('*', (req, res) => {
   }
 });
 
-// Start server with session restoration
+// Start server, then restore sessions (must listen first — session restore
+// calls client-metadata endpoint on itself)
 async function start() {
   await startPersistence();
-  try {
-    const client = await getClient();
-    await restoreOAuthSessions(client);
-  } catch (err) {
-    console.warn('Could not restore OAuth sessions:', err.message);
-  }
-  app.listen(PORT, () => {
+  app.listen(PORT, async () => {
     console.log(`Avails server listening on port ${PORT}`);
+    try {
+      const client = await getClient();
+      await restoreOAuthSessions(client);
+    } catch (err) {
+      console.warn('Could not restore OAuth sessions:', err.message);
+    }
   });
 }
 start();
