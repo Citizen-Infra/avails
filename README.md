@@ -100,7 +100,7 @@ Avails is part of the [Citizen Infrastructure](https://github.com/Citizen-Infra)
 
 - [my-community](https://github.com/Citizen-Infra/my-community) — online community dashboard as a new tab
 - [dear-neighbors](https://github.com/Citizen-Infra/dear-neighbors) — neighborhood dashboard
-- [community-admin](https://github.com/Citizen-Infra/community-admin) — shared admin platform
+- [community-admin](https://github.com/Citizen-Infra/community-admin) — admin platform for community organizers to manage participation opportunities
 - [navidrome-jam](https://github.com/zhiganov/navidrome-jam) — synchronized music listening
 
 ### Roadmap
