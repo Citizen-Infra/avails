@@ -58,24 +58,17 @@ function slotColor(count, total) {
 const BUSY_PATTERN =
   'repeating-linear-gradient(45deg, rgba(0,0,0,0.08) 0px, rgba(0,0,0,0.08) 2px, transparent 2px, transparent 8px)'
 
-const DEFAULT_TIME_RANGE = { start: '09:00', end: '17:00' }
-const EMPTY_SET = new Set()
-const EMPTY_ARRAY = []
-
 export default function AvailGrid({
-  dates = EMPTY_ARRAY,
-  timeRange = DEFAULT_TIME_RANGE,
+  dates = [],
+  timeRange = { start: '09:00', end: '17:00' },
   slotMinutes = 30,
-  responses = EMPTY_ARRAY,
-  mySlots = EMPTY_SET,
+  responses = [],
+  mySlots = new Set(),
   onSlotsChange,
   readOnly = false,
   highlightName = null,
-  busySlots = EMPTY_SET,
+  busySlots = new Set(),
   onHoverSlot,
-  mode = 'respond', // 'respond' | 'view' | 'schedule'
-  onScheduleSelect,
-  scheduledSlots = EMPTY_SET,
 }) {
   const containerRef = useRef(null)
 
@@ -127,19 +120,9 @@ export default function AvailGrid({
 
   const handlePointerDown = useCallback(
     (e, row, col) => {
-      if (mode === 'view') return
-      if (mode === 'respond' && readOnly) return
+      if (readOnly) return
       e.preventDefault()
       const key = `${dates[col]}T${times[row]}`
-      if (mode === 'schedule') {
-        // Schedule mode: always adding, never removing
-        downCell.current = { row, col }
-        curCell.current = { row, col }
-        downCellWasSelected.current = false
-        const pending = new Set([key])
-        setDragState({ pending, removing: false })
-        return
-      }
       const wasSelected = mySlots.has(key)
       downCell.current = { row, col }
       curCell.current = { row, col }
@@ -147,19 +130,16 @@ export default function AvailGrid({
       const pending = new Set([key])
       setDragState({ pending, removing: wasSelected })
     },
-    [mode, readOnly, mySlots, dates, times]
+    [readOnly, mySlots, dates, times]
   )
 
   const handlePointerEnter = useCallback(
     (e, row, col) => {
       if (downCell.current) {
         // Drag in progress — update selection rectangle
-        if (mode === 'view') return
-        if (mode === 'respond' && readOnly) return
-        // In schedule mode, constrain to same column as downCell
-        const effectiveCol = mode === 'schedule' ? downCell.current.col : col
-        curCell.current = { row, col: effectiveCol }
-        const pending = computePendingKeys(downCell.current, { row, col: effectiveCol })
+        if (readOnly) return
+        curCell.current = { row, col }
+        const pending = computePendingKeys(downCell.current, { row, col })
         setDragState({ pending, removing: downCellWasSelected.current })
       } else {
         // Not dragging — fire hover slot callback
@@ -167,24 +147,13 @@ export default function AvailGrid({
         onHoverSlot?.(key)
       }
     },
-    [mode, readOnly, computePendingKeys, dates, times, onHoverSlot]
+    [readOnly, computePendingKeys, dates, times, onHoverSlot]
   )
 
   // Commit on pointerup — attached to document so it fires even outside the grid
   const commitDrag = useCallback(() => {
     if (!downCell.current) return
     const pending = computePendingKeys(downCell.current, curCell.current)
-
-    if (mode === 'schedule') {
-      // Schedule mode: pass sorted slot keys to callback
-      const sorted = Array.from(pending).sort()
-      onScheduleSelect?.(sorted)
-      downCell.current = null
-      curCell.current = null
-      setDragState(null)
-      return
-    }
-
     const next = new Set(mySlots)
     if (downCellWasSelected.current) {
       // Remove mode
@@ -197,7 +166,7 @@ export default function AvailGrid({
     downCell.current = null
     curCell.current = null
     setDragState(null)
-  }, [mode, mySlots, onSlotsChange, onScheduleSelect, computePendingKeys])
+  }, [mySlots, onSlotsChange, computePendingKeys])
 
   // Document-level pointerup listener
   useEffect(() => {
@@ -271,9 +240,6 @@ export default function AvailGrid({
 
                 const isPendingAdd = dragState && !dragState.removing && dragState.pending.has(key)
                 const isPendingRemove = dragState && dragState.removing && dragState.pending.has(key)
-                const isPendingSchedule = mode === 'schedule' && dragState && dragState.pending.has(key)
-                const isScheduled = scheduledSlots.has(key)
-                const isViewOrScheduleReadOnly = mode === 'view' || (mode === 'respond' && readOnly)
 
                 const cell = (
                   <div
@@ -284,16 +250,13 @@ export default function AvailGrid({
                       rowIdx === times.length - 1 && 'rounded-b',
                       isMine && !isPendingRemove && 'ring-2 ring-inset ring-green-500',
                       isHighlighted && !isMine && 'ring-2 ring-inset ring-blue-500',
-                      isViewOrScheduleReadOnly && mode !== 'schedule' && 'avail-cell--readonly cursor-default',
-                      mode === 'schedule' && 'cursor-crosshair',
-                      !isMine && !bgColor && !isPendingAdd && !isPendingSchedule && !isScheduled && 'bg-muted/30',
-                      isPendingSchedule && 'avail-cell--pending-schedule',
-                      !isPendingSchedule && isPendingAdd && 'avail-cell--pending-add',
+                      readOnly && 'avail-cell--readonly cursor-default',
+                      !isMine && !bgColor && !isPendingAdd && 'bg-muted/30',
+                      isPendingAdd && 'avail-cell--pending-add',
                       isPendingRemove && 'avail-cell--pending-remove',
-                      isScheduled && !isPendingSchedule && 'avail-cell--scheduled',
                     )}
                     style={{
-                      backgroundColor: (!isPendingAdd && !isPendingRemove && !isPendingSchedule && !isScheduled) ? bgColor : undefined,
+                      backgroundColor: (!isPendingAdd && !isPendingRemove) ? bgColor : undefined,
                       backgroundImage: isBusy ? BUSY_PATTERN : undefined,
                     }}
                     onPointerDown={(e) => handlePointerDown(e, rowIdx, colIdx)}

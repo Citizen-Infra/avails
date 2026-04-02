@@ -1,11 +1,12 @@
-import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'react-router'
-import { getPoll, getSession, submitResponse, updateResponse, finalizePoll } from '@/lib/api'
+import { getPoll, getSession, submitResponse, updateResponse } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import AvailGrid from '@/components/AvailGrid'
 import NameEntry from '@/components/NameEntry'
 import PollHeader from '@/components/PollHeader'
 import ResponsePanel from '@/components/ResponsePanel'
+import FinalizeDialog from '@/components/FinalizeDialog'
 import EditPollDialog from '@/components/EditPollDialog'
 import DeletePollDialog from '@/components/DeletePollDialog'
 
@@ -38,10 +39,7 @@ export default function PollView() {
 
   const [highlightName, setHighlightName] = useState(null)
   const [hoverSlot, setHoverSlot] = useState(null)
-  const [schedulingMode, setSchedulingMode] = useState(false)
-  const [schedulingSlots, setSchedulingSlots] = useState([])
-  const [schedulingError, setSchedulingError] = useState(null)
-  const [schedulingLoading, setSchedulingLoading] = useState(false)
+  const [showFinalize, setShowFinalize] = useState(false)
   const [showEditPoll, setShowEditPoll] = useState(false)
   const [showDeletePoll, setShowDeletePoll] = useState(false)
 
@@ -124,34 +122,8 @@ export default function PollView() {
     setSubmitted(false)
   }
 
-  const handleScheduleSelect = useCallback((slots) => {
-    setSchedulingSlots(slots)
-  }, [])
-
-  async function handleScheduleConfirm() {
-    if (schedulingSlots.length === 0) return
-    setSchedulingLoading(true)
-    setSchedulingError(null)
-    try {
-      const slotMinutes = poll.slotMinutes || poll.slotDuration || 30
-      // First slot is the start time, duration = number of slots * slotMinutes
-      const finalTime = new Date(schedulingSlots[0]).toISOString()
-      const finalDuration = schedulingSlots.length * slotMinutes
-      await finalizePoll(did, rkey, finalTime, finalDuration)
-      setSchedulingMode(false)
-      setSchedulingSlots([])
-      fetchData()
-    } catch (err) {
-      setSchedulingError(err.message)
-    } finally {
-      setSchedulingLoading(false)
-    }
-  }
-
-  function handleScheduleCancel() {
-    setSchedulingMode(false)
-    setSchedulingSlots([])
-    setSchedulingError(null)
+  function handleFinalized() {
+    fetchData()
   }
 
   if (loading) {
@@ -170,49 +142,15 @@ export default function PollView() {
     )
   }
 
-  const slotMinutes = poll?.slotMinutes || poll?.slotDuration || 30
-
-  // Stable refs to avoid re-render loops from object identity changes
-  const emptySet = useRef(new Set()).current
-
-  // Compute scheduled slots from finalized time (must be before early returns — Rules of Hooks)
-  const scheduledSlots = useMemo(() => {
-    if (!poll?.finalTime || !poll?.finalDuration) return emptySet
-    const start = new Date(poll.finalTime)
-    const totalSlots = Math.ceil(poll.finalDuration / slotMinutes)
-    const slots = new Set()
-    for (let i = 0; i < totalSlots; i++) {
-      const slotTime = new Date(start.getTime() + i * slotMinutes * 60000)
-      const date = slotTime.toISOString().slice(0, 10)
-      const hh = String(slotTime.getHours()).padStart(2, '0')
-      const mm = String(slotTime.getMinutes()).padStart(2, '0')
-      slots.add(`${date}T${hh}:${mm}`)
-    }
-    return slots
-  }, [poll?.finalTime, poll?.finalDuration, slotMinutes, emptySet])
-
-  // In scheduling mode, show pending selection; otherwise show finalized slots
-  const activeScheduledSlots = schedulingMode && schedulingSlots.length > 0
-    ? new Set(schedulingSlots)
-    : scheduledSlots
-
   if (!poll) return null
 
   const isOpen = !poll.finalTime
   const isCreator = session?.did === did
 
-  const gridMode = schedulingMode ? 'schedule' : (isOpen ? 'respond' : 'view')
-
-  const timeRange = useMemo(() => {
-    if (poll.timeRange) return poll.timeRange
-    if (poll.earliestTime) return { start: poll.earliestTime, end: poll.latestTime }
-    return { start: '09:00', end: '17:00' }
-  }, [poll.timeRange, poll.earliestTime, poll.latestTime])
-
   const gridProps = {
     dates: poll.dates || [],
-    timeRange,
-    slotMinutes,
+    timeRange: poll.timeRange || (poll.earliestTime ? { start: poll.earliestTime, end: poll.latestTime } : { start: '09:00', end: '17:00' }),
+    slotMinutes: poll.slotMinutes || poll.slotDuration || 30,
     responses,
     busySlots,
     highlightName,
@@ -289,42 +227,12 @@ export default function PollView() {
               </p>
             )}
 
-            {/* Scheduling mode bar */}
-            {schedulingMode && (
-              <div className="flex items-center justify-between rounded-lg bg-[#0d9488] px-5 py-3 text-white">
-                <span className="text-base font-medium">Select a time block on the grid</span>
-                <div className="flex items-center gap-3">
-                  {schedulingError && (
-                    <span className="text-sm text-red-200">{schedulingError}</span>
-                  )}
-                  <Button
-                    variant="ghost"
-                    onClick={handleScheduleCancel}
-                    disabled={schedulingLoading}
-                    className="text-white hover:bg-white/20 hover:text-white text-base px-4 py-2 rounded-lg"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleScheduleConfirm}
-                    disabled={schedulingSlots.length === 0 || schedulingLoading}
-                    className="bg-white text-[#0d9488] hover:bg-white/90 text-base px-5 py-2 rounded-lg font-medium"
-                  >
-                    {schedulingLoading ? 'Scheduling...' : 'Schedule'}
-                  </Button>
-                </div>
-              </div>
-            )}
-
             <AvailGrid
               {...gridProps}
               mySlots={mySlots}
               onSlotsChange={setMySlots}
               readOnly={readOnly(isOpen, participant, submitted, editing)}
               onHoverSlot={setHoverSlot}
-              mode={gridMode}
-              onScheduleSelect={handleScheduleSelect}
-              scheduledSlots={activeScheduledSlots}
             />
 
             {/* Submit area — initial submission */}
@@ -385,10 +293,10 @@ export default function PollView() {
               </div>
             )}
 
-            {/* Schedule meeting button for creator */}
-            {isOpen && isCreator && !schedulingMode && (
-              <Button onClick={() => setSchedulingMode(true)} className="bg-[#0d9488] text-white hover:bg-[#0f766e] text-base px-6 py-3 rounded-lg transition-colors">
-                Schedule meeting
+            {/* Finalize button for creator */}
+            {isOpen && isCreator && (
+              <Button onClick={() => setShowFinalize(true)} className="bg-[#0d9488] text-white hover:bg-[#0f766e] text-base px-6 py-3 rounded-lg transition-colors">
+                Pick a time
               </Button>
             )}
           </div>
@@ -404,6 +312,15 @@ export default function PollView() {
           </aside>
         </div>
       </main>
+
+      <FinalizeDialog
+        open={showFinalize}
+        onOpenChange={setShowFinalize}
+        poll={poll}
+        did={did}
+        rkey={rkey}
+        onFinalized={handleFinalized}
+      />
 
       {showEditPoll && (
         <EditPollDialog
