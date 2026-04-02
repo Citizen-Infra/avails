@@ -98,7 +98,7 @@ TypeScript types are generated with `npx @atproto/lex build`.
 
 Avails is part of the [Citizen Infrastructure](https://github.com/Citizen-Infra) ecosystem — community tools built on open protocols.
 
-- [my-community](https://github.com/Citizen-Infra/my-community) — Chrome extension dashboard (shows avails poll banners in the participation feed)
+- [my-community](https://github.com/Citizen-Infra/my-community) — online community dashboard as a new tab
 - [dear-neighbors](https://github.com/Citizen-Infra/dear-neighbors) — neighborhood dashboard
 - [community-admin](https://github.com/Citizen-Infra/community-admin) — shared admin platform
 - [navidrome-jam](https://github.com/zhiganov/navidrome-jam) — synchronized music listening
