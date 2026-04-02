@@ -160,13 +160,15 @@ router.get('/callback', async (req, res, next) => {
     // The DID might be on .sub or .did depending on SDK version
     const did = session.did || session.sub;
 
-    // Resolve the handle from the DID for display
+    // Resolve the handle from the DID via PLC directory
     let handle = did;
     try {
-      const { Agent } = await import('@atproto/api');
-      const agent = new Agent(session);
-      const profile = await agent.getProfile({ actor: session.did });
-      handle = profile.data.handle || session.did;
+      const plcRes = await fetch(`https://plc.directory/${encodeURIComponent(did)}`);
+      if (plcRes.ok) {
+        const plcDoc = await plcRes.json();
+        const aka = plcDoc.alsoKnownAs?.find(a => a.startsWith('at://'));
+        if (aka) handle = aka.replace('at://', '');
+      }
     } catch {
       // Handle resolution failed — fall back to DID
     }
