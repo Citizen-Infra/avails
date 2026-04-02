@@ -170,16 +170,11 @@ export default function PollView() {
     )
   }
 
-  if (!poll) return null
+  const slotMinutes = poll?.slotMinutes || poll?.slotDuration || 30
 
-  const isOpen = !poll.finalTime
-  const isCreator = session?.did === did
-
-  const slotMinutes = poll.slotMinutes || poll.slotDuration || 30
-
-  // Compute scheduled slots from finalized time
+  // Compute scheduled slots from finalized time (must be before early returns — Rules of Hooks)
   const scheduledSlots = useMemo(() => {
-    if (!poll.finalTime || !poll.finalDuration) return new Set()
+    if (!poll?.finalTime || !poll?.finalDuration) return new Set()
     const start = new Date(poll.finalTime)
     const totalSlots = Math.ceil(poll.finalDuration / slotMinutes)
     const slots = new Set()
@@ -191,7 +186,7 @@ export default function PollView() {
       slots.add(`${date}T${hh}:${mm}`)
     }
     return slots
-  }, [poll.finalTime, poll.finalDuration, slotMinutes])
+  }, [poll?.finalTime, poll?.finalDuration, slotMinutes])
 
   // In scheduling mode, also show the pending selection as scheduledSlots for preview
   const activeScheduledSlots = useMemo(() => {
@@ -200,6 +195,11 @@ export default function PollView() {
     }
     return scheduledSlots
   }, [schedulingMode, schedulingSlots, scheduledSlots])
+
+  if (!poll) return null
+
+  const isOpen = !poll.finalTime
+  const isCreator = session?.did === did
 
   const gridMode = schedulingMode ? 'schedule' : (isOpen ? 'respond' : 'view')
 
