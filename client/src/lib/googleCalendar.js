@@ -23,34 +23,57 @@ export function requestGoogleAccess() {
   });
 }
 
+/**
+ * Fetch events from Google Calendar using the Events list API.
+ * Returns a Set of busy slot keys matching the grid format ("YYYY-MM-DDThh:mm")
+ * and an array of event objects with { summary, start, end } for display.
+ */
 export async function fetchBusyTimes(accessToken, dates, timezone) {
   const sortedDates = [...dates].sort();
   const timeMin = new Date(`${sortedDates[0]}T00:00:00`).toISOString();
   const timeMax = new Date(`${sortedDates[sortedDates.length - 1]}T23:59:59`).toISOString();
 
-  const res = await fetch('https://www.googleapis.com/calendar/v3/freeBusy', {
-    method: 'POST',
+  // Use Events list API instead of FreeBusy — more reliable and returns event details
+  const params = new URLSearchParams({
+    timeMin,
+    timeMax,
+    timeZone: timezone,
+    singleEvents: 'true',
+    orderBy: 'startTime',
+    maxResults: '250',
+  });
+
+  const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?${params}`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      timeMin, timeMax,
-      timeZone: timezone,
-      items: [{ id: 'primary' }],
-    }),
   });
 
   const data = await res.json();
-  console.log('[avails] FreeBusy response:', JSON.stringify(data));
-  const busyPeriods = data.calendars?.primary?.busy || [];
+  console.log('[avails] Calendar events response:', data.items?.length, 'events');
+
+  if (data.error) {
+    console.error('[avails] Calendar API error:', data.error);
+    return new Set();
+  }
+
+  const events = data.items || [];
   const busySlots = new Set();
 
-  for (const period of busyPeriods) {
-    let current = new Date(period.start);
-    const end = new Date(period.end);
+  for (const event of events) {
+    // Skip all-day events (they have date, not dateTime)
+    const startStr = event.start?.dateTime;
+    const endStr = event.end?.dateTime;
+    if (!startStr || !endStr) continue;
+
+    // Skip cancelled/declined events
+    if (event.status === 'cancelled') continue;
+
+    const start = new Date(startStr);
+    const end = new Date(endStr);
+    let current = new Date(start);
+
     while (current < end) {
-      // Use local time for both date and time to match grid slot key format
       const year = current.getFullYear();
       const month = String(current.getMonth() + 1).padStart(2, '0');
       const day = String(current.getDate()).padStart(2, '0');
@@ -60,6 +83,7 @@ export async function fetchBusyTimes(accessToken, dates, timezone) {
       current = new Date(current.getTime() + 30 * 60 * 1000);
     }
   }
+
   console.log('[avails] Busy slots:', [...busySlots]);
   return busySlots;
 }
