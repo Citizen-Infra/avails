@@ -208,17 +208,10 @@ export default function Landing() {
         <div className="max-w-4xl mx-auto px-6 py-6 flex items-center justify-between text-base text-[#a09a94]">
           <span>Built on ATProto</span>
           <div className="flex items-center gap-6">
-            <a href="/about" className="hover:text-[#6b6560] transition-colors">
-              About
-            </a>
-            <a
-              href="https://github.com/Citizen-Infra/avails"
-              className="hover:text-[#6b6560] transition-colors"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              GitHub
-            </a>
+            <a href="/about" className="hover:text-[#6b6560] transition-colors">About</a>
+            <a href="/privacy" className="hover:text-[#6b6560] transition-colors">Privacy</a>
+            <a href="/terms" className="hover:text-[#6b6560] transition-colors">Terms</a>
+            <a href="https://github.com/Citizen-Infra/avails" className="hover:text-[#6b6560] transition-colors" target="_blank" rel="noopener noreferrer">GitHub</a>
           </div>
         </div>
       </footer>
