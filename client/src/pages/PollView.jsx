@@ -27,8 +27,7 @@ export default function PollView() {
   const [highlightName, setHighlightName] = useState(null)
   const [showFinalize, setShowFinalize] = useState(false)
 
-  // Task 11 placeholder
-  const busySlots = new Set()
+  const [busySlots, setBusySlots] = useState(new Set())
 
   const fetchData = useCallback(async () => {
     try {
@@ -142,7 +141,12 @@ export default function PollView() {
                 <p className="text-sm text-muted-foreground">
                   Enter your name to mark your availability:
                 </p>
-                <NameEntry onSubmit={setParticipant} />
+                <NameEntry
+                  onSubmit={setParticipant}
+                  dates={poll.dates}
+                  timezone={poll.timezone}
+                  onBusySlots={setBusySlots}
+                />
               </div>
             )}
 
