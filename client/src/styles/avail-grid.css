@@ -46,3 +46,17 @@
   background-color: hsl(0, 60%, 88%);
   opacity: 0.7;
 }
+
+/* Pending schedule — teal tinted preview for scheduling mode */
+.avail-cell--pending-schedule {
+  background-color: rgba(13, 148, 136, 0.3);
+  outline: 2px solid #0d9488;
+  outline-offset: -2px;
+}
+
+/* Scheduled — finalized time block on the grid */
+.avail-cell--scheduled {
+  background-color: rgba(13, 148, 136, 0.5);
+  outline: 2px solid #0d9488;
+  outline-offset: -2px;
+}
