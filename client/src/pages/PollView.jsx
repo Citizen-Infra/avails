@@ -321,60 +321,49 @@ export default function PollView() {
               />
             )}
 
-            {/* Submit area — initial submission */}
-            {isOpen && participant && !submitted && !editing && (
+            {/* Save button — appears after painting slots */}
+            {isOpen && participant && !submitted && !editing && mySlots.size > 0 && (
               <div className="flex items-center gap-3">
                 <Button
                   onClick={handleSubmit}
-                  disabled={submitting || mySlots.size === 0}
-                  className="bg-[#0d9488] text-white hover:bg-[#0f766e] text-base px-6 py-3 rounded-lg transition-colors"
+                  disabled={submitting}
+                  className="bg-[#0d9488] text-white hover:bg-[#0f766e] text-base px-5 py-2 rounded-lg transition-colors"
                 >
-                  {submitting
-                    ? 'Submitting...'
-                    : `Submit availability (${mySlots.size} slot${mySlots.size !== 1 ? 's' : ''})`}
+                  {submitting ? 'Saving...' : 'Save'}
                 </Button>
-                {submitError && (
-                  <p className="text-sm text-red-600">{submitError}</p>
-                )}
+                {submitError && <p className="text-sm text-red-600">{submitError}</p>}
               </div>
             )}
 
-            {/* Submit area — editing an existing response */}
-            {isOpen && participant && !submitted && editing && (
+            {/* Save button — editing existing response */}
+            {isOpen && participant && !submitted && editing && mySlots.size > 0 && (
               <div className="flex items-center gap-3">
                 <Button
                   onClick={handleUpdate}
-                  disabled={submitting || mySlots.size === 0}
-                  className="bg-[#0d9488] text-white hover:bg-[#0f766e] text-base px-6 py-3 rounded-lg transition-colors"
+                  disabled={submitting}
+                  className="bg-[#0d9488] text-white hover:bg-[#0f766e] text-base px-5 py-2 rounded-lg transition-colors"
                 >
-                  {submitting
-                    ? 'Saving...'
-                    : `Save changes (${mySlots.size} slot${mySlots.size !== 1 ? 's' : ''})`}
+                  {submitting ? 'Saving...' : 'Save'}
                 </Button>
-                <Button
-                  variant="ghost"
+                <button
                   onClick={() => { setEditing(false); setSubmitted(true) }}
                   disabled={submitting}
-                  className="text-base text-[#8a8580] hover:text-[#6b6560] hover:bg-[#f0eeea]"
+                  className="text-sm text-[#8a8580] hover:text-[#6b6560] underline underline-offset-2"
                 >
                   Cancel
-                </Button>
-                {submitError && (
-                  <p className="text-sm text-red-600">{submitError}</p>
-                )}
+                </button>
+                {submitError && <p className="text-sm text-red-600">{submitError}</p>}
               </div>
             )}
 
-            {/* Post-submit confirmation */}
+            {/* Post-save — show edit link */}
             {submitted && (
-              <div className="flex items-center gap-3 rounded-lg border border-[#e8e5df] bg-white px-5 py-4">
-                <p className="text-base text-[#6b6560]">
-                  Your availability has been submitted.
-                </p>
+              <div className="flex items-center gap-3">
+                <p className="text-sm text-[#8a8580]">Availability saved.</p>
                 {isOpen && responseRkey && (
-                  <Button variant="outline" onClick={handleStartEdit} className="border-[#0d9488] text-[#0d9488] hover:bg-[#ccfbf1] text-base px-5 py-2 rounded-lg">
-                    Edit my availability
-                  </Button>
+                  <button onClick={handleStartEdit} className="text-sm text-[#0d9488] hover:text-[#0f766e] underline underline-offset-2">
+                    Edit
+                  </button>
                 )}
               </div>
             )}
