@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import authRoutes from './routes/auth.js';
 
 dotenv.config();
 
@@ -17,6 +18,9 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(cookieParser());
+
+// Auth routes (login, callback, session, logout, client-metadata, jwks)
+app.use('/api/auth', authRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
