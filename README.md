@@ -68,7 +68,26 @@ SESSION_SECRET=<random string>
 RESEND_API_KEY=<from resend.com>
 ```
 
-Optional: set `VITE_GOOGLE_CLIENT_ID` in client env for Google Calendar integration.
+### Google Calendar integration (optional)
+
+Participants can connect their Google Calendar to see busy times on the grid. To enable:
+
+1. Go to [console.cloud.google.com](https://console.cloud.google.com)
+2. Create a project (or use an existing one)
+3. Enable the **Google Calendar API** (APIs & Services > Library > search "Google Calendar API" > Enable)
+4. Go to **APIs & Services > Credentials > Create Credentials > OAuth Client ID**
+5. Application type: **Web application**
+6. Authorized JavaScript origins: `https://avails.zhgnv.com` (and `http://localhost:5173` for local dev)
+7. No redirect URI needed (uses Google Identity Services client-side flow)
+8. Copy the **Client ID** (looks like `123456789-abc.apps.googleusercontent.com`)
+
+Set it as an environment variable:
+
+```
+VITE_GOOGLE_CLIENT_ID=123456789-abc.apps.googleusercontent.com
+```
+
+Note: `VITE_` prefix means it's baked into the client build — needs a redeploy after changing.
 
 ## ATProto Lexicons
 
