@@ -33,9 +33,9 @@ export default function NameEntry({ onSubmit, dates = [], timezone = 'UTC', onBu
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 max-w-sm">
-      <div className="space-y-1.5">
-        <Label htmlFor="name" className="text-sm font-medium text-[#1a1a1a]">Your name</Label>
+    <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
+      <div className="space-y-2">
+        <Label htmlFor="name" className="text-base font-medium text-[#1a1a1a]">Your name</Label>
         <Input
           id="name"
           placeholder="Alice"
@@ -43,11 +43,11 @@ export default function NameEntry({ onSubmit, dates = [], timezone = 'UTC', onBu
           onChange={(e) => setName(e.target.value)}
           required
           autoFocus
-          className="border-[#e8e5df] bg-white text-[#1a1a1a] placeholder:text-[#a09a94] focus-visible:ring-[#a09a94]"
+          className="border-[#e8e5df] bg-white text-[#1a1a1a] text-base placeholder:text-[#a09a94] focus-visible:ring-[#0d9488] h-11"
         />
       </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="email" className="text-sm font-medium text-[#1a1a1a]">
+      <div className="space-y-2">
+        <Label htmlFor="email" className="text-base font-medium text-[#1a1a1a]">
           Email{' '}
           <span className="text-[#a09a94] font-normal">(optional, for calendar invite)</span>
         </Label>
@@ -57,13 +57,13 @@ export default function NameEntry({ onSubmit, dates = [], timezone = 'UTC', onBu
           placeholder="alice@example.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="border-[#e8e5df] bg-white text-[#1a1a1a] placeholder:text-[#a09a94] focus-visible:ring-[#a09a94]"
+          className="border-[#e8e5df] bg-white text-[#1a1a1a] text-base placeholder:text-[#a09a94] focus-visible:ring-[#0d9488] h-11"
         />
       </div>
       {isGoogleConfigured() && (
         <div className="space-y-1.5">
           {calendarConnected ? (
-            <p className="text-sm text-[#4a7c4a]">
+            <p className="text-base text-[#0d9488]">
               Google Calendar connected — busy times shown on grid
             </p>
           ) : (
@@ -72,7 +72,7 @@ export default function NameEntry({ onSubmit, dates = [], timezone = 'UTC', onBu
               variant="outline"
               onClick={handleConnectCalendar}
               disabled={calendarLoading}
-              className="border-[#e8e5df] text-[#6b6560] hover:bg-[#f0eeea] hover:text-[#1a1a1a]"
+              className="border-[#0d9488] text-[#0d9488] hover:bg-[#ccfbf1] text-base px-5 py-2 rounded-lg"
             >
               {calendarLoading ? 'Connecting...' : 'Connect Google Calendar'}
             </Button>
@@ -82,7 +82,7 @@ export default function NameEntry({ onSubmit, dates = [], timezone = 'UTC', onBu
           )}
         </div>
       )}
-      <Button type="submit" disabled={!name.trim()} className="bg-[#1a1a1a] text-[#faf9f6] hover:bg-[#333] transition-colors">
+      <Button type="submit" disabled={!name.trim()} className="bg-[#0d9488] text-white hover:bg-[#0f766e] text-base px-6 py-3 rounded-lg h-auto font-semibold transition-colors">
         Add my availability
       </Button>
     </form>

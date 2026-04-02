@@ -72,27 +72,27 @@ export default function PollCreator() {
 
         {/* Title */}
         <div className="space-y-2">
-          <Label htmlFor="title" className="text-sm font-medium text-[#1a1a1a]">Title <span className="text-red-500">*</span></Label>
+          <Label htmlFor="title" className="text-base font-medium text-[#1a1a1a]">Title <span className="text-red-500">*</span></Label>
           <Input
             id="title"
             placeholder="Team sync, coffee chat, project kickoff..."
             value={title}
             onChange={e => setTitle(e.target.value)}
             required
-            className="border-[#e8e5df] bg-white text-[#1a1a1a] placeholder:text-[#a09a94] focus-visible:ring-[#a09a94]"
+            className="border-[#e8e5df] bg-white text-[#1a1a1a] placeholder:text-[#a09a94] focus-visible:ring-[#0d9488]"
           />
         </div>
 
         {/* Description */}
         <div className="space-y-2">
-          <Label htmlFor="description" className="text-sm font-medium text-[#1a1a1a]">Description <span className="text-[#a09a94] text-xs font-normal">(optional)</span></Label>
+          <Label htmlFor="description" className="text-base font-medium text-[#1a1a1a]">Description <span className="text-[#a09a94] text-xs font-normal">(optional)</span></Label>
           <Textarea
             id="description"
             placeholder="Any context participants should know..."
             value={description}
             onChange={e => setDescription(e.target.value)}
             rows={3}
-            className="border-[#e8e5df] bg-white text-[#1a1a1a] placeholder:text-[#a09a94] focus-visible:ring-[#a09a94]"
+            className="border-[#e8e5df] bg-white text-[#1a1a1a] placeholder:text-[#a09a94] focus-visible:ring-[#0d9488]"
           />
         </div>
 
@@ -100,7 +100,7 @@ export default function PollCreator() {
 
         {/* Date picker */}
         <div className="space-y-3">
-          <Label className="text-sm font-medium text-[#1a1a1a]">
+          <Label className="text-base font-medium text-[#1a1a1a]">
             Possible dates <span className="text-red-500">*</span>
             {selectedDates.length > 0 && (
               <span className="ml-2 text-[#a09a94] text-xs font-normal">
@@ -118,7 +118,7 @@ export default function PollCreator() {
             />
           </div>
           {selectedDates.length > 0 && (
-            <p className="text-xs text-[#8a8580]">
+            <p className="text-sm text-[#8a8580]">
               {selectedDates
                 .slice()
                 .sort((a, b) => a - b)
@@ -133,27 +133,27 @@ export default function PollCreator() {
         {/* Time range + slot duration */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="earliest" className="text-sm font-medium text-[#1a1a1a]">Earliest time</Label>
+            <Label htmlFor="earliest" className="text-base font-medium text-[#1a1a1a]">Earliest time</Label>
             <Input
               id="earliest"
               type="time"
               value={earliestTime}
               onChange={e => setEarliestTime(e.target.value)}
-              className="border-[#e8e5df] bg-white text-[#1a1a1a] focus-visible:ring-[#a09a94]"
+              className="border-[#e8e5df] bg-white text-[#1a1a1a] focus-visible:ring-[#0d9488]"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="latest" className="text-sm font-medium text-[#1a1a1a]">Latest time</Label>
+            <Label htmlFor="latest" className="text-base font-medium text-[#1a1a1a]">Latest time</Label>
             <Input
               id="latest"
               type="time"
               value={latestTime}
               onChange={e => setLatestTime(e.target.value)}
-              className="border-[#e8e5df] bg-white text-[#1a1a1a] focus-visible:ring-[#a09a94]"
+              className="border-[#e8e5df] bg-white text-[#1a1a1a] focus-visible:ring-[#0d9488]"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="slot-duration" className="text-sm font-medium text-[#1a1a1a]">Slot duration</Label>
+            <Label htmlFor="slot-duration" className="text-base font-medium text-[#1a1a1a]">Slot duration</Label>
             <Select value={slotDuration} onValueChange={setSlotDuration}>
               <SelectTrigger id="slot-duration" className="border-[#e8e5df] bg-white text-[#1a1a1a]">
                 <SelectValue />
@@ -168,7 +168,7 @@ export default function PollCreator() {
         </div>
 
         {/* Timezone display */}
-        <p className="text-xs text-[#a09a94]">
+        <p className="text-sm text-[#a09a94]">
           Timezone: {TIMEZONE}
         </p>
 
@@ -177,7 +177,7 @@ export default function PollCreator() {
         {/* Community */}
         {communities.length > 0 && (
           <div className="space-y-2">
-            <Label htmlFor="community" className="text-sm font-medium text-[#1a1a1a]">Community <span className="text-[#a09a94] text-xs font-normal">(optional)</span></Label>
+            <Label htmlFor="community" className="text-base font-medium text-[#1a1a1a]">Community <span className="text-[#a09a94] text-xs font-normal">(optional)</span></Label>
             <Select value={communityId} onValueChange={setCommunityId}>
               <SelectTrigger id="community" className="border-[#e8e5df] bg-white text-[#1a1a1a]">
                 <SelectValue placeholder="None" />
@@ -194,7 +194,7 @@ export default function PollCreator() {
 
         {/* Notify after N responses */}
         <div className="space-y-2">
-          <Label className="text-sm font-medium text-[#1a1a1a]">Notify me after <span className="text-[#a09a94] text-xs font-normal">(optional)</span></Label>
+          <Label className="text-base font-medium text-[#1a1a1a]">Notify me after <span className="text-[#a09a94] text-xs font-normal">(optional)</span></Label>
           <div className="flex items-center gap-3">
             <Input
               type="number"
@@ -202,21 +202,21 @@ export default function PollCreator() {
               placeholder="e.g. 5"
               value={notifyAfter}
               onChange={e => setNotifyAfter(e.target.value)}
-              className="w-24 border-[#e8e5df] bg-white text-[#1a1a1a] placeholder:text-[#a09a94] focus-visible:ring-[#a09a94]"
+              className="w-24 border-[#e8e5df] bg-white text-[#1a1a1a] placeholder:text-[#a09a94] focus-visible:ring-[#0d9488]"
             />
-            <span className="text-sm text-[#8a8580]">responses</span>
+            <span className="text-base text-[#8a8580]">responses</span>
           </div>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="notify-email" className="text-sm font-medium text-[#1a1a1a]">Notification email <span className="text-[#a09a94] text-xs font-normal">(optional)</span></Label>
+          <Label htmlFor="notify-email" className="text-base font-medium text-[#1a1a1a]">Notification email <span className="text-[#a09a94] text-xs font-normal">(optional)</span></Label>
           <Input
             id="notify-email"
             type="email"
             placeholder="you@example.com"
             value={notifyEmail}
             onChange={e => setNotifyEmail(e.target.value)}
-            className="border-[#e8e5df] bg-white text-[#1a1a1a] placeholder:text-[#a09a94] focus-visible:ring-[#a09a94]"
+            className="border-[#e8e5df] bg-white text-[#1a1a1a] placeholder:text-[#a09a94] focus-visible:ring-[#0d9488]"
           />
         </div>
 
@@ -226,7 +226,7 @@ export default function PollCreator() {
         )}
 
         {/* Submit */}
-        <Button type="submit" className="w-full bg-[#1a1a1a] text-[#faf9f6] hover:bg-[#333] transition-colors" disabled={submitting}>
+        <Button type="submit" className="w-full bg-[#0d9488] text-white hover:bg-[#0f766e] text-lg px-6 py-4 rounded-lg h-auto font-semibold transition-colors" disabled={submitting}>
           {submitting ? 'Creating poll...' : 'Create poll'}
         </Button>
 

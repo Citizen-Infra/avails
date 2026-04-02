@@ -23,9 +23,12 @@ export default function ResponsePanel({ responses = [], highlightName, onHighlig
   }
 
   return (
-    <div className="space-y-3">
-      <div className="text-xs font-medium text-[#a09a94] uppercase tracking-wide">
-        {responses.length} {responses.length === 1 ? 'response' : 'responses'}
+    <div className="space-y-4">
+      <div>
+        <div className="w-8 h-1 bg-[#0d9488] rounded-full mb-2" />
+        <div className="text-sm font-semibold text-[#1a1a1a] uppercase tracking-wide">
+          {responses.length} {responses.length === 1 ? 'response' : 'responses'}
+        </div>
       </div>
       <ul className="space-y-0.5">
         {responses.map((r) => {
@@ -36,7 +39,7 @@ export default function ResponsePanel({ responses = [], highlightName, onHighlig
               <button
                 type="button"
                 className={cn(
-                  'w-full text-left px-3 py-2 rounded-md text-sm transition-colors',
+                  'w-full text-left px-3 py-2.5 rounded-md text-base transition-colors',
                   'hover:bg-[#f0eeea]',
                   isActive ? 'bg-[#f0eeea] text-[#1a1a1a]' : 'text-[#6b6560]',
                   isUnavailableAtHover && 'opacity-40'
@@ -46,7 +49,7 @@ export default function ResponsePanel({ responses = [], highlightName, onHighlig
                 onClick={() => handleClick(r.name)}
               >
                 <span className="font-medium text-[#1a1a1a]">{r.name}</span>
-                <span className="ml-2 text-[#a09a94] text-xs">
+                <span className="ml-2 text-[#a09a94] text-sm">
                   {r.slots.length} {r.slots.length === 1 ? 'slot' : 'slots'}
                 </span>
               </button>
@@ -54,7 +57,7 @@ export default function ResponsePanel({ responses = [], highlightName, onHighlig
           )
         })}
         {responses.length === 0 && (
-          <li className="text-sm text-[#a09a94] px-3 py-2">
+          <li className="text-base text-[#a09a94] px-3 py-2">
             No responses yet.
           </li>
         )}

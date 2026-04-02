@@ -35,7 +35,7 @@ export default function DeletePollDialog({ open, onOpenChange, did, rkey }) {
         <DialogHeader>
           <DialogTitle className="text-[#1a1a1a]">Delete this poll?</DialogTitle>
         </DialogHeader>
-        <p className="text-sm text-[#6b6560]">
+        <p className="text-base text-[#6b6560]">
           This will permanently remove the poll and all responses from your PDS. This cannot be undone.
         </p>
         {error && (
@@ -46,7 +46,7 @@ export default function DeletePollDialog({ open, onOpenChange, did, rkey }) {
             <Button
               type="button"
               variant="outline"
-              className="border-[#e8e5df] text-[#6b6560] hover:bg-[#f0eeea] hover:text-[#1a1a1a]"
+              className="border-[#e8e5df] text-[#6b6560] hover:bg-[#f0eeea] hover:text-[#1a1a1a] text-base px-5 py-2 rounded-lg"
               disabled={loading}
             >
               Cancel
@@ -55,7 +55,7 @@ export default function DeletePollDialog({ open, onOpenChange, did, rkey }) {
           <Button
             onClick={handleDelete}
             disabled={loading}
-            className="bg-red-600 text-white hover:bg-red-700 transition-colors"
+            className="bg-red-600 text-white hover:bg-red-700 text-base px-6 py-3 rounded-lg transition-colors"
           >
             {loading ? 'Deleting...' : 'Delete'}
           </Button>
