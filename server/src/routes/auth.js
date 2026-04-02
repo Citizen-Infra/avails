@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { NodeOAuthClient } from '@atproto/oauth-client-node';
 import { JoseKey } from '@atproto/jwk-jose';
-import { createSession, deleteSession, getSession, sessions, restoreOAuthSessions } from '../lib/sessionStore.js';
+import { createSession, deleteSession, getSession, sessions, restoreOAuthSessions, cleanupExpiredSessions } from '../lib/sessionStore.js';
 import { registerStore, markDirty } from '../lib/persistence.js';
 
 const router = Router();
@@ -18,6 +18,21 @@ registerStore('oauth-sessions', oauthSessionStore);
 // Note: we can't persist the live oauthSession object, but we store the DID
 // and rebuild the live session via client.restore(did) on startup
 registerStore('app-sessions', sessions);
+
+// Simple in-process lock — prevents concurrent token refreshes for the same DID
+function createLock() {
+  const locks = new Map(); // key → Promise
+  return async (key, fn) => {
+    while (locks.has(key)) {
+      await locks.get(key);
+    }
+    const promise = fn();
+    locks.set(key, promise.finally(() => locks.delete(key)));
+    return promise;
+  };
+}
+
+const requestLock = createLock();
 
 // Build the OAuth client once at module load (lazy init on first request)
 let _client = null;
@@ -67,6 +82,8 @@ export async function getClient() {
     },
 
     keyset: [key],
+
+    requestLock,
 
     stateStore: {
       async set(key, value) { oauthStateStore.set(key, value); },

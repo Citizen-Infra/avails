@@ -58,6 +58,14 @@ async function loadAll() {
   }
 }
 
+export async function saveNow() {
+  // Force all stores dirty so they get written immediately
+  for (const store of stores.values()) {
+    store.dirty = true;
+  }
+  await saveAll();
+}
+
 export async function startPersistence() {
   await loadAll();
   setInterval(saveAll, SAVE_INTERVAL);

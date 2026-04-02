@@ -1,10 +1,30 @@
 import crypto from 'crypto';
-import { markDirty } from './persistence.js';
+import { markDirty, saveNow } from './persistence.js';
 
 // In-memory store: sessionId → { did, handle, createdAt }
 // The oauthSession object is NOT stored here — it's rebuilt via client.restore(did)
 // Export the Map so persistence.js can save/restore it
 export const sessions = new Map();
+
+const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+/**
+ * Remove sessions older than 30 days. Call on startup after loading from disk.
+ */
+export function cleanupExpiredSessions() {
+  const cutoff = Date.now() - SESSION_MAX_AGE_MS;
+  let removed = 0;
+  for (const [sessionId, data] of sessions) {
+    if (data.createdAt && data.createdAt < cutoff) {
+      sessions.delete(sessionId);
+      removed++;
+    }
+  }
+  if (removed > 0) {
+    console.log(`Cleaned up ${removed} expired app sessions`);
+    markDirty('app-sessions');
+  }
+}
 
 export function createSession(oauthSession, did, handle) {
   const sessionId = crypto.randomBytes(32).toString('hex');
@@ -15,6 +35,7 @@ export function createSession(oauthSession, did, handle) {
     createdAt: Date.now(),
   });
   markDirty('app-sessions');
+  saveNow().catch(err => console.error('Failed to save after createSession:', err.message));
   return sessionId;
 }
 
@@ -25,6 +46,7 @@ export function getSession(sessionId) {
 export function deleteSession(sessionId) {
   sessions.delete(sessionId);
   markDirty('app-sessions');
+  saveNow().catch(err => console.error('Failed to save after deleteSession:', err.message));
 }
 
 export function getOAuthSession(sessionId) {
@@ -38,6 +60,9 @@ export function getOAuthSession(sessionId) {
  * to rebuild live sessions via client.restore(did).
  */
 export async function restoreOAuthSessions(client) {
+  // Remove stale sessions before restoring live OAuth sessions
+  cleanupExpiredSessions();
+
   let restored = 0;
   for (const [sessionId, data] of sessions) {
     if (data.oauthSession) continue; // already live
