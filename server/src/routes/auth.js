@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { NodeOAuthClient } from '@atproto/oauth-client-node';
 import { JoseKey } from '@atproto/jwk-jose';
-import { createSession, deleteSession, getSession } from '../lib/sessionStore.js';
+import { createSession, deleteSession, getSession, sessions, restoreOAuthSessions } from '../lib/sessionStore.js';
+import { registerStore, markDirty } from '../lib/persistence.js';
 
 const router = Router();
 
@@ -9,11 +10,18 @@ const router = Router();
 // stateStore: temporary OAuth flow state (CSRF protection), keyed by random state string
 const oauthStateStore = new Map();
 // oauthSessionStore: ATProto session data keyed by DID — managed by the OAuth client itself
-const oauthSessionStore = new Map();
+// Persisted to disk so sessions survive deploys
+export const oauthSessionStore = new Map();
+registerStore('oauth-sessions', oauthSessionStore);
+
+// Also persist the app-level session map (cookie → {did, handle, createdAt})
+// Note: we can't persist the live oauthSession object, but we store the DID
+// and rebuild the live session via client.restore(did) on startup
+registerStore('app-sessions', sessions);
 
 // Build the OAuth client once at module load (lazy init on first request)
 let _client = null;
-async function getClient() {
+export async function getClient() {
   if (_client) return _client;
 
   const clientId = process.env.ATPROTO_CLIENT_ID;
@@ -67,9 +75,9 @@ async function getClient() {
     },
 
     sessionStore: {
-      async set(sub, value) { oauthSessionStore.set(sub, value); },
+      async set(sub, value) { oauthSessionStore.set(sub, value); markDirty('oauth-sessions'); },
       async get(sub) { return oauthSessionStore.get(sub); },
-      async del(sub) { oauthSessionStore.delete(sub); },
+      async del(sub) { oauthSessionStore.delete(sub); markDirty('oauth-sessions'); },
     },
   });
 

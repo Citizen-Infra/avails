@@ -4,10 +4,12 @@ import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import authRoutes from './routes/auth.js';
+import authRoutes, { getClient } from './routes/auth.js';
 import pollRoutes from './routes/polls.js';
 import responseRoutes from './routes/responses.js';
 import communityRoutes from './routes/communities.js';
+import { startPersistence } from './lib/persistence.js';
+import { restoreOAuthSessions } from './lib/sessionStore.js';
 
 dotenv.config();
 
@@ -50,6 +52,17 @@ app.get('*', (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Avails server listening on port ${PORT}`);
-});
+// Start server with session restoration
+async function start() {
+  await startPersistence();
+  try {
+    const client = await getClient();
+    await restoreOAuthSessions(client);
+  } catch (err) {
+    console.warn('Could not restore OAuth sessions:', err.message);
+  }
+  app.listen(PORT, () => {
+    console.log(`Avails server listening on port ${PORT}`);
+  });
+}
+start();
