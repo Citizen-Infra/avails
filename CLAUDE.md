@@ -51,6 +51,7 @@ There is no database. ATProto PDS is the data store:
 - **Request logging** — all `/api` requests logged with method, path, status, duration
 - **JSON error middleware** — all API errors return `{ error: "message" }` with proper status codes, not HTML
 - **Rate limiting** — per IP: auth 20/hr, poll creation 30/hr, responses 60/hr. `trust proxy` enabled for Railway.
+- **Input validation** — `middleware/validate.js` whitelists fields and validates types/ranges for poll creation, update, and response submission. Routes use `req.validatedBody` (not `req.body`) to prevent field injection.
 - **Env var validation** — required vars checked at startup, exits with clear message if missing
 - **ErrorBoundary** — React ErrorBoundary wraps entire app + extra wrapper around PollView. Shows fallback UI instead of white screen.
 - **Unhandled rejection handler** — catches ATProto OAuth SDK's async TokenRefreshError to prevent crash loops
@@ -92,7 +93,8 @@ Calendar priority chain: OpenMeet (auto for signed-in users) → Google Calendar
 - `Privacy.jsx`, `Terms.jsx` — legal pages (required for Google OAuth consent screen)
 
 ### Key components
-- `AvailGrid.jsx` — drag-to-paint availability grid. Rectangle selection, commit-on-pointerup, document-level listener. Heatmap from responses, hover tooltips, busy slots overlay.
+- `AvailGrid.jsx` — drag-to-paint availability grid. Rectangle selection, commit-on-pointerup, document-level listener. Heatmap from responses, hover tooltips, busy slots overlay. **Paginated** — max 7 dates visible with left/right arrows.
+- `Logo.jsx` — shared 4x4 heatmap grid icon representing overlapping availability. Used in all page headers.
 - `SchedulingGrid.jsx` — separate grid for creator scheduling mode. Single-column vertical drag, teal preview. Completely independent from AvailGrid to avoid render loop issues.
 - `GuestModal.jsx` — "Continue as guest" dialog: name + optional email. Shown when anonymous user clicks Save after painting.
 - `PollCreator.jsx` — single-page poll creation form
