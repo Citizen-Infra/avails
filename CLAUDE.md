@@ -65,7 +65,7 @@ There is no database. ATProto PDS is the data store:
 - **`@atproto/lex` generated TypeScript** — server is plain JS, so generated TS in `server/src/lexicons/` is for type reference only. Server uses raw XRPC fetch calls.
 - **Google Calendar** — queries all owner/writer calendars (not just primary). Skips holidays/birthdays by name. Filters out transparent (show as available) and declined events.
 - **Poll edit strips old field names** — when editing a poll created with `earliestTime`/`latestTime`/`slotDuration`, the PUT handler removes these before writing to PDS (lexicon rejects unknown fields).
-- **Timezone conversion** — slot keys are stored in the creator's timezone. `client/src/lib/timezone.js` converts between creator's TZ and viewer's local TZ for display. Grid shows viewer's local times. Responses converted back to creator's TZ on save. Uses `Intl.DateTimeFormat` for offset calculation — no external timezone library.
+- **Timezone conversion** — slot keys are stored in the creator's timezone (not UTC — see #33 for future migration). `client/src/lib/timezone.js` converts between creator's TZ and viewer's local TZ using **Luxon** (`DateTime.fromObject` with zone). Grid shows viewer's local times. Responses converted back to creator's TZ on save. Per-slot conversion handles DST correctly (better than CabbageMeet's first-date-only approach).
 - **Date formatting must use local time** — never use `toISOString().slice(0, 10)` for dates. It converts to UTC which shifts dates for UTC+ timezones. Use `getFullYear()`/`getMonth()`/`getDate()` or the `formatDateLocal()` helper.
 
 ### OpenMeet integration

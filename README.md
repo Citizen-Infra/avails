@@ -34,6 +34,7 @@ You don't need to know or care about any of this to use avails. It works like an
 - **Creator notifications** — get an email when enough people have responded
 - **Schedule on the grid** — creator selects a time block directly on the heatmap, seeing everyone's availability while choosing
 - **Edit and delete** — participants can edit or delete their availability after submitting
+- **Timezone support** — grid auto-converts to each viewer's local timezone. Creator in Budapest, participant in New York — everyone sees their own local times
 - **Mobile responsive** — grid adapts to small screens with horizontal scroll
 - **OpenMeet integration** — publish scheduled meetings as [OpenMeet](https://platform.openmeet.net) events. Calendar availability from OpenMeet (in progress — [openmeet-api#573](https://github.com/OpenMeet-Team/openmeet-api/issues/573))
 
@@ -41,10 +42,11 @@ You don't need to know or care about any of this to use avails. It works like an
 
 | Layer | Tech |
 |-------|------|
-| Client | React 19, Vite, Tailwind CSS, shadcn/ui |
+| Client | React 19, Vite, Tailwind CSS, shadcn/ui, Luxon |
 | Server | Express 4, Node.js (ES modules) |
 | ATProto | `@atproto/lex` (custom lexicons + Client API), `@atproto/oauth-client-node` |
 | Email | Resend + ical-generator |
+| Timezone | Luxon (DST-safe conversion between creator and viewer timezones) |
 | Deploy | Railway |
 
 ## Development
