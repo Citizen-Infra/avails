@@ -84,6 +84,7 @@ async function getOpenMeetToken(oauthSession) {
   const serviceAuthRes = await oauthSession.fetchHandler(
     '/xrpc/com.atproto.server.getServiceAuth?' + new URLSearchParams({
       aud: OPENMEET_DID,
+      lxm: 'net.openmeet.auth',
     }),
     { method: 'GET' }
   );
