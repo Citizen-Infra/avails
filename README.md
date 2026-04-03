@@ -32,6 +32,9 @@ You don't need to know or care about any of this to use avails. It works like an
 - **Google Calendar overlay** — connect your calendar to see busy times on the grid before marking availability
 - **Community-scoped** — tag polls to a community. They show up in [My Community](https://github.com/Citizen-Infra/my-community) and [Dear Neighbors](https://github.com/Citizen-Infra/dear-neighbors) dashboards.
 - **Creator notifications** — get an email when enough people have responded
+- **Schedule on the grid** — creator selects a time block directly on the heatmap, seeing everyone's availability while choosing
+- **Edit and delete** — participants can edit or delete their availability after submitting
+- **Mobile responsive** — grid adapts to small screens with horizontal scroll
 
 ## Stack
 

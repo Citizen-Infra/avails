@@ -46,13 +46,24 @@ There is no database. ATProto PDS is the data store:
 4. Creator's OAuth session is used for all PDS writes (including anonymous participant responses)
 5. Private key for `private_key_jwt` auth stored as base64-encoded JWK in `ATPROTO_PRIVATE_KEY` env var
 
+### Server infrastructure
+
+- **Request logging** — all `/api` requests logged with method, path, status, duration
+- **JSON error middleware** — all API errors return `{ error: "message" }` with proper status codes, not HTML
+- **Rate limiting** — per IP: auth 20/hr, poll creation 30/hr, responses 60/hr. `trust proxy` enabled for Railway.
+- **Env var validation** — required vars checked at startup, exits with clear message if missing
+- **ErrorBoundary** — React ErrorBoundary wraps entire app + extra wrapper around PollView. Shows fallback UI instead of white screen.
+- **Unhandled rejection handler** — catches ATProto OAuth SDK's async TokenRefreshError to prevent crash loops
+
 ### Key gotchas
 
 - **Session restore must happen after `app.listen()`** — the OAuth client fetches `client-metadata.json` from itself during restore. Starting restore before listening causes a deadlock.
 - **Anonymous responses require creator's session** — if the creator's session expires or is lost, participants can't submit. Sessions persist to Railway volume to survive deploys.
 - **Old polls use different field names** — `earliestTime`/`latestTime`/`slotDuration` vs `timeRange`/`slotMinutes`. PollView has fallback handling for both formats.
 - **React render loops** — AvailGrid is sensitive to unstable object references in props. Never pass `new Set()` or `{}` inline as props. Use stable refs or module-level constants. The SchedulingGrid was created as a separate component (instead of adding props to AvailGrid) specifically to avoid this.
+- **CabbageMeet-style mode separation in grid** — viewing mode shows heatmap only, editing mode shows my slots only. Never mix the two (causes visual double-counting).
 - **`@atproto/lex` generated TypeScript** — server is plain JS, so generated TS in `server/src/lexicons/` is for type reference only. Server uses raw XRPC fetch calls.
+- **Google Calendar** — queries all owner/writer calendars (not just primary). Skips holidays/birthdays by name. Filters out transparent (show as available) and declined events.
 
 ## Client architecture
 
