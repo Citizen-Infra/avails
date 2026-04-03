@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'react-router'
-import { getPoll, getSession, submitResponse, updateResponse, finalizePoll, deleteResponse, publishToOpenMeet } from '@/lib/api'
+import { getPoll, getSession, submitResponse, updateResponse, finalizePoll, deleteResponse, publishToOpenMeet, getOpenMeetAvailability } from '@/lib/api'
 import { isGoogleConfigured, requestGoogleAccess, fetchBusyTimes } from '@/lib/googleCalendar'
 import { Button } from '@/components/ui/button'
 import AvailGrid from '@/components/AvailGrid'
@@ -54,9 +54,63 @@ export default function PollView() {
   const [busySlots, setBusySlots] = useState(new Set())
   const [slotEvents, setSlotEvents] = useState({})
   const [calendarConnected, setCalendarConnected] = useState(false)
+  const [calendarSource, setCalendarSource] = useState(null) // 'openmeet' | 'google' | null
   const [connectingCalendar, setConnectingCalendar] = useState(false)
 
-  async function connectCalendar() {
+  // Convert OpenMeet events to busySlots + slotEvents format
+  function processCalendarEvents(events) {
+    const busy = new Set()
+    const slots = {}
+    for (const event of events) {
+      const start = new Date(event.start)
+      const end = new Date(event.end)
+      let current = new Date(start)
+      const name = event.summary || 'Busy'
+      let isFirst = true
+      while (current < end) {
+        const year = current.getFullYear()
+        const month = String(current.getMonth() + 1).padStart(2, '0')
+        const day = String(current.getDate()).padStart(2, '0')
+        const hours = String(current.getHours()).padStart(2, '0')
+        const mins = String(current.getMinutes()).padStart(2, '0')
+        const key = `${year}-${month}-${day}T${hours}:${mins}`
+        busy.add(key)
+        if (!slots[key]) slots[key] = name
+        current = new Date(current.getTime() + 30 * 60 * 1000)
+      }
+    }
+    return { busySlots: busy, slotEvents: slots }
+  }
+
+  // Try OpenMeet calendar for signed-in users
+  async function tryOpenMeetCalendar(dates) {
+    try {
+      const sortedDates = [...dates].sort()
+      const startTime = new Date(`${sortedDates[0]}T00:00:00`).toISOString()
+      const endTime = new Date(`${sortedDates[sortedDates.length - 1]}T23:59:59`).toISOString()
+      const result = await getOpenMeetAvailability(startTime, endTime)
+      if (result.available && result.events.length > 0) {
+        const { busySlots: busy, slotEvents: slots } = processCalendarEvents(result.events)
+        setBusySlots(busy)
+        setSlotEvents(slots)
+        setCalendarConnected(true)
+        setCalendarSource('openmeet')
+        return true
+      }
+      // available=true but no events — calendar connected but no conflicts
+      if (result.available) {
+        setCalendarConnected(true)
+        setCalendarSource('openmeet')
+        return true
+      }
+      return false // no OpenMeet account or no calendar
+    } catch {
+      return false
+    }
+  }
+
+  // Fallback: Google Calendar
+  async function connectGoogleCalendar() {
     setConnectingCalendar(true)
     try {
       const token = await requestGoogleAccess()
@@ -64,6 +118,7 @@ export default function PollView() {
       setBusySlots(result.busySlots)
       setSlotEvents(result.slotEvents)
       setCalendarConnected(true)
+      setCalendarSource('google')
     } catch (err) {
       console.error('Google Calendar error:', err)
     } finally {
@@ -118,6 +173,13 @@ export default function PollView() {
       }
     }
   }, [session, responses, participant, submitted])
+
+  // Auto-fetch calendar from OpenMeet for signed-in users
+  useEffect(() => {
+    if (session?.did && poll?.dates && !calendarConnected) {
+      tryOpenMeetCalendar(poll.dates)
+    }
+  }, [session?.did, poll?.dates, calendarConnected])
 
   async function handleGuestSubmit(guestInfo) {
     setParticipant(guestInfo)
@@ -367,17 +429,32 @@ export default function PollView() {
                 ) : (
                   <span className="text-[#8a8580]">Mark your availability below</span>
                 )}
-                {isGoogleConfigured() && !calendarConnected && (
-                  <button
-                    onClick={connectCalendar}
-                    disabled={connectingCalendar}
-                    className="text-sm text-[#0d9488] hover:text-[#0f766e] underline underline-offset-2"
-                  >
-                    {connectingCalendar ? 'Connecting...' : 'Connect Google Calendar'}
-                  </button>
-                )}
-                {calendarConnected && (
-                  <span className="text-sm text-[#0d9488]">Calendar connected</span>
+                {calendarConnected ? (
+                  <span className="text-sm text-[#0d9488]">
+                    Calendar connected{calendarSource === 'openmeet' ? ' via OpenMeet' : ''}
+                  </span>
+                ) : (
+                  <>
+                    {isGoogleConfigured() && (
+                      <button
+                        onClick={connectGoogleCalendar}
+                        disabled={connectingCalendar}
+                        className="text-sm text-[#0d9488] hover:text-[#0f766e] underline underline-offset-2"
+                      >
+                        {connectingCalendar ? 'Connecting...' : 'Connect Google Calendar'}
+                      </button>
+                    )}
+                    {session?.did && (
+                      <a
+                        href="https://platform.openmeet.net/settings"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-[#6b6560] hover:text-[#1a1a1a] underline underline-offset-2"
+                      >
+                        Connect via OpenMeet
+                      </a>
+                    )}
+                  </>
                 )}
               </div>
             )}
