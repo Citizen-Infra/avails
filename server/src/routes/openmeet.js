@@ -71,6 +71,52 @@ router.post('/publish', requireAuth, async (req, res, next) => {
   }
 });
 
+const OPENMEET_DID = 'did:web:api.openmeet.net';
+
+/**
+ * Get an OpenMeet bearer token via ATProto service auth.
+ * 1. Call user's PDS to get a service auth JWT (signed by their identity)
+ * 2. Exchange that JWT for OpenMeet access tokens
+ */
+async function getOpenMeetToken(oauthSession) {
+  // Step 1: Get a service auth JWT from the user's PDS
+  // com.atproto.server.getServiceAuth returns a JWT scoped for the target service
+  const serviceAuthRes = await oauthSession.fetchHandler(
+    '/xrpc/com.atproto.server.getServiceAuth?' + new URLSearchParams({
+      aud: OPENMEET_DID,
+    }),
+    { method: 'GET' }
+  );
+
+  if (!serviceAuthRes.ok) {
+    const text = await serviceAuthRes.text();
+    console.log('[openmeet] PDS getServiceAuth failed:', serviceAuthRes.status, text);
+    return null;
+  }
+
+  const { token: pdsJwt } = await serviceAuthRes.json();
+  if (!pdsJwt) return null;
+
+  // Step 2: Exchange PDS JWT for OpenMeet tokens
+  const exchangeRes = await fetch(`${OPENMEET_API}/api/v1/auth/atproto/service-auth`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-tenant-id': process.env.OPENMEET_TENANT_ID || '1',
+    },
+    body: JSON.stringify({ token: pdsJwt }),
+  });
+
+  if (!exchangeRes.ok) {
+    const text = await exchangeRes.text();
+    console.log('[openmeet] Token exchange failed:', exchangeRes.status, text);
+    return null;
+  }
+
+  const authData = await exchangeRes.json();
+  return authData.token || authData.accessToken || null;
+}
+
 // POST /api/openmeet/availability — get calendar events from OpenMeet for authenticated user
 router.post('/availability', requireAuth, async (req, res, next) => {
   try {
@@ -80,27 +126,10 @@ router.post('/availability', requireAuth, async (req, res, next) => {
       return res.status(400).json({ error: 'startTime and endTime required' });
     }
 
-    // Authenticate with OpenMeet via ATProto service auth
-    // Exchange our user's DID for an OpenMeet bearer token
-    const serviceAuthRes = await fetch(`${OPENMEET_API}/api/v1/auth/atproto/service-auth`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-tenant-id': process.env.OPENMEET_TENANT_ID || '1',
-      },
-      body: JSON.stringify({ did: req.userDid }),
-    });
-
-    if (!serviceAuthRes.ok) {
-      // User doesn't have an OpenMeet account or service auth failed
-      return res.json({ available: false, reason: 'no-openmeet-account', events: [] });
-    }
-
-    const authData = await serviceAuthRes.json();
-    const token = authData.token || authData.accessToken;
-
+    // Get OpenMeet token via ATProto service auth
+    const token = await getOpenMeetToken(req.oauthSession);
     if (!token) {
-      return res.json({ available: false, reason: 'no-token', events: [] });
+      return res.json({ available: false, reason: 'no-openmeet-account', events: [] });
     }
 
     // Fetch calendar events from OpenMeet
@@ -115,7 +144,6 @@ router.post('/availability', requireAuth, async (req, res, next) => {
     });
 
     if (!eventsRes.ok) {
-      // Calendar not connected on OpenMeet
       const text = await eventsRes.text();
       console.log('[openmeet] Calendar events failed:', eventsRes.status, text);
       return res.json({ available: false, reason: 'no-calendar', events: [] });
