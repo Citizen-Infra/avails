@@ -13,6 +13,15 @@ import { restoreOAuthSessions } from './lib/sessionStore.js';
 
 dotenv.config();
 
+// Validate required environment variables at startup
+const REQUIRED_VARS = ['ATPROTO_CLIENT_ID', 'ATPROTO_REDIRECT_URI', 'ATPROTO_PRIVATE_KEY', 'SESSION_SECRET'];
+const missing = REQUIRED_VARS.filter(v => !process.env[v]);
+if (missing.length > 0) {
+  console.error(`Missing required environment variables: ${missing.join(', ')}`);
+  console.error('See server/.env.example for required configuration.');
+  process.exit(1);
+}
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3000;
