@@ -9,6 +9,7 @@ import authRoutes, { getClient } from './routes/auth.js';
 import pollRoutes from './routes/polls.js';
 import responseRoutes from './routes/responses.js';
 import communityRoutes from './routes/communities.js';
+import openmeetRoutes from './routes/openmeet.js';
 import { startPersistence } from './lib/persistence.js';
 import { restoreOAuthSessions } from './lib/sessionStore.js';
 
@@ -82,6 +83,9 @@ app.use('/api/polls', responseRoutes);
 
 // Communities proxy
 app.use('/api/communities', communityRoutes);
+
+// OpenMeet integration
+app.use('/api/openmeet', openmeetRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

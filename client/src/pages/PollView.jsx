@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'react-router'
-import { getPoll, getSession, submitResponse, updateResponse, finalizePoll, deleteResponse } from '@/lib/api'
+import { getPoll, getSession, submitResponse, updateResponse, finalizePoll, deleteResponse, publishToOpenMeet } from '@/lib/api'
 import { isGoogleConfigured, requestGoogleAccess, fetchBusyTimes } from '@/lib/googleCalendar'
 import { Button } from '@/components/ui/button'
 import AvailGrid from '@/components/AvailGrid'
@@ -48,6 +48,8 @@ export default function PollView() {
   const [showEditPoll, setShowEditPoll] = useState(false)
   const [showDeletePoll, setShowDeletePoll] = useState(false)
   const [showGuestModal, setShowGuestModal] = useState(false)
+  const [openmeetUrl, setOpenmeetUrl] = useState(null)
+  const [publishingToOpenMeet, setPublishingToOpenMeet] = useState(false)
 
   const [busySlots, setBusySlots] = useState(new Set())
   const [slotEvents, setSlotEvents] = useState({})
@@ -228,6 +230,32 @@ export default function PollView() {
     }
   }
 
+  async function handlePublishToOpenMeet() {
+    if (!poll?.finalTime) return
+    setPublishingToOpenMeet(true)
+    try {
+      const endDate = poll.finalDuration
+        ? new Date(new Date(poll.finalTime).getTime() + poll.finalDuration * 60 * 1000).toISOString()
+        : undefined
+      const pollUrl = `${window.location.origin}/p/${did}/${rkey}`
+      const result = await publishToOpenMeet({
+        title: poll.title,
+        description: poll.description,
+        startDate: poll.finalTime,
+        endDate,
+        timezone: poll.timezone,
+        pollUrl,
+      })
+      if (result.eventUrl) {
+        setOpenmeetUrl(result.eventUrl)
+      }
+    } catch (err) {
+      console.error('OpenMeet publish error:', err)
+    } finally {
+      setPublishingToOpenMeet(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#faf9f6] flex items-center justify-center">
@@ -295,7 +323,7 @@ export default function PollView() {
 
         {/* Finalized meeting banner */}
         {poll.finalTime && (
-          <div className="rounded-lg border border-[#c8dfc8] bg-[#f0f7f0] px-6 py-5">
+          <div className="rounded-lg border border-[#c8dfc8] bg-[#f0f7f0] px-6 py-5 space-y-3">
             <p className="text-base font-medium text-[#3a6b3a]">
               Meeting scheduled:{' '}
               {new Date(poll.finalTime).toLocaleString(undefined, {
@@ -304,6 +332,25 @@ export default function PollView() {
               })}
               {poll.finalDuration && ` (${poll.finalDuration} min)`}
             </p>
+            {isCreator && !openmeetUrl && (
+              <button
+                onClick={handlePublishToOpenMeet}
+                disabled={publishingToOpenMeet}
+                className="text-sm text-[#0d9488] hover:text-[#0f766e] underline underline-offset-2"
+              >
+                {publishingToOpenMeet ? 'Publishing...' : 'Publish to OpenMeet'}
+              </button>
+            )}
+            {openmeetUrl && (
+              <a
+                href={openmeetUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-[#0d9488] hover:text-[#0f766e] underline underline-offset-2"
+              >
+                View on OpenMeet
+              </a>
+            )}
           </div>
         )}
 
