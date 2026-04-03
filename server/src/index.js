@@ -54,6 +54,13 @@ app.get('*', (req, res) => {
 
 // Start server, then restore sessions (must listen first — session restore
 // calls client-metadata endpoint on itself)
+// Catch unhandled rejections from ATProto OAuth SDK background token refreshes
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled rejection:', err.message || err);
+  // Don't crash — the OAuth SDK throws TokenRefreshError asynchronously
+  // when sessions become stale. Log and continue.
+});
+
 async function start() {
   await startPersistence();
   app.listen(PORT, async () => {

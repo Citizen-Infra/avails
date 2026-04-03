@@ -77,6 +77,7 @@ export async function restoreOAuthSessions(client) {
     } catch (err) {
       console.warn(`Failed to restore OAuth session for ${data.did}:`, err.message);
       sessions.delete(sessionId);
+      markDirty('app-sessions');
     }
   }
   if (restored > 0) {
