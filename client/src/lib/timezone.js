@@ -1,16 +1,16 @@
 /**
  * Timezone conversion utilities for avails.
+ * Uses Luxon for reliable timezone math (same library CabbageMeet uses).
  *
  * Slot keys are stored in the CREATOR's timezone (e.g. "2026-04-07T16:00" in Europe/Budapest).
- * The grid needs to display times in the VIEWER's local timezone.
- * When saving responses, viewer's local slot keys must be converted back to creator's timezone.
+ * The grid displays times in the VIEWER's local timezone.
+ * Responses are converted back to creator's timezone for storage.
  */
+
+import { DateTime } from 'luxon'
 
 const viewerTz = Intl.DateTimeFormat().resolvedOptions().timeZone
 
-/**
- * Check if timezone conversion is needed.
- */
 export function needsConversion(creatorTz) {
   return creatorTz && creatorTz !== viewerTz
 }
@@ -20,56 +20,26 @@ export function getViewerTimezone() {
 }
 
 /**
- * Convert a wall-clock time in a specific timezone to a UTC Date object.
- * e.g. "2026-04-07", "16:00", "Europe/Budapest" → Date(2026-04-07T14:00:00Z)
- */
-function wallClockToUTC(dateStr, timeStr, tz) {
-  const [year, month, day] = dateStr.split('-').map(Number)
-  const [hour, minute] = timeStr.split(':').map(Number)
-
-  // Start with a guess: treat the wall-clock time as UTC
-  const guess = new Date(Date.UTC(year, month - 1, day, hour, minute))
-
-  // See what this UTC time looks like in the target timezone
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: tz, hourCycle: 'h23',
-    year: 'numeric', month: 'numeric', day: 'numeric',
-    hour: 'numeric', minute: 'numeric',
-  }).formatToParts(guess)
-
-  const tzHour = Number(parts.find(p => p.type === 'hour').value)
-  const tzMin = Number(parts.find(p => p.type === 'minute').value)
-  const tzDay = Number(parts.find(p => p.type === 'day').value)
-
-  // The offset is the difference between what we wanted and what we got
-  const diffMinutes = (day - tzDay) * 1440 + (hour - tzHour) * 60 + (minute - tzMin)
-
-  return new Date(guess.getTime() + diffMinutes * 60000)
-}
-
-/**
- * Format a Date to "YYYY-MM-DD" using local time.
- */
-function formatLocalDate(d) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
-/**
- * Format a Date to "HH:MM" using local time.
- */
-function formatLocalTime(d) {
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-}
-
-/**
  * Convert a creator-timezone slot key to the viewer's local timezone.
  * "2026-04-07T16:00" (Europe/Budapest) → "2026-04-07T10:00" (America/New_York)
  */
 export function creatorSlotToViewerSlot(slotKey, creatorTz) {
   if (!creatorTz || creatorTz === viewerTz) return slotKey
   const [dateStr, timeStr] = slotKey.split('T')
-  const utc = wallClockToUTC(dateStr, timeStr, creatorTz)
-  return `${formatLocalDate(utc)}T${formatLocalTime(utc)}`
+  const [year, month, day] = dateStr.split('-').map(Number)
+  const [hour, minute] = timeStr.split(':').map(Number)
+
+  const dt = DateTime.fromObject(
+    { year, month, day, hour, minute },
+    { zone: creatorTz }
+  ).setZone(viewerTz)
+
+  const y = dt.year
+  const m = String(dt.month).padStart(2, '0')
+  const d = String(dt.day).padStart(2, '0')
+  const h = String(dt.hour).padStart(2, '0')
+  const min = String(dt.minute).padStart(2, '0')
+  return `${y}-${m}-${d}T${h}:${min}`
 }
 
 /**
@@ -79,48 +49,64 @@ export function creatorSlotToViewerSlot(slotKey, creatorTz) {
 export function viewerSlotToCreatorSlot(slotKey, creatorTz) {
   if (!creatorTz || creatorTz === viewerTz) return slotKey
   const [dateStr, timeStr] = slotKey.split('T')
-  // Convert from viewer's local to UTC, then to creator's timezone
-  const utc = wallClockToUTC(dateStr, timeStr, viewerTz)
+  const [year, month, day] = dateStr.split('-').map(Number)
+  const [hour, minute] = timeStr.split(':').map(Number)
 
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: creatorTz, hourCycle: 'h23',
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit',
-  }).formatToParts(utc)
+  const dt = DateTime.fromObject(
+    { year, month, day, hour, minute },
+    { zone: viewerTz }
+  ).setZone(creatorTz)
 
-  const y = parts.find(p => p.type === 'year').value
-  const m = parts.find(p => p.type === 'month').value
-  const d = parts.find(p => p.type === 'day').value
-  const h = parts.find(p => p.type === 'hour').value
-  const min = parts.find(p => p.type === 'minute').value
+  const y = dt.year
+  const m = String(dt.month).padStart(2, '0')
+  const d = String(dt.day).padStart(2, '0')
+  const h = String(dt.hour).padStart(2, '0')
+  const min = String(dt.minute).padStart(2, '0')
   return `${y}-${m}-${d}T${h}:${min}`
 }
 
 /**
  * Convert the poll's time range and dates from creator's TZ to viewer's local TZ.
- * Returns adjusted { dates, timeRange } for the grid to display.
  */
 export function convertPollTimesToViewer(dates, timeRange, creatorTz) {
   if (!creatorTz || creatorTz === viewerTz) {
     return { dates, timeRange }
   }
 
-  // Convert start and end times of the first date to get the viewer's time range
-  const firstDate = [...dates].sort()[0]
-  const startUtc = wallClockToUTC(firstDate, timeRange.start, creatorTz)
-  const endUtc = wallClockToUTC(firstDate, timeRange.end, creatorTz)
+  const sortedDates = [...dates].sort()
+  const firstDate = sortedDates[0]
+  const [year, month, day] = firstDate.split('-').map(Number)
+  const [startH, startM] = timeRange.start.split(':').map(Number)
+  const [endH, endM] = timeRange.end.split(':').map(Number)
 
-  const viewerStart = formatLocalTime(startUtc)
-  const viewerEnd = formatLocalTime(endUtc)
+  const startDt = DateTime.fromObject(
+    { year, month, day, hour: startH, minute: startM },
+    { zone: creatorTz }
+  ).setZone(viewerTz)
 
-  // Dates might shift — e.g. 01:00 Budapest = previous day 19:00 New York
-  // Collect all unique viewer dates across all creator dates
+  const endDt = DateTime.fromObject(
+    { year, month, day, hour: endH, minute: endM },
+    { zone: creatorTz }
+  ).setZone(viewerTz)
+
+  const viewerStart = `${String(startDt.hour).padStart(2, '0')}:${String(startDt.minute).padStart(2, '0')}`
+  const viewerEnd = `${String(endDt.hour).padStart(2, '0')}:${String(endDt.minute).padStart(2, '0')}`
+
+  // Dates might shift — collect all unique viewer dates
   const viewerDatesSet = new Set()
   for (const date of dates) {
-    const sUtc = wallClockToUTC(date, timeRange.start, creatorTz)
-    const eUtc = wallClockToUTC(date, timeRange.end, creatorTz)
-    viewerDatesSet.add(formatLocalDate(sUtc))
-    viewerDatesSet.add(formatLocalDate(eUtc))
+    const [y, m, d] = date.split('-').map(Number)
+    const sDt = DateTime.fromObject(
+      { year: y, month: m, day: d, hour: startH, minute: startM },
+      { zone: creatorTz }
+    ).setZone(viewerTz)
+    const eDt = DateTime.fromObject(
+      { year: y, month: m, day: d, hour: endH, minute: endM },
+      { zone: creatorTz }
+    ).setZone(viewerTz)
+
+    viewerDatesSet.add(`${sDt.year}-${String(sDt.month).padStart(2, '0')}-${String(sDt.day).padStart(2, '0')}`)
+    viewerDatesSet.add(`${eDt.year}-${String(eDt.month).padStart(2, '0')}-${String(eDt.day).padStart(2, '0')}`)
   }
 
   return {
