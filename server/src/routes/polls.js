@@ -171,6 +171,11 @@ router.put('/:did/:rkey', requireAuth, async (req, res, next) => {
       ...(slotMinutes !== undefined && { slotMinutes }),
     };
 
+    // Remove old field names that aren't in the lexicon schema
+    delete updatedRecord.earliestTime;
+    delete updatedRecord.latestTime;
+    delete updatedRecord.slotDuration;
+
     await xrpcCall(req.oauthSession, 'com.atproto.repo.putRecord', {
       repo: did,
       collection: POLL_COLLECTION,
