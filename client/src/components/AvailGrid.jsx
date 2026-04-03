@@ -93,6 +93,9 @@ export default function AvailGrid({
     [dates, timeRange, slotMinutes]
   )
 
+  if (busySlots.size > 0) console.log('[grid] busySlots:', busySlots.size, 'sample:', [...busySlots].slice(0, 3))
+  if (visibleDates.length > 0 && times.length > 0) console.log('[grid] first slot key:', `${visibleDates[0]}T${times[0]}`)
+
   const heatmap = useMemo(
     () => computeHeatmap(responses, dates, times),
     [responses, dates, times]
