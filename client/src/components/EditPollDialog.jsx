@@ -20,6 +20,14 @@ function parseDateStr(str) {
   return new Date(year, month - 1, day)
 }
 
+// Format Date to "YYYY-MM-DD" using LOCAL time (not UTC — avoids timezone shift)
+function formatDateLocal(d) {
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 export default function EditPollDialog({ open, onOpenChange, poll, did, rkey, onSaved }) {
   const [title, setTitle] = useState(poll.title || '')
   const [description, setDescription] = useState(poll.description || '')
@@ -51,7 +59,7 @@ export default function EditPollDialog({ open, onOpenChange, poll, did, rkey, on
     }
 
     setSaving(true)
-    const sortedDates = selectedDates.slice().sort((a, b) => a - b).map(d => d.toISOString().slice(0, 10))
+    const sortedDates = selectedDates.slice().sort((a, b) => a - b).map(formatDateLocal)
     console.log('[edit] saving dates:', sortedDates)
     try {
       await updatePoll(did, rkey, {

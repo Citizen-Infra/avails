@@ -1,5 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router'
+
+function formatDateLocal(d) {
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -50,7 +57,7 @@ export default function PollCreator() {
       const payload = {
         title: title.trim(),
         description: description.trim() || undefined,
-        dates: selectedDates.map(d => d.toISOString().slice(0, 10)),
+        dates: selectedDates.map(formatDateLocal),
         timeRange: { start: earliestTime, end: latestTime },
         slotMinutes: parseInt(slotDuration, 10),
         timezone: TIMEZONE,
