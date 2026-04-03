@@ -193,7 +193,7 @@ export default function SchedulingGrid({
                   <div
                     key={key}
                     className={cn(
-                      'avail-cell h-11',
+                      'avail-cell h-8',
                       rowIdx === 0 && 'rounded-t',
                       rowIdx === times.length - 1 && 'rounded-b',
                       !bgColor && !isPending && !isSelected && 'bg-muted/30',
