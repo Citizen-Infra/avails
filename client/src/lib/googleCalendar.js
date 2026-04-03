@@ -44,11 +44,6 @@ export async function fetchBusyTimes(accessToken, dates, timezone) {
     .filter(c => !c.deleted && !SKIP_PATTERNS.test(c.summary || ''))
     .map(c => c.id);
 
-  console.log('[avails] Calendars:', (calListData.items || []).map(c => `${c.summary} (${c.accessRole})`));
-  console.log('[avails] Querying', calendarIds.length, 'calendars (skipped holidays/birthdays)');
-
-  console.log('[avails] Found', calendarIds.length, 'calendars');
-
   // Fetch events from all calendars
   const allEvents = [];
   for (const calId of calendarIds) {
@@ -84,8 +79,6 @@ export async function fetchBusyTimes(accessToken, dates, timezone) {
     }
   }
 
-  console.log('[avails] Total events across all calendars:', allEvents.length);
-
   const busySlots = new Set();
   // Map slot key → event name (for showing on grid)
   const slotEvents = {};
@@ -115,6 +108,5 @@ export async function fetchBusyTimes(accessToken, dates, timezone) {
     }
   }
 
-  console.log('[avails] Busy slots:', busySlots.size, 'from', allEvents.length, 'events');
   return { busySlots, slotEvents };
 }

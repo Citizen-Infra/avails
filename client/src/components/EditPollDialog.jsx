@@ -34,7 +34,6 @@ export default function EditPollDialog({ open, onOpenChange, poll, did, rkey, on
 
   const initialDates = (poll.dates || []).map(parseDateStr)
   const [selectedDates, setSelectedDates] = useState(initialDates)
-  console.log('[edit] selectedDates:', selectedDates.length, selectedDates.map(d => d?.toISOString?.()?.slice(0,10)))
 
   const timeRange = poll.timeRange || { start: poll.earliestTime || '09:00', end: poll.latestTime || '17:00' }
   const [earliestTime, setEarliestTime] = useState(timeRange.start)
@@ -60,7 +59,6 @@ export default function EditPollDialog({ open, onOpenChange, poll, did, rkey, on
 
     setSaving(true)
     const sortedDates = selectedDates.slice().sort((a, b) => a - b).map(formatDateLocal)
-    console.log('[edit] saving dates:', sortedDates)
     try {
       await updatePoll(did, rkey, {
         title: title.trim(),
