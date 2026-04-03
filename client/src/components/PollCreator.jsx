@@ -115,7 +115,7 @@ export default function PollCreator() {
               onSelect={setSelectedDates}
               disabled={{ before: new Date() }}
               numberOfMonths={2}
-              className="rounded-lg border border-[#e8e5df] bg-white p-4 w-full [&_table]:w-full [&_td]:p-0 [&_th]:p-0 [&_.rdp-months]:flex [&_.rdp-months]:gap-6 [&_.rdp-month]:flex-1 [&_button]:h-10 [&_button]:w-full [&_button]:text-base"
+              className="rounded-lg border border-[#e8e5df] bg-white p-4 w-full [&_table]:w-full [&_td]:p-0 [&_th]:p-0 [&_.rdp-months]:flex [&_.rdp-months]:gap-6 [&_.rdp-month]:flex-1 [&_td_button]:h-10 [&_td_button]:w-full [&_td_button]:text-base"
             />
           </div>
           {selectedDates.length > 0 && (
