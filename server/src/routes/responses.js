@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { sessions } from '../lib/sessionStore.js';
+import { validateResponseCreate } from '../middleware/validate.js';
 import { incrementResponseCount } from '../lib/pollIndex.js';
 import { sendEmail } from '../lib/email.js';
 
@@ -44,7 +45,7 @@ async function xrpcCall(oauthSession, method, body) {
 
 // POST /api/polls/:did/:rkey/responses — submit availability response
 // Anonymous participants write to the CREATOR's PDS using the creator's stored session.
-router.post('/:did/:rkey/responses', async (req, res, next) => {
+router.post('/:did/:rkey/responses', validateResponseCreate, async (req, res, next) => {
   try {
     const { did, rkey } = req.params;
 
@@ -60,7 +61,7 @@ router.post('/:did/:rkey/responses', async (req, res, next) => {
     const record = {
       $type: RESPONSE_COLLECTION,
       pollUri,
-      ...req.body,
+      ...req.validatedBody,
       createdAt: new Date().toISOString(),
     };
 
@@ -121,7 +122,7 @@ router.put('/:did/:rkey/responses/:responseRkey', async (req, res, next) => {
     const record = {
       $type: RESPONSE_COLLECTION,
       pollUri,
-      ...req.body,
+      ...req.validatedBody,
       createdAt: new Date().toISOString(),
     };
 

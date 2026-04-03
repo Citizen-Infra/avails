@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
+import { validatePollCreate, validatePollUpdate } from '../middleware/validate.js';
 import { indexPoll, updatePollStatus, removePoll, listByCommunity } from '../lib/pollIndex.js';
 import { generateIcs } from '../lib/ical.js';
 import { sendEmail } from '../lib/email.js';
@@ -38,11 +39,11 @@ async function xrpcCall(oauthSession, method, body) {
 }
 
 // POST / — create poll (authenticated)
-router.post('/', requireAuth, async (req, res, next) => {
+router.post('/', requireAuth, validatePollCreate, async (req, res, next) => {
   try {
     const record = {
       $type: POLL_COLLECTION,
-      ...req.body,
+      ...req.validatedBody,
       createdAt: new Date().toISOString(),
       status: 'open',
     };
@@ -142,7 +143,7 @@ router.get('/:did/:rkey', async (req, res, next) => {
 });
 
 // PUT /:did/:rkey — update poll fields (creator only, open polls only)
-router.put('/:did/:rkey', requireAuth, async (req, res, next) => {
+router.put('/:did/:rkey', requireAuth, validatePollUpdate, async (req, res, next) => {
   try {
     const { did, rkey } = req.params;
 
@@ -160,15 +161,10 @@ router.put('/:did/:rkey', requireAuth, async (req, res, next) => {
       return res.status(400).json({ error: 'Cannot edit a finalized poll' });
     }
 
-    // Allow editing: title, description, dates, timeRange, slotMinutes
-    const { title, description, dates, timeRange, slotMinutes } = req.body;
+    // Merge validated fields into existing record
     const updatedRecord = {
       ...existingData.value,
-      ...(title !== undefined && { title }),
-      ...(description !== undefined && { description }),
-      ...(dates !== undefined && { dates }),
-      ...(timeRange !== undefined && { timeRange }),
-      ...(slotMinutes !== undefined && { slotMinutes }),
+      ...req.validatedBody,
     };
 
     // Remove old field names that aren't in the lexicon schema
