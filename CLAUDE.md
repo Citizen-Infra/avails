@@ -64,6 +64,22 @@ There is no database. ATProto PDS is the data store:
 - **CabbageMeet-style mode separation in grid** — viewing mode shows heatmap only, editing mode shows my slots only. Never mix the two (causes visual double-counting).
 - **`@atproto/lex` generated TypeScript** — server is plain JS, so generated TS in `server/src/lexicons/` is for type reference only. Server uses raw XRPC fetch calls.
 - **Google Calendar** — queries all owner/writer calendars (not just primary). Skips holidays/birthdays by name. Filters out transparent (show as available) and declined events.
+- **Poll edit strips old field names** — when editing a poll created with `earliestTime`/`latestTime`/`slotDuration`, the PUT handler removes these before writing to PDS (lexicon rejects unknown fields).
+
+### OpenMeet integration
+
+[OpenMeet](https://github.com/OpenMeet-Team/openmeet-api) is an open-source event platform on ATProto. Two integration points:
+
+1. **Event publishing** (`POST /api/openmeet/publish`): creates an OpenMeet event when a meeting is scheduled. Uses their integration API (`POST /api/integration/events`) with `source.type: "bluesky"`.
+
+2. **Calendar availability** (`POST /api/openmeet/availability`): fetches the user's calendar events from OpenMeet. Proper ATProto service auth flow:
+   - Call `com.atproto.server.getServiceAuth` on user's PDS with `aud: did:web:api.openmeet.net`, `lxm: net.openmeet.auth`
+   - PDS signs a JWT
+   - Exchange JWT at OpenMeet's `POST /api/v1/auth/atproto/service-auth`
+   - Use returned bearer token for calendar APIs
+   - **Currently blocked** by OpenMeet 500 error — reported as [openmeet-api#573](https://github.com/OpenMeet-Team/openmeet-api/issues/573)
+
+Calendar priority chain: OpenMeet (auto for signed-in users) → Google Calendar (manual connect fallback) → nothing (anonymous).
 
 ## Client architecture
 
@@ -71,10 +87,12 @@ There is no database. ATProto PDS is the data store:
 - `Landing.jsx` — hero (unauthenticated) or My Polls + PollCreator (authenticated)
 - `PollView.jsx` — main poll page: grid + responses + scheduling
 - `About.jsx` — Citizen Infra ecosystem info
+- `Privacy.jsx`, `Terms.jsx` — legal pages (required for Google OAuth consent screen)
 
 ### Key components
 - `AvailGrid.jsx` — drag-to-paint availability grid. Rectangle selection, commit-on-pointerup, document-level listener. Heatmap from responses, hover tooltips, busy slots overlay.
 - `SchedulingGrid.jsx` — separate grid for creator scheduling mode. Single-column vertical drag, teal preview. Completely independent from AvailGrid to avoid render loop issues.
+- `GuestModal.jsx` — "Continue as guest" dialog: name + optional email. Shown when anonymous user clicks Save after painting.
 - `PollCreator.jsx` — single-page poll creation form
 - `ResponsePanel.jsx` — sidebar with participant list, bidirectional hover sync with grid
 

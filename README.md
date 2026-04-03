@@ -35,6 +35,7 @@ You don't need to know or care about any of this to use avails. It works like an
 - **Schedule on the grid** — creator selects a time block directly on the heatmap, seeing everyone's availability while choosing
 - **Edit and delete** — participants can edit or delete their availability after submitting
 - **Mobile responsive** — grid adapts to small screens with horizontal scroll
+- **OpenMeet integration** — publish scheduled meetings as [OpenMeet](https://platform.openmeet.net) events. Calendar availability from OpenMeet (in progress — [openmeet-api#573](https://github.com/OpenMeet-Team/openmeet-api/issues/573))
 
 ## Stack
 
@@ -92,6 +93,13 @@ VITE_GOOGLE_CLIENT_ID=123456789-abc.apps.googleusercontent.com
 
 Note: `VITE_` prefix means it's baked into the client build — needs a redeploy after changing.
 
+**Google OAuth consent screen requirements:**
+- Set to "External" for public access
+- Privacy policy URL: `https://avails.zhgnv.com/privacy`
+- Terms URL: `https://avails.zhgnv.com/terms`
+- Verify domain ownership via Google Search Console
+- **To go to production:** the `calendar.readonly` scope requires a demo video showing how the app uses calendar data. Until approved, only manually added test users can connect their calendar. Record a screen capture of: open poll → click Connect Google Calendar → grant access → busy times appear on grid.
+
 ## ATProto Lexicons
 
 Two custom record types in [`lexicons/`](lexicons/):
@@ -127,21 +135,20 @@ Avails is part of the [Citizen Infrastructure](https://github.com/Citizen-Infra)
 
 ### Roadmap
 
-**Now — get it working:**
-- [End-to-end testing](https://github.com/Citizen-Infra/avails/issues/4) of the full ATProto flow (sign in, create poll, respond, finalize)
-- [Polish PollCreator and PollView styling](https://github.com/Citizen-Infra/avails/issues/5) to match the landing page design
-- [Grid UX improvements](https://github.com/Citizen-Infra/avails/issues/1) — better borders, cursor states, hover feedback
+**Now — hardening:**
+- [Server-side input validation](https://github.com/Citizen-Infra/avails/issues/27) for poll creation and responses
+- [Health check with PDS verify](https://github.com/Citizen-Infra/avails/issues/25)
 
-**Next — better calendar integration:**
-- [Show calendar event names on the grid](https://github.com/Citizen-Infra/avails/issues/2) instead of just hatching busy slots
-- [Server-side calendar OAuth](https://github.com/Citizen-Infra/avails/issues/6) so tokens persist across sessions
+**Next — OpenMeet integration:**
+- [OpenMeet as calendar layer](https://github.com/Citizen-Infra/avails/issues/32) — replace direct Google Calendar with OpenMeet's availability API (blocked by [openmeet-api#573](https://github.com/OpenMeet-Team/openmeet-api/issues/573))
+- [OpenMeet event publishing](https://github.com/Citizen-Infra/avails/issues/31) — auto-create events on schedule
+- [Server-side calendar OAuth](https://github.com/Citizen-Infra/avails/issues/6) as fallback for users without OpenMeet
 - [Create calendar events directly](https://github.com/Citizen-Infra/avails/issues/7) via API on finalize (not just .ics email)
-- [Microsoft/Outlook calendar support](https://github.com/Citizen-Infra/avails/issues/3)
 
-**Later — ecosystem integration:**
+**Later — ecosystem:**
 - [Telegram bot](https://github.com/Citizen-Infra/avails/issues/9) for reminders and invites (Railway service #2)
+- [Video conferencing links](https://github.com/Citizen-Infra/avails/issues/19) — Zoom, Google Meet, Jitsi
 - [Dear Neighbors integration](https://github.com/Citizen-Infra/avails/issues/10) — poll banners in DN participation feed
-- [CI pipeline](https://github.com/Citizen-Infra/avails/issues/8) with GitHub Actions
 
 **Endgame — [instant scheduling from chat](https://github.com/Citizen-Infra/avails/issues/11):**
 
