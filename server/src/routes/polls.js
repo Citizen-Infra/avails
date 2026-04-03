@@ -176,13 +176,19 @@ router.put('/:did/:rkey', requireAuth, async (req, res, next) => {
     delete updatedRecord.latestTime;
     delete updatedRecord.slotDuration;
 
-    await xrpcCall(req.oauthSession, 'com.atproto.repo.putRecord', {
-      repo: did,
-      collection: POLL_COLLECTION,
-      rkey,
-      record: updatedRecord,
-      swapRecord: existingData.cid,
-    });
+    console.log('[polls] PUT record fields:', Object.keys(updatedRecord));
+    try {
+      await xrpcCall(req.oauthSession, 'com.atproto.repo.putRecord', {
+        repo: did,
+        collection: POLL_COLLECTION,
+        rkey,
+        record: updatedRecord,
+        swapRecord: existingData.cid,
+      });
+    } catch (putErr) {
+      console.error('[polls] putRecord failed:', putErr.message);
+      throw putErr;
+    }
 
     // Update in-memory index if title changed
     if (title !== undefined) {
