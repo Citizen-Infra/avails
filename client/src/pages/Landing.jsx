@@ -1,4 +1,5 @@
 import AuthButton from '@/components/AuthButton'
+import Logo from '@/components/Logo'
 import PollCreator from '@/components/PollCreator'
 import { Card, CardContent } from '@/components/ui/card'
 import { useEffect, useState } from 'react'
@@ -74,14 +75,7 @@ export default function Landing() {
       <header className="border-b border-[#e8e5df]">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
           <a href="/" className="flex items-center gap-2 shrink-0">
-            <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <rect x="2" y="2" width="5" height="5" rx="1" fill="#faf9f6" opacity="0.9"/>
-                <rect x="9" y="2" width="5" height="5" rx="1" fill="#faf9f6" opacity="0.6"/>
-                <rect x="2" y="9" width="5" height="5" rx="1" fill="#faf9f6" opacity="0.6"/>
-                <rect x="9" y="9" width="5" height="5" rx="1" fill="#faf9f6" opacity="0.3"/>
-              </svg>
-            </div>
+            <Logo size={32} />
             <span className="text-xl font-bold tracking-tight text-[#1a1a1a]">avails</span>
           </a>
           <div className="flex items-center gap-3 sm:gap-6 min-w-0">

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head><style>
+body { margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; background: #faf9f6; }
+.icon { width: 512px; height: 512px; display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr); gap: 12px; padding: 48px; background: #1a1a1a; border-radius: 96px; }
+.cell { border-radius: 16px; }
+/* Heatmap pattern — teal at varying opacities like the availability grid */
+.c1 { background: rgba(13, 148, 136, 0.25); }
+.c2 { background: rgba(13, 148, 136, 0.50); }
+.c3 { background: rgba(13, 148, 136, 0.75); }
+.c4 { background: rgba(13, 148, 136, 1.00); }
+.c0 { background: rgba(255, 255, 255, 0.06); }
+</style></head>
+<body>
+<div class="icon">
+  <!-- Row 1: sparse availability -->
+  <div class="cell c0"></div><div class="cell c1"></div><div class="cell c0"></div><div class="cell c1"></div>
+  <!-- Row 2: moderate -->
+  <div class="cell c1"></div><div class="cell c2"></div><div class="cell c3"></div><div class="cell c1"></div>
+  <!-- Row 3: peak overlap -->
+  <div class="cell c0"></div><div class="cell c3"></div><div class="cell c4"></div><div class="cell c2"></div>
+  <!-- Row 4: sparse -->
+  <div class="cell c0"></div><div class="cell c1"></div><div class="cell c2"></div><div class="cell c0"></div>
+</div>
+</body>
+</html>

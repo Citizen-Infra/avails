@@ -1,3 +1,4 @@
+import Logo from '@/components/Logo'
 import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'react-router'
 import { getPoll, getSession, submitResponse, updateResponse, finalizePoll, deleteResponse, publishToOpenMeet, getOpenMeetAvailability } from '@/lib/api'
@@ -373,14 +374,7 @@ export default function PollView() {
       <header className="border-b border-[#e8e5df]">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
           <a href="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <rect x="2" y="2" width="5" height="5" rx="1" fill="#faf9f6" opacity="0.9"/>
-                <rect x="9" y="2" width="5" height="5" rx="1" fill="#faf9f6" opacity="0.6"/>
-                <rect x="2" y="9" width="5" height="5" rx="1" fill="#faf9f6" opacity="0.6"/>
-                <rect x="9" y="9" width="5" height="5" rx="1" fill="#faf9f6" opacity="0.3"/>
-              </svg>
-            </div>
+            <Logo size={32} />
             <span className="text-xl font-bold tracking-tight text-[#1a1a1a]">avails</span>
           </a>
           <nav className="flex items-center gap-6 text-base text-[#6b6560]">
