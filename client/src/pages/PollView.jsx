@@ -446,12 +446,12 @@ export default function PollView() {
                     )}
                     {session?.did && (
                       <a
-                        href="https://platform.openmeet.net/settings"
+                        href="https://platform.openmeet.net"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-sm text-[#6b6560] hover:text-[#1a1a1a] underline underline-offset-2"
                       >
-                        Connect via OpenMeet
+                        Or connect via OpenMeet
                       </a>
                     )}
                   </>
