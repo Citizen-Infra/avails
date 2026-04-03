@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'react-router'
 import { getPoll, getSession, submitResponse, updateResponse, finalizePoll, deleteResponse, publishToOpenMeet, getOpenMeetAvailability } from '@/lib/api'
 import { isGoogleConfigured, requestGoogleAccess, fetchBusyTimes } from '@/lib/googleCalendar'
+import { convertPollTimesToViewer, convertSlotsToViewer, convertSlotsToCreator, getViewerTimezone, needsConversion } from '@/lib/timezone'
 import { Button } from '@/components/ui/button'
 import AvailGrid from '@/components/AvailGrid'
 import SchedulingGrid from '@/components/SchedulingGrid'
@@ -167,7 +168,8 @@ export default function PollView() {
         const rk = myResponse.uri?.split('/').pop()
         if (rk) {
           setResponseRkey(rk)
-          setMySlots(new Set(myResponse.slots))
+          const viewerSlots = convertSlotsToViewer(myResponse.slots, poll?.timezone)
+          setMySlots(new Set(viewerSlots))
           setSubmitted(true)
         }
       }
@@ -197,10 +199,12 @@ export default function PollView() {
     setSubmitting(true)
     setSubmitError(null)
     try {
+      // Convert viewer's local slot keys to creator's timezone for storage
+      const creatorSlots = convertSlotsToCreator(mySlots, poll?.timezone)
       const result = await submitResponse(did, rkey, {
         name: info.name,
         email: info.email,
-        slots: Array.from(mySlots),
+        slots: creatorSlots,
       })
       if (result.responseRkey) {
         setResponseRkey(result.responseRkey)
@@ -227,10 +231,11 @@ export default function PollView() {
     setSubmitting(true)
     setSubmitError(null)
     try {
+      const creatorSlots = convertSlotsToCreator(mySlots, poll?.timezone)
       await updateResponse(did, rkey, responseRkey, {
         name: participant.name,
         email: participant.email,
-        slots: Array.from(mySlots),
+        slots: creatorSlots,
       })
       setEditing(false)
       setSubmitted(true)
@@ -245,11 +250,12 @@ export default function PollView() {
   }
 
   function handleStartEdit() {
-    // Load existing slots into the grid for editing
+    // Load existing slots into the grid for editing (convert from creator's TZ to viewer's TZ)
     if (participant?.name) {
       const existing = responses.find(r => r.name === participant.name)
       if (existing) {
-        setMySlots(new Set(existing.slots))
+        const viewerSlots = convertSlotsToViewer(existing.slots, poll?.timezone)
+        setMySlots(new Set(viewerSlots))
       }
     }
     setEditing(true)
@@ -338,12 +344,24 @@ export default function PollView() {
 
   const isOpen = !poll.finalTime
   const isCreator = session?.did === did
+  const creatorTz = poll.timezone
+  const showTzNotice = needsConversion(creatorTz)
+
+  // Convert poll times and responses to viewer's timezone
+  const rawTimeRange = poll.timeRange || (poll.earliestTime ? { start: poll.earliestTime, end: poll.latestTime } : { start: '09:00', end: '17:00' })
+  const converted = convertPollTimesToViewer(poll.dates || [], rawTimeRange, creatorTz)
+
+  // Convert response slot keys to viewer's timezone
+  const viewerResponses = responses.map(r => ({
+    ...r,
+    slots: convertSlotsToViewer(r.slots, creatorTz),
+  }))
 
   const gridProps = {
-    dates: poll.dates || [],
-    timeRange: poll.timeRange || (poll.earliestTime ? { start: poll.earliestTime, end: poll.latestTime } : { start: '09:00', end: '17:00' }),
+    dates: converted.dates,
+    timeRange: converted.timeRange,
     slotMinutes: poll.slotMinutes || poll.slotDuration || 30,
-    responses,
+    responses: viewerResponses,
     busySlots,
     slotEvents,
     highlightName,

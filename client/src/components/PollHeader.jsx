@@ -35,7 +35,11 @@ export default function PollHeader({ poll, did, rkey, isCreator, onEditClick, on
 
       <div className="flex items-center gap-3 flex-wrap text-base text-[#a09a94]">
         {poll.timezone && (
-          <span>{poll.timezone}</span>
+          <span>
+            {Intl.DateTimeFormat().resolvedOptions().timeZone === poll.timezone
+              ? poll.timezone
+              : `Times shown in your timezone (${Intl.DateTimeFormat().resolvedOptions().timeZone})`}
+          </span>
         )}
         {poll.community && (
           <span className="px-3 py-1 rounded-full border border-[#e8e5df] text-sm font-medium text-[#6b6560]">{poll.community}</span>
