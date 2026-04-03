@@ -159,7 +159,10 @@ export default function SchedulingGrid({
       >
         <div
           className="grid w-full"
-          style={{ gridTemplateColumns: `5rem repeat(${dates.length}, minmax(8rem, 1fr))` }}
+          style={{
+            gridTemplateColumns: `clamp(3rem, 12vw, 5rem) repeat(${dates.length}, minmax(clamp(3rem, 15vw, 8rem), 1fr))`,
+            minWidth: `${3 + dates.length * 3.5}rem`,
+          }}
         >
           {/* Header */}
           <div />
@@ -190,7 +193,7 @@ export default function SchedulingGrid({
                   <div
                     key={key}
                     className={cn(
-                      'avail-cell h-10',
+                      'avail-cell h-11',
                       rowIdx === 0 && 'rounded-t',
                       rowIdx === times.length - 1 && 'rounded-b',
                       !bgColor && !isPending && !isSelected && 'bg-muted/30',

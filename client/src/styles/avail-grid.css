@@ -43,6 +43,19 @@
   background-color: rgba(34, 197, 94, 0.7) !important;
 }
 
+/* Scroll hint — gradient fade on right edge when grid overflows */
+.avail-scroll-hint::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 2rem;
+  background: linear-gradient(to right, transparent, #faf9f6);
+  pointer-events: none;
+  z-index: 2;
+}
+
 /* Drag cursor */
 .avail-grid--dragging {
   cursor: crosshair;

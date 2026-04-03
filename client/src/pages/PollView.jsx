@@ -263,7 +263,7 @@ export default function PollView() {
     <div className="min-h-screen bg-[#faf9f6]">
       {/* Header */}
       <header className="border-b border-[#e8e5df]">
-        <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
           <a href="/" className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -281,7 +281,7 @@ export default function PollView() {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-10 space-y-6">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-6">
         <PollHeader
           poll={poll}
           did={did}

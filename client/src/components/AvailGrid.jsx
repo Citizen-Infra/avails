@@ -187,13 +187,16 @@ export default function AvailGrid({
     <TooltipProvider delayDuration={300}>
       <div
         ref={containerRef}
-        className={cn('select-none overflow-x-auto', dragState && 'avail-grid--dragging')}
+        className={cn('select-none overflow-x-auto relative', dragState && 'avail-grid--dragging', dates.length > 3 && 'avail-scroll-hint sm:[&::after]:hidden')}
         style={{ touchAction: 'none' }}
         onPointerLeave={() => { if (!downCell.current) onHoverSlot?.(null) }}
       >
         <div
-          className="grid w-full rounded-lg border border-[#d8d4cf] overflow-hidden"
-          style={{ gridTemplateColumns: `5rem repeat(${dates.length}, minmax(8rem, 1fr))` }}
+          className="grid rounded-lg border border-[#d8d4cf] overflow-hidden"
+          style={{
+            gridTemplateColumns: `clamp(3rem, 12vw, 5rem) repeat(${dates.length}, minmax(clamp(3rem, 15vw, 8rem), 1fr))`,
+            minWidth: `${3 + dates.length * 3.5}rem`,
+          }}
         >
           {/* Header row */}
           <div /> {/* empty corner */}
@@ -248,7 +251,7 @@ export default function AvailGrid({
                   <div
                     key={key}
                     className={cn(
-                      'avail-cell h-10 cursor-pointer overflow-hidden',
+                      'avail-cell h-11 cursor-pointer overflow-hidden',
                       rowIdx === 0 && 'rounded-t',
                       rowIdx === times.length - 1 && 'rounded-b',
                       readOnly && 'avail-cell--readonly cursor-default',

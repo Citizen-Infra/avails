@@ -72,8 +72,8 @@ export default function Landing() {
     <div className="min-h-screen bg-[#faf9f6]">
       {/* Header */}
       <header className="border-b border-[#e8e5df]">
-        <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
-          <a href="/" className="flex items-center gap-2.5">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+          <a href="/" className="flex items-center gap-2 shrink-0">
             <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <rect x="2" y="2" width="5" height="5" rx="1" fill="#faf9f6" opacity="0.9"/>
@@ -84,10 +84,8 @@ export default function Landing() {
             </div>
             <span className="text-xl font-bold tracking-tight text-[#1a1a1a]">avails</span>
           </a>
-          <div className="flex items-center gap-6">
-            <nav className="flex items-center gap-6 text-base text-[#6b6560]">
-              <a href="/about" className="hover:text-[#1a1a1a] transition-colors">About</a>
-            </nav>
+          <div className="flex items-center gap-3 sm:gap-6 min-w-0">
+            <a href="/about" className="hidden sm:block text-base text-[#6b6560] hover:text-[#1a1a1a] transition-colors">About</a>
             <AuthButton />
           </div>
         </div>
@@ -161,7 +159,7 @@ export default function Landing() {
                 Open source
               </a>
 
-              <h1 className="text-6xl leading-[1.1] font-bold text-[#1a1a1a] tracking-tight">
+              <h1 className="text-4xl sm:text-6xl leading-[1.1] font-bold text-[#1a1a1a] tracking-tight">
                 Find a time<br/>
                 that works<br/>
                 for everyone
@@ -176,7 +174,7 @@ export default function Landing() {
                 <AuthButton />
               </div>
 
-              <div className="flex items-center gap-8 pt-6 text-base text-[#6b6560]">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-8 pt-6 text-base text-[#6b6560]">
                 <div className="flex items-center gap-2.5">
                   <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="#0d9488" strokeWidth="1.5">
                     <rect x="2" y="2" width="12" height="12" rx="2"/>
@@ -205,9 +203,9 @@ export default function Landing() {
 
       {/* Footer */}
       <footer className="border-t border-[#e8e5df] mt-auto">
-        <div className="max-w-4xl mx-auto px-6 py-6 flex items-center justify-between text-base text-[#a09a94]">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-sm sm:text-base text-[#a09a94]">
           <span>Built on ATProto</span>
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
             <a href="/about" className="hover:text-[#6b6560] transition-colors">About</a>
             <a href="/privacy" className="hover:text-[#6b6560] transition-colors">Privacy</a>
             <a href="/terms" className="hover:text-[#6b6560] transition-colors">Terms</a>
