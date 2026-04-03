@@ -38,12 +38,9 @@
   pointer-events: none;
 }
 
-/* My selected slots — solid teal fill at higher opacity than heatmap */
+/* My selected slots (editing mode) — solid green, same hue as heatmap at ~70% */
 .avail-cell--mine {
-  background-color: rgba(13, 148, 136, 0.45) !important;
-}
-.avail-cell--mine span {
-  display: none;
+  background-color: rgba(34, 197, 94, 0.7) !important;
 }
 
 /* Drag cursor */

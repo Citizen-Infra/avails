@@ -252,22 +252,31 @@ export default function AvailGrid({
                       rowIdx === 0 && 'rounded-t',
                       rowIdx === times.length - 1 && 'rounded-b',
                       readOnly && 'avail-cell--readonly cursor-default',
-                      // Pending states (drag preview) — highest priority
+                      // Drag preview — highest priority
                       isPendingAdd && 'avail-cell--pending-add',
                       isPendingRemove && 'avail-cell--pending-remove',
-                      // Mine — only show teal during editing, not in results view
-                      !isPendingAdd && !isPendingRemove && isMine && !readOnly && 'avail-cell--mine',
-                      // Busy — rose block with event names
-                      !isPendingAdd && !isPendingRemove && isBusy && 'avail-cell--busy',
-                      // Highlighted respondent
-                      isHighlighted && !isBusy && 'avail-cell--highlighted',
-                      // Empty — no heatmap, no busy, no pending
-                      !bgColor && !isPendingAdd && !isPendingRemove && !isBusy && !(isMine && !readOnly) && 'avail-cell--empty',
+                      // Mutually exclusive modes (CabbageMeet pattern):
+                      !isPendingAdd && !isPendingRemove && (
+                        readOnly
+                          // VIEWING MODE: heatmap only, no personal overlay
+                          ? (isBusy ? 'avail-cell--busy'
+                            : isHighlighted ? 'avail-cell--highlighted'
+                            : !bgColor ? 'avail-cell--empty'
+                            : null)
+                          // EDITING MODE: my selection only, no heatmap
+                          : (isMine ? 'avail-cell--mine'
+                            : isBusy ? 'avail-cell--busy'
+                            : 'avail-cell--empty')
+                      ),
                     )}
                     style={{
                       backgroundColor: isPendingAdd || isPendingRemove
                         ? undefined
-                        : (isBusy ? '#fce4e4' : bgColor),
+                        : readOnly
+                          // Viewing: show heatmap alpha OR busy rose
+                          ? (isBusy ? '#fce4e4' : bgColor)
+                          // Editing: no heatmap, just busy rose
+                          : (isBusy && !isMine ? '#fce4e4' : undefined),
                     }}
                     onPointerDown={(e) => handlePointerDown(e, rowIdx, colIdx)}
                     onPointerEnter={(e) => handlePointerEnter(e, rowIdx, colIdx)}
