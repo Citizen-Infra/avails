@@ -69,6 +69,17 @@ export default function AvailGrid({
 }) {
   const containerRef = useRef(null)
 
+  // Date pagination — show max 7 dates at a time with arrows
+  const MAX_VISIBLE = 7
+  const [page, setPage] = useState(0)
+  const totalPages = Math.ceil(dates.length / MAX_VISIBLE)
+  const visibleDates = useMemo(
+    () => dates.slice(page * MAX_VISIBLE, page * MAX_VISIBLE + MAX_VISIBLE),
+    [dates, page]
+  )
+  const hasLeft = page > 0
+  const hasRight = page < totalPages - 1
+
   // Drag state refs (not state — avoid re-renders on every pointermove)
   const downCell = useRef(null)   // { row, col } | null
   const curCell = useRef(null)    // { row, col } | null
@@ -105,21 +116,21 @@ export default function AvailGrid({
       const keys = new Set()
       for (let r = minRow; r <= maxRow; r++) {
         for (let c = minCol; c <= maxCol; c++) {
-          if (r < times.length && c < dates.length) {
-            keys.add(`${dates[c]}T${times[r]}`)
+          if (r < times.length && c < visibleDates.length) {
+            keys.add(`${visibleDates[c]}T${times[r]}`)
           }
         }
       }
       return keys
     },
-    [dates, times]
+    [visibleDates, times]
   )
 
   const handlePointerDown = useCallback(
     (e, row, col) => {
       if (readOnly) return
       e.preventDefault()
-      const key = `${dates[col]}T${times[row]}`
+      const key = `${visibleDates[col]}T${times[row]}`
       const wasSelected = mySlots.has(key)
       downCell.current = { row, col }
       curCell.current = { row, col }
@@ -127,24 +138,22 @@ export default function AvailGrid({
       const pending = new Set([key])
       setDragState({ pending, removing: wasSelected })
     },
-    [readOnly, mySlots, dates, times]
+    [readOnly, mySlots, visibleDates, times]
   )
 
   const handlePointerEnter = useCallback(
     (e, row, col) => {
       if (downCell.current) {
-        // Drag in progress — update selection rectangle
         if (readOnly) return
         curCell.current = { row, col }
         const pending = computePendingKeys(downCell.current, { row, col })
         setDragState({ pending, removing: downCellWasSelected.current })
       } else {
-        // Not dragging — fire hover slot callback
-        const key = `${dates[col]}T${times[row]}`
+        const key = `${visibleDates[col]}T${times[row]}`
         onHoverSlot?.(key)
       }
     },
-    [readOnly, computePendingKeys, dates, times, onHoverSlot]
+    [readOnly, computePendingKeys, visibleDates, times, onHoverSlot]
   )
 
   // Commit on pointerup — attached to document so it fires even outside the grid
@@ -181,26 +190,47 @@ export default function AvailGrid({
     return `${count}/${totalRespondents} available — ${names.join(', ')}`
   }
 
-  const colCount = dates.length + 1 // 1 for time labels
-
   return (
     <TooltipProvider delayDuration={300}>
-      <div
-        ref={containerRef}
-        className={cn('select-none overflow-x-auto relative', dragState && 'avail-grid--dragging', dates.length > 3 && 'avail-scroll-hint sm:[&::after]:hidden')}
-        style={{ touchAction: 'none' }}
-        onPointerLeave={() => { if (!downCell.current) onHoverSlot?.(null) }}
-      >
+      <div className="space-y-2">
+        {/* Pagination arrows + month header */}
+        {dates.length > MAX_VISIBLE && (
+          <div className="flex items-center justify-between px-1">
+            <button
+              onClick={() => setPage(p => p - 1)}
+              disabled={!hasLeft}
+              className={cn('p-1.5 rounded-lg transition-colors', hasLeft ? 'text-[#1a1a1a] hover:bg-[#f0eeea]' : 'text-[#d8d4cf] cursor-default')}
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 4l-6 6 6 6"/></svg>
+            </button>
+            <span className="text-sm font-medium text-[#6b6560]">
+              {formatDate(visibleDates[0]).monthDay} — {formatDate(visibleDates[visibleDates.length - 1]).monthDay}
+            </span>
+            <button
+              onClick={() => setPage(p => p + 1)}
+              disabled={!hasRight}
+              className={cn('p-1.5 rounded-lg transition-colors', hasRight ? 'text-[#1a1a1a] hover:bg-[#f0eeea]' : 'text-[#d8d4cf] cursor-default')}
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 4l6 6-6 6"/></svg>
+            </button>
+          </div>
+        )}
+
         <div
-          className="grid rounded-lg border border-[#d8d4cf] overflow-hidden"
-          style={{
-            gridTemplateColumns: `clamp(3rem, 12vw, 5rem) repeat(${dates.length}, minmax(clamp(3rem, 15vw, 8rem), 1fr))`,
-            minWidth: `${3 + dates.length * 3.5}rem`,
-          }}
+          ref={containerRef}
+          className={cn('select-none relative overflow-x-auto', dragState && 'avail-grid--dragging')}
+          style={{ touchAction: 'none' }}
+          onPointerLeave={() => { if (!downCell.current) onHoverSlot?.(null) }}
         >
-          {/* Header row */}
-          <div /> {/* empty corner */}
-          {dates.map((date) => {
+          <div
+            className="grid w-full rounded-lg border border-[#d8d4cf] overflow-hidden"
+            style={{
+              gridTemplateColumns: `clamp(3rem, 12vw, 5rem) repeat(${visibleDates.length}, 1fr)`,
+            }}
+          >
+            {/* Header row */}
+            <div /> {/* empty corner */}
+            {visibleDates.map((date) => {
             const { dayName, monthDay } = formatDate(date)
             return (
               <div
@@ -229,7 +259,7 @@ export default function AvailGrid({
               </div>
 
               {/* Slot cells for each date */}
-              {dates.map((date, colIdx) => {
+              {visibleDates.map((date, colIdx) => {
                 const key = `${date}T${time}`
                 const isMine = mySlots.has(key)
                 const isBusy = busySlots.has(key)
@@ -305,6 +335,7 @@ export default function AvailGrid({
               })}
             </>
           ))}
+          </div>
         </div>
       </div>
     </TooltipProvider>
