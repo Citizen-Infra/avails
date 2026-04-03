@@ -47,12 +47,11 @@ function computeHeatmap(responses, dates, times) {
   return map
 }
 
-// Heatmap color: single green, alpha scales from 15% (1 person) to 85% (everyone)
-// Like CabbageMeet: rgba(primary, 0.2 + 0.8 * ratio)
+// Heatmap: single green, alpha 20% (1 person) → 90% (everyone)
 function slotColor(count, total) {
   if (!count || !total) return null
-  const alpha = 0.15 + 0.7 * (count / total)
-  return `rgba(34, 197, 94, ${alpha})` // green-500
+  const alpha = 0.2 + 0.7 * (count / total)
+  return `rgba(34, 197, 94, ${alpha})`
 }
 
 export default function AvailGrid({
@@ -256,20 +255,19 @@ export default function AvailGrid({
                       // Pending states (drag preview) — highest priority
                       isPendingAdd && 'avail-cell--pending-add',
                       isPendingRemove && 'avail-cell--pending-remove',
-                      // Mine — teal outline on top of heatmap
-                      !isPendingAdd && !isPendingRemove && isMine && 'avail-cell--mine',
+                      // Mine — only show teal during editing, not in results view
+                      !isPendingAdd && !isPendingRemove && isMine && !readOnly && 'avail-cell--mine',
                       // Busy — rose block with event names
-                      !isPendingAdd && !isPendingRemove && isBusy && !isMine && 'avail-cell--busy',
+                      !isPendingAdd && !isPendingRemove && isBusy && 'avail-cell--busy',
                       // Highlighted respondent
-                      isHighlighted && !isMine && !isBusy && 'avail-cell--highlighted',
-                      // Empty — no heatmap, no mine, no busy
-                      !isMine && !bgColor && !isPendingAdd && !isPendingRemove && !isBusy && 'avail-cell--empty',
+                      isHighlighted && !isBusy && 'avail-cell--highlighted',
+                      // Empty — no heatmap, no busy, no pending
+                      !bgColor && !isPendingAdd && !isPendingRemove && !isBusy && !(isMine && !readOnly) && 'avail-cell--empty',
                     )}
                     style={{
-                      // Heatmap as base layer (green alpha) — visible under mine outline
                       backgroundColor: isPendingAdd || isPendingRemove
                         ? undefined
-                        : (isBusy && !isMine ? '#fce4e4' : bgColor),
+                        : (isBusy ? '#fce4e4' : bgColor),
                     }}
                     onPointerDown={(e) => handlePointerDown(e, rowIdx, colIdx)}
                     onPointerEnter={(e) => handlePointerEnter(e, rowIdx, colIdx)}
