@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Avails** — open-source ATProto-powered group scheduling tool (LettuceMeet/CabbageMeet alternative). Polls stored as records in creator's PDS via custom lexicons. Part of the Citizen Infrastructure ecosystem.
 
+**Scope: time-finding, not event management.** Avails helps groups find a common available time. It is NOT an event platform (Luma), RSVP system (Smokesignal), or calendar app (OpenMeet). Those are complementary — Avails finds the time, then you create the event elsewhere.
+
 ## Commands
 
 ```bash
@@ -129,6 +131,16 @@ Railway (single service, Nixpacks builder). Custom domain: avails.zhgnv.com.
 - `CLIENT_URL` — deployed URL (for redirects and email links)
 - `DATA_DIR` — Railway volume mount path (`/data`)
 - `VITE_GOOGLE_CLIENT_ID` — optional, for Google Calendar overlay (baked into client build)
+
+## Task Tracking
+
+- **Task list**: `~/.claude/tasks/avails/tasks.md` — persisted across sessions
+- **GitHub issues**: tracked in the avails repo on GitHub
+
+## Known architectural debts
+
+- **In-memory poll index** (`pollIndex.js`) — lost on restart, rebuilt from PDS reads. Planned migration to SQLite.
+- **Anonymous responses via creator's session** — if creator's OAuth session expires, participants can't submit. Investigating did:web service identity as a cleaner alternative.
 
 ## Related Projects
 

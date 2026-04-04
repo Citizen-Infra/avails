@@ -45,7 +45,7 @@ router.post('/publish', requireAuth, async (req, res, next) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-tenant-id': process.env.OPENMEET_TENANT_ID || '1',
+        'x-tenant-id': process.env.OPENMEET_TENANT_ID || 'lsdfaopkljdfs',
       },
       body: JSON.stringify(eventPayload),
     });
@@ -103,7 +103,7 @@ async function getOpenMeetToken(oauthSession) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-tenant-id': process.env.OPENMEET_TENANT_ID || '1',
+      'x-tenant-id': process.env.OPENMEET_TENANT_ID || 'lsdfaopkljdfs',
     },
     body: JSON.stringify({ token: pdsJwt }),
   });
@@ -139,7 +139,7 @@ router.post('/availability', requireAuth, async (req, res, next) => {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
-        'x-tenant-id': process.env.OPENMEET_TENANT_ID || '1',
+        'x-tenant-id': process.env.OPENMEET_TENANT_ID || 'lsdfaopkljdfs',
       },
       body: JSON.stringify({ startTime, endTime }),
     });
