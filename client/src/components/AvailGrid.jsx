@@ -54,6 +54,8 @@ function slotColor(count, total) {
   return `rgba(34, 197, 94, ${alpha})`
 }
 
+const EMPTY_SET = new Set()
+
 export default function AvailGrid({
   dates = [],
   timeRange = { start: '09:00', end: '17:00' },
@@ -65,7 +67,7 @@ export default function AvailGrid({
   highlightName = null,
   busySlots = new Set(),
   slotEvents = {},
-  scheduledSlots = new Set(),
+  scheduledSlots,
   onHoverSlot,
 }) {
   const containerRef = useRef(null)
@@ -265,7 +267,7 @@ export default function AvailGrid({
                 const isMine = mySlots.has(key)
                 const isBusy = busySlots.has(key)
                 const isHighlighted = highlightSlots.has(key)
-                const isScheduled = scheduledSlots.has(key)
+                const isScheduled = (scheduledSlots || EMPTY_SET).has(key)
                 const heatCount = heatmap[key] || 0
                 const bgColor = heatCount > 0 ? slotColor(heatCount, totalRespondents) : undefined
                 const tooltipText = getTooltipContent(date, time)
