@@ -14,6 +14,8 @@ import EditPollDialog from '@/components/EditPollDialog'
 import DeletePollDialog from '@/components/DeletePollDialog'
 import GuestModal from '@/components/GuestModal'
 
+const EMPTY_SET = new Set()
+
 export default function PollView() {
   const { did, rkey } = useParams()
 
@@ -184,6 +186,27 @@ export default function PollView() {
       tryOpenMeetCalendar(poll.dates)
     }
   }, [session?.did, poll?.dates, calendarConnected])
+
+  // Compute which grid slots fall within the scheduled time
+  // Must be before early returns to maintain stable hook order
+  const scheduledSlots = useMemo(() => {
+    if (!poll?.finalTime || !poll?.finalDuration) return EMPTY_SET
+    const slotMins = poll.slotMinutes || poll.slotDuration || 30
+    const start = new Date(poll.finalTime)
+    const end = new Date(start.getTime() + poll.finalDuration * 60 * 1000)
+    const slots = new Set()
+    let cursor = new Date(start)
+    while (cursor < end) {
+      const y = cursor.getFullYear()
+      const m = String(cursor.getMonth() + 1).padStart(2, '0')
+      const d = String(cursor.getDate()).padStart(2, '0')
+      const hh = String(cursor.getHours()).padStart(2, '0')
+      const mm = String(cursor.getMinutes()).padStart(2, '0')
+      slots.add(`${y}-${m}-${d}T${hh}:${mm}`)
+      cursor = new Date(cursor.getTime() + slotMins * 60 * 1000)
+    }
+    return slots
+  }, [poll?.finalTime, poll?.finalDuration, poll?.slotMinutes, poll?.slotDuration])
 
   async function handleGuestSubmit(guestInfo) {
     setParticipant(guestInfo)
@@ -360,26 +383,6 @@ export default function PollView() {
     ...r,
     slots: convertSlotsToViewer(r.slots, creatorTz),
   }))
-
-  // Compute which grid slots fall within the scheduled time
-  const scheduledSlots = useMemo(() => {
-    if (!poll.finalTime || !poll.finalDuration) return new Set()
-    const slotMins = poll.slotMinutes || poll.slotDuration || 30
-    const start = new Date(poll.finalTime)
-    const end = new Date(start.getTime() + poll.finalDuration * 60 * 1000)
-    const slots = new Set()
-    let cursor = new Date(start)
-    while (cursor < end) {
-      const y = cursor.getFullYear()
-      const m = String(cursor.getMonth() + 1).padStart(2, '0')
-      const d = String(cursor.getDate()).padStart(2, '0')
-      const hh = String(cursor.getHours()).padStart(2, '0')
-      const mm = String(cursor.getMinutes()).padStart(2, '0')
-      slots.add(`${y}-${m}-${d}T${hh}:${mm}`)
-      cursor = new Date(cursor.getTime() + slotMins * 60 * 1000)
-    }
-    return slots
-  }, [poll.finalTime, poll.finalDuration, poll.slotMinutes, poll.slotDuration])
 
   const gridProps = {
     dates: converted.dates,
