@@ -14,9 +14,12 @@ router.post('/publish', requireAuth, async (req, res, next) => {
       return res.status(400).json({ error: 'title and startDate required' });
     }
 
-    // Step 1: Get OpenMeet auth token via ATProto service auth
-    // The creator's ATProto OAuth session can sign a service auth JWT
-    // For now, use the integration endpoint which may accept Bluesky source without auth
+    // Get OpenMeet auth token via ATProto service auth
+    const token = await getOpenMeetToken(req.oauthSession);
+    if (!token) {
+      return res.status(502).json({ error: 'Could not authenticate with OpenMeet. Do you have an OpenMeet account linked to your Bluesky?' });
+    }
+
     const eventPayload = {
       name: title,
       description: description
@@ -45,6 +48,7 @@ router.post('/publish', requireAuth, async (req, res, next) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
         'x-tenant-id': process.env.OPENMEET_TENANT_ID || 'lsdfaopkljdfs',
       },
       body: JSON.stringify(eventPayload),
