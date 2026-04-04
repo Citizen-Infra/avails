@@ -1,5 +1,5 @@
 import Logo from '@/components/Logo'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useParams } from 'react-router'
 import { getPoll, getSession, submitResponse, updateResponse, finalizePoll, deleteResponse, publishToOpenMeet, getOpenMeetAvailability } from '@/lib/api'
 import { isGoogleConfigured, requestGoogleAccess, fetchBusyTimes } from '@/lib/googleCalendar'
@@ -52,6 +52,7 @@ export default function PollView() {
   const [showGuestModal, setShowGuestModal] = useState(false)
   const [openmeetUrl, setOpenmeetUrl] = useState(null)
   const [publishingToOpenMeet, setPublishingToOpenMeet] = useState(false)
+  const [openmeetError, setOpenmeetError] = useState(null)
 
   const [busySlots, setBusySlots] = useState(new Set())
   const [slotEvents, setSlotEvents] = useState({})
@@ -302,6 +303,7 @@ export default function PollView() {
   async function handlePublishToOpenMeet() {
     if (!poll?.finalTime) return
     setPublishingToOpenMeet(true)
+    setOpenmeetError(null)
     try {
       const endDate = poll.finalDuration
         ? new Date(new Date(poll.finalTime).getTime() + poll.finalDuration * 60 * 1000).toISOString()
@@ -320,6 +322,7 @@ export default function PollView() {
       }
     } catch (err) {
       console.error('OpenMeet publish error:', err)
+      setOpenmeetError(err.message || 'Failed to publish to OpenMeet')
     } finally {
       setPublishingToOpenMeet(false)
     }
@@ -358,6 +361,26 @@ export default function PollView() {
     slots: convertSlotsToViewer(r.slots, creatorTz),
   }))
 
+  // Compute which grid slots fall within the scheduled time
+  const scheduledSlots = useMemo(() => {
+    if (!poll.finalTime || !poll.finalDuration) return new Set()
+    const slotMins = poll.slotMinutes || poll.slotDuration || 30
+    const start = new Date(poll.finalTime)
+    const end = new Date(start.getTime() + poll.finalDuration * 60 * 1000)
+    const slots = new Set()
+    let cursor = new Date(start)
+    while (cursor < end) {
+      const y = cursor.getFullYear()
+      const m = String(cursor.getMonth() + 1).padStart(2, '0')
+      const d = String(cursor.getDate()).padStart(2, '0')
+      const hh = String(cursor.getHours()).padStart(2, '0')
+      const mm = String(cursor.getMinutes()).padStart(2, '0')
+      slots.add(`${y}-${m}-${d}T${hh}:${mm}`)
+      cursor = new Date(cursor.getTime() + slotMins * 60 * 1000)
+    }
+    return slots
+  }, [poll.finalTime, poll.finalDuration, poll.slotMinutes, poll.slotDuration])
+
   const gridProps = {
     dates: converted.dates,
     timeRange: converted.timeRange,
@@ -366,6 +389,7 @@ export default function PollView() {
     busySlots,
     slotEvents,
     highlightName,
+    scheduledSlots,
   }
 
   return (
@@ -414,6 +438,9 @@ export default function PollView() {
               >
                 {publishingToOpenMeet ? 'Publishing...' : 'Publish to OpenMeet'}
               </button>
+            )}
+            {openmeetError && (
+              <p className="text-sm text-red-600">{openmeetError}</p>
             )}
             {openmeetUrl && (
               <a

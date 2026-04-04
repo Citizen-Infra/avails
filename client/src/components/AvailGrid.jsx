@@ -65,6 +65,7 @@ export default function AvailGrid({
   highlightName = null,
   busySlots = new Set(),
   slotEvents = {},
+  scheduledSlots = new Set(),
   onHoverSlot,
 }) {
   const containerRef = useRef(null)
@@ -264,6 +265,7 @@ export default function AvailGrid({
                 const isMine = mySlots.has(key)
                 const isBusy = busySlots.has(key)
                 const isHighlighted = highlightSlots.has(key)
+                const isScheduled = scheduledSlots.has(key)
                 const heatCount = heatmap[key] || 0
                 const bgColor = heatCount > 0 ? slotColor(heatCount, totalRespondents) : undefined
                 const tooltipText = getTooltipContent(date, time)
@@ -285,6 +287,7 @@ export default function AvailGrid({
                       rowIdx === 0 && 'rounded-t',
                       rowIdx === times.length - 1 && 'rounded-b',
                       readOnly && 'avail-cell--readonly cursor-default',
+                      isScheduled && 'avail-cell--scheduled',
                       // Drag preview — highest priority
                       isPendingAdd && 'avail-cell--pending-add',
                       isPendingRemove && 'avail-cell--pending-remove',
