@@ -321,7 +321,8 @@ export default function AvailGrid({
                   <div
                     key={key}
                     className={cn(
-                      'avail-cell h-8 cursor-pointer overflow-hidden',
+                      'avail-cell h-8 cursor-pointer',
+                      !(isScheduled && scheduledCards[colIdx]?.startRow === rowIdx) && 'overflow-hidden',
                       rowIdx === 0 && 'rounded-t',
                       rowIdx === times.length - 1 && 'rounded-b',
                       readOnly && 'avail-cell--readonly cursor-default',
