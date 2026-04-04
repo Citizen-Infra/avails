@@ -37,7 +37,7 @@ No test framework configured yet. Server syntax check: `node --check server/src/
 There is no database. ATProto PDS is the data store:
 - **Polls**: `chat.avails.scheduling.poll` records in creator's PDS
 - **Responses**: `chat.avails.scheduling.response` records in creator's PDS (anonymous responses written using creator's stored OAuth session)
-- **Poll index**: in-memory Map (`lib/pollIndex.js`) for community-based discovery. Ephemeral — rebuilt from PDS reads on restart.
+- **Poll index**: Map (`lib/pollIndex.js`) for community-based discovery. Persisted to Railway volume via `persistence.js` (auto-save every 30s, restored on startup).
 - **Sessions**: persisted to Railway volume as JSON (`/data/oauth-sessions.json`, `/data/app-sessions.json`). Restored on startup AFTER server starts listening (critical — session restore fetches client-metadata from itself).
 
 ### ATProto OAuth flow
@@ -63,7 +63,7 @@ There is no database. ATProto PDS is the data store:
 - **Session restore must happen after `app.listen()`** — the OAuth client fetches `client-metadata.json` from itself during restore. Starting restore before listening causes a deadlock.
 - **Anonymous responses require creator's session** — if the creator's session expires or is lost, participants can't submit. Sessions persist to Railway volume to survive deploys.
 - **Old polls use different field names** — `earliestTime`/`latestTime`/`slotDuration` vs `timeRange`/`slotMinutes`. PollView has fallback handling for both formats.
-- **React render loops** — AvailGrid is sensitive to unstable object references in props. Never pass `new Set()` or `{}` inline as props. Use stable refs or module-level constants. The SchedulingGrid was created as a separate component (instead of adding props to AvailGrid) specifically to avoid this.
+- **React render loops and hooks** — AvailGrid is sensitive to unstable object references in props. Never pass `new Set()` or `{}` inline as prop defaults. Use module-level constants (`const EMPTY_SET = new Set()`) and assign fallbacks in the function body, not destructuring. The SchedulingGrid was created as a separate component (instead of adding props to AvailGrid) specifically to avoid this. Also: never place hooks (`useMemo`, `useEffect`, etc.) after early returns — React error #310 ("Rendered more hooks than during the previous render").
 - **CabbageMeet-style mode separation in grid** — viewing mode shows heatmap only, editing mode shows my slots only. Never mix the two (causes visual double-counting).
 - **`@atproto/lex` generated TypeScript** — server is plain JS, so generated TS in `server/src/lexicons/` is for type reference only. Server uses raw XRPC fetch calls.
 - **Google Calendar** — queries all owner/writer calendars (not just primary). Skips holidays/birthdays by name. Filters out transparent (show as available) and declined events.
@@ -82,9 +82,13 @@ There is no database. ATProto PDS is the data store:
    - PDS signs a JWT
    - Exchange JWT at OpenMeet's `POST /api/v1/auth/atproto/service-auth`
    - Use returned bearer token for calendar APIs
-   - **Currently blocked** by OpenMeet 500 error — reported as [openmeet-api#573](https://github.com/OpenMeet-Team/openmeet-api/issues/573)
+   - Service auth exchange now works with tenant ID `lsdfaopkljdfs` (public instance)
+   - **Event publishing blocked** — `/api/integration/events` returns 401 with user bearer token. Waiting on OpenMeet team for correct auth method ([openmeet-api#573](https://github.com/OpenMeet-Team/openmeet-api/issues/573)).
+   - **Calendar availability partially working** — endpoint returns non-array response, need to confirm expected shape with OpenMeet team.
 
 Calendar priority chain: OpenMeet (auto for signed-in users) → Google Calendar (manual connect fallback) → nothing (anonymous).
+
+**OpenMeet tenant ID**: The public instance uses `lsdfaopkljdfs` (not `1`). Set via `OPENMEET_TENANT_ID` env var, defaults to this value.
 
 ## Client architecture
 
