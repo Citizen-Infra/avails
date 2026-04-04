@@ -116,6 +116,35 @@ export default function AvailGrid({
 
   const totalRespondents = responses.length
 
+  // Precompute scheduled card positions: for each column, find first scheduled row and span
+  const scheduledCards = useMemo(() => {
+    if (!scheduledSlots || scheduledSlots.size === 0) return {}
+    const cards = {} // key: `${colIdx}` → { startRow, span, startTime, endTime }
+    for (let colIdx = 0; colIdx < visibleDates.length; colIdx++) {
+      const date = visibleDates[colIdx]
+      let startRow = -1
+      let span = 0
+      for (let rowIdx = 0; rowIdx < times.length; rowIdx++) {
+        const key = `${date}T${times[rowIdx]}`
+        if (scheduledSlots.has(key)) {
+          if (startRow === -1) startRow = rowIdx
+          span++
+        } else if (startRow !== -1) {
+          break // end of contiguous block
+        }
+      }
+      if (startRow !== -1) {
+        const endMinutes = times[startRow + span - 1]
+        // End time = last slot start + slotMinutes
+        const [eh, em] = endMinutes.split(':').map(Number)
+        const endTotal = eh * 60 + em + slotMinutes
+        const endTime = `${String(Math.floor(endTotal / 60)).padStart(2, '0')}:${String(endTotal % 60).padStart(2, '0')}`
+        cards[colIdx] = { startRow, span, startTime: times[startRow], endTime }
+      }
+    }
+    return cards
+  }, [scheduledSlots, visibleDates, times, slotMinutes])
+
   // Compute pending keys from rectangle between downCell and curCell
   const computePendingKeys = useCallback(
     (down, cur) => {
@@ -330,6 +359,21 @@ export default function AvailGrid({
                       <span className="absolute left-1 right-1 top-0.5 bottom-0.5 flex items-start rounded bg-rose-400/90 px-1.5 py-0.5 text-[11px] leading-tight text-white font-medium truncate pointer-events-none z-[1] shadow-sm">
                         {eventName}
                       </span>
+                    )}
+                    {/* Scheduled time overlay card — rendered on first scheduled cell */}
+                    {isScheduled && scheduledCards[colIdx]?.startRow === rowIdx && (
+                      <div
+                        className="avail-scheduled-card"
+                        style={{ height: `calc(${scheduledCards[colIdx].span} * 2rem - 2px)` }}
+                      >
+                        <span className="avail-scheduled-card__check">
+                          <svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5L6.5 12L13 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          Scheduled
+                        </span>
+                        <span className="avail-scheduled-card__time">
+                          {scheduledCards[colIdx].startTime} – {scheduledCards[colIdx].endTime}
+                        </span>
+                      </div>
                     )}
                   </div>
                 )

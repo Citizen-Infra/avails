@@ -82,11 +82,75 @@
   outline-offset: -2px;
 }
 
-/* Scheduled — finalized time block */
+/* Scheduled — finalized time block (individual cells get subtle tint) */
 .avail-cell--scheduled {
-  background-color: rgba(13, 148, 136, 0.5);
-  outline: 2px solid #0d9488;
-  outline-offset: -2px;
+  background-color: rgba(13, 148, 136, 0.12) !important;
+}
+
+/* Scheduled overlay card — floats over the grid spanning the full duration */
+.avail-scheduled-card {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  top: 1px;
+  z-index: 3;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+  box-shadow:
+    0 2px 8px rgba(13, 148, 136, 0.3),
+    0 0 0 1px rgba(13, 148, 136, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  padding: 6px 10px;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.avail-scheduled-card__check {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.avail-scheduled-card__check svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.avail-scheduled-card__time {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Subtle animated shimmer on the card */
+.avail-scheduled-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 70%
+  );
+  animation: scheduled-shimmer 3s ease-in-out infinite;
+}
+
+@keyframes scheduled-shimmer {
+  0%, 100% { transform: translateX(-100%); }
+  50% { transform: translateX(100%); }
 }
 
 /* Highlighted respondent */
