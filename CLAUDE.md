@@ -139,7 +139,7 @@ Railway (single service, Nixpacks builder). Custom domain: avails.zhgnv.com.
 
 ## Known architectural debts
 
-- **In-memory poll index** (`pollIndex.js`) — lost on restart, rebuilt from PDS reads. Planned migration to SQLite.
+- **Poll index** (`pollIndex.js`) — persisted to Railway volume via `persistence.js` (auto-save every 30s). No longer lost on restart.
 - **Anonymous responses via creator's session** — if creator's OAuth session expires, participants can't submit. Investigating did:web service identity as a cleaner alternative.
 
 ## Related Projects

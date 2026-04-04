@@ -1,8 +1,11 @@
-// In-memory poll index for community-based discovery.
+// Poll index for community-based discovery.
 // key: `${did}/${rkey}` → { did, rkey, title, community, status, responseCount, createdAt }
-// Rebuilt on restart — not persisted.
+// Persisted to Railway volume via persistence.js.
+
+import { registerStore, markDirty } from './persistence.js';
 
 const polls = new Map();
+registerStore('poll-index', polls);
 
 export function indexPoll(did, rkey, poll) {
   const key = `${did}/${rkey}`;
@@ -15,6 +18,7 @@ export function indexPoll(did, rkey, poll) {
     responseCount: poll.responseCount || 0,
     createdAt: poll.createdAt || new Date().toISOString(),
   });
+  markDirty('poll-index');
 }
 
 export function updatePollStatus(did, rkey, status) {
@@ -22,6 +26,7 @@ export function updatePollStatus(did, rkey, status) {
   const entry = polls.get(key);
   if (entry) {
     polls.set(key, { ...entry, status });
+    markDirty('poll-index');
   }
 }
 
@@ -31,11 +36,13 @@ export function incrementResponseCount(did, rkey) {
   if (!entry) return 0;
   const newCount = (entry.responseCount || 0) + 1;
   polls.set(key, { ...entry, responseCount: newCount });
+  markDirty('poll-index');
   return newCount;
 }
 
 export function removePoll(did, rkey) {
   polls.delete(`${did}/${rkey}`);
+  markDirty('poll-index');
 }
 
 export function listByCommunity(community, status = 'open') {
