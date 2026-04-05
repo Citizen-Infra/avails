@@ -147,6 +147,13 @@ Avails is part of the [Citizen Infrastructure](https://github.com/Citizen-Infra)
 - [Server-side calendar OAuth](https://github.com/Citizen-Infra/avails/issues/6) as fallback for users without OpenMeet
 - [Create calendar events directly](https://github.com/Citizen-Infra/avails/issues/7) via API on finalize (not just .ics email)
 
+**Next — MCP endpoint for AI agents:**
+- Embedded MCP endpoint (`POST /mcp`) so AI agents like Claude Code can create polls, analyze responses, schedule meetings, and share links to Telegram — following the [Smoke Signal](https://smokesignal.events) pattern
+- ATProto OAuth for multi-user access — any Bluesky user can authenticate
+- Server-side overlap analysis — `get_poll` returns best time slots ranked by participant count
+- `share_poll` tool posts poll links to connected community Telegram channels
+- [Decouple response storage from creator session](https://github.com/Citizen-Infra/avails/issues/42)
+
 **Later — ecosystem:**
 - [Telegram bot](https://github.com/Citizen-Infra/avails/issues/9) for reminders and invites (Railway service #2)
 - [Video conferencing links](https://github.com/Citizen-Infra/avails/issues/19) — Zoom, Google Meet, Jitsi
