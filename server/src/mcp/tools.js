@@ -423,7 +423,8 @@ async function sharePoll({ did, rkey, community, topic, message }, authContext) 
   // Fetch community config from scenius-digest API
   const groupsRes = await fetch('https://scenius-digest.vercel.app/api/groups');
   if (!groupsRes.ok) throw new Error(`Failed to fetch community config: ${groupsRes.status}`);
-  const groups = await groupsRes.json();
+  const groupsData = await groupsRes.json();
+  const groups = groupsData.groups || groupsData;
 
   const communityConfig = groups[community];
   if (!communityConfig) {
