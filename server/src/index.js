@@ -89,22 +89,15 @@ app.use('/api/communities', communityRoutes);
 // OpenMeet integration
 app.use('/api/openmeet', openmeetRoutes);
 
+// MCP well-known endpoints (mounted at root level)
+app.use('/', mcpOauthRoutes);
+
 // MCP OAuth routes (register, authorize, callback, token)
 app.use('/mcp', mcpOauthRoutes);
 
 // MCP JSON-RPC endpoint
 app.post('/mcp', handleMcp);
 app.delete('/mcp', handleMcpDelete);
-
-// MCP resource metadata (well-known)
-app.get('/.well-known/oauth-protected-resource/mcp', (req, res) => {
-  const base = process.env.CLIENT_URL || 'http://localhost:5173';
-  res.json({
-    resource: `${base}/mcp`,
-    authorization_servers: [`${base}/mcp`],
-    bearer_methods_supported: ['header'],
-  });
-});
 
 // Health check
 app.get('/api/health', (req, res) => {

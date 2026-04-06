@@ -22,7 +22,9 @@ function extractAuthContext(req) {
   const token = authHeader.slice(7);
   try {
     const claims = verifyToken(getJwtSecret(), token);
-    const mcpClient = getClient(claims.mcp_client_id);
+    // mcp_client_id IS the client_id in the new RFC 7591 flow
+    const clientId = claims.mcp_client_id || claims.client_id;
+    const mcpClient = getClient(clientId);
     if (!mcpClient) return null;
     if (mcpClient.did !== claims.sub) return null;
 
@@ -108,7 +110,7 @@ export async function handleMcp(req, res) {
           const base = process.env.CLIENT_URL || 'http://localhost:5173';
           return res.status(401).set(
             'WWW-Authenticate',
-            `Bearer resource_metadata="${base}/.well-known/oauth-protected-resource/mcp"`
+            `Bearer resource_metadata="${base}/.well-known/oauth-protected-resource"`
           ).json(jsonRpcError(id, -32001, 'Authentication required'));
         }
         console.error(`MCP tool error (${toolName}):`, err.message);
