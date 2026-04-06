@@ -475,19 +475,29 @@ async function sharePoll({ did, rkey, community, topic, message }, authContext) 
 
   // Format message
   const url = pollUrl(did, rkey);
-  const dateList = Array.isArray(poll.dates) ? poll.dates.join(', ') : 'dates TBD';
+
+  const dateList = Array.isArray(poll.dates)
+    ? poll.dates.map(d => {
+        const date = new Date(d + 'T12:00:00'); // noon to avoid timezone shift
+        const weekday = date.toLocaleDateString('en-US', { weekday: 'short' });
+        const monthDay = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        return `${weekday} ${monthDay}`;
+      }).join(', ')
+    : 'dates TBD';
+
+  const tz = poll.timezone || '';
   const timeRange =
     poll.timeRange
-      ? `${poll.timeRange.start}–${poll.timeRange.end}`
+      ? `${poll.timeRange.start}–${poll.timeRange.end}${tz ? ` ${tz}` : ''}`
       : poll.earliestTime && poll.latestTime
-      ? `${poll.earliestTime}–${poll.latestTime}`
+      ? `${poll.earliestTime}–${poll.latestTime}${tz ? ` ${tz}` : ''}`
       : '';
 
   let text = `📅 ${poll.title}\n`;
-  if (dateList) text += `Dates: ${dateList}\n`;
-  if (timeRange) text += `Time: ${timeRange}\n`;
+  if (dateList) text += `${dateList}\n`;
+  if (timeRange) text += `${timeRange}\n`;
   if (message) text += `\n${message}\n`;
-  text += `\nFill in your availability: ${url}`;
+  text += `\n${url}`;
 
   const result = await sendTelegramMessage(chatId, text, { messageThreadId });
 
