@@ -37,6 +37,7 @@ You don't need to know or care about any of this to use avails. It works like an
 - **Timezone support** — grid auto-converts to each viewer's local timezone. Creator in Budapest, participant in New York — everyone sees their own local times
 - **Mobile responsive** — grid adapts to small screens with horizontal scroll
 - **OpenMeet integration** — publish scheduled meetings as [OpenMeet](https://platform.openmeet.net) events. Calendar availability from OpenMeet (in progress — [openmeet-api#573](https://github.com/OpenMeet-Team/openmeet-api/issues/573))
+- **MCP endpoint for AI agents** — create polls, analyze overlaps, schedule meetings, and share to Telegram from Claude Code, Claude Desktop, or any MCP-compatible AI assistant. Authenticate with your Bluesky account via standard OAuth.
 
 ## Stack
 
@@ -45,6 +46,7 @@ You don't need to know or care about any of this to use avails. It works like an
 | Client | React 19, Vite, Tailwind CSS, shadcn/ui, Luxon |
 | Server | Express 4, Node.js (ES modules) |
 | ATProto | `@atproto/lex` (custom lexicons + Client API), `@atproto/oauth-client-node` |
+| MCP | Embedded JSON-RPC endpoint with ATProto OAuth + PKCE S256 |
 | Email | Resend + ical-generator |
 | Timezone | Luxon (DST-safe conversion between creator and viewer timezones) |
 | Deploy | Railway |
@@ -125,6 +127,29 @@ TypeScript types are generated with `npx @atproto/lex build`.
 | PUT | `/api/polls/:did/:rkey/finalize` | ATProto | Pick a time, send invites |
 | POST | `/api/polls/:did/:rkey/responses` | — | Submit availability |
 | GET | `/api/communities` | — | List communities |
+
+### MCP endpoint
+
+`POST /mcp` — [Model Context Protocol](https://modelcontextprotocol.io) endpoint for AI agents. JSON-RPC over HTTP.
+
+| Tool | Auth | Description |
+|------|------|-------------|
+| `get_poll` | — | Get poll details + responses + best available time slots |
+| `list_polls` | — | List polls by community and/or status |
+| `create_poll` | ATProto | Create a new scheduling poll |
+| `list_my_polls` | ATProto | List your polls |
+| `schedule` | ATProto | Pick the best time, close poll, send calendar invites |
+| `share_poll` | ATProto | Post poll link to a community's Telegram group or channel |
+
+**Authentication:** Standard OAuth 2.0 with ATProto — Claude Code handles the flow automatically via `/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server` discovery. Granular scopes (only poll and response record access, not full account).
+
+**Setup in Claude Code:**
+
+```bash
+claude mcp add -s local -t http avails https://avails.zhgnv.com/mcp
+```
+
+Then ask Claude to create a poll, and it will prompt you to authenticate via Bluesky.
 
 ## Part of Citizen Infrastructure
 
