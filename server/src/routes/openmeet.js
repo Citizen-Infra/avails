@@ -82,7 +82,7 @@ const OPENMEET_DID = 'did:web:api.openmeet.net';
  * 1. Call user's PDS to get a service auth JWT (signed by their identity)
  * 2. Exchange that JWT for OpenMeet access tokens
  */
-async function getOpenMeetToken(oauthSession) {
+export async function getOpenMeetToken(oauthSession) {
   // Step 1: Get a service auth JWT from the user's PDS
   // com.atproto.server.getServiceAuth returns a JWT scoped for the target service
   const serviceAuthRes = await oauthSession.fetchHandler(

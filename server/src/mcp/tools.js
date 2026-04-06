@@ -1,6 +1,7 @@
 import { indexPoll, updatePollStatus, listByCommunity } from '../lib/pollIndex.js';
 import { generateIcs } from '../lib/ical.js';
 import { sendEmail } from '../lib/email.js';
+import { getOpenMeetToken } from '../routes/openmeet.js';
 import { computeBestSlots } from './overlap.js';
 import { sendTelegramMessage } from './telegram.js';
 
@@ -203,6 +204,25 @@ const TOOL_DEFINITIONS = [
         },
       },
       required: ['did', 'rkey', 'community'],
+    },
+  },
+  {
+    name: 'publish_to_openmeet',
+    description:
+      'Publish a finalized poll as an OpenMeet event. The poll must be scheduled (have finalTime set). Requires authentication.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        did: {
+          type: 'string',
+          description: 'DID of the poll creator',
+        },
+        rkey: {
+          type: 'string',
+          description: 'Record key of the poll',
+        },
+      },
+      required: ['did', 'rkey'],
     },
   },
   {
@@ -514,6 +534,89 @@ async function sharePoll({ did, rkey, community, topic, message }, authContext) 
   });
 }
 
+async function publishToOpenmeet({ did, rkey }, authContext) {
+  const auth = requireAuth(authContext);
+  if (auth.did !== did) throw new Error('Only the poll creator can publish to OpenMeet');
+  if (!auth.oauthSession) throw new Error('OAuth session not found. Please re-authenticate.');
+
+  // Fetch poll from PDS
+  const pds = await resolvePds(did);
+  const pollRes = await fetch(
+    `${pds}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(POLL_COLLECTION)}&rkey=${encodeURIComponent(rkey)}`
+  );
+  if (!pollRes.ok) throw new Error(`Poll not found: ${pollRes.status}`);
+  const pollData = await pollRes.json();
+  const poll = pollData.value;
+
+  if (!poll.finalTime) {
+    throw new Error('Poll must be scheduled (have finalTime) before publishing to OpenMeet');
+  }
+
+  // Get OpenMeet token via ATProto service auth
+  const token = await getOpenMeetToken(auth.oauthSession);
+  if (!token) {
+    throw new Error('Could not authenticate with OpenMeet. Do you have an OpenMeet account linked to your Bluesky?');
+  }
+
+  const url = pollUrl(did, rkey);
+  const OPENMEET_API = process.env.OPENMEET_API_URL || 'https://api.openmeet.net';
+
+  const endDate = poll.finalDuration
+    ? new Date(new Date(poll.finalTime).getTime() + poll.finalDuration * 60 * 1000).toISOString()
+    : new Date(new Date(poll.finalTime).getTime() + 60 * 60 * 1000).toISOString();
+
+  const eventPayload = {
+    name: poll.title,
+    description: poll.description
+      ? `${poll.description}\n\nScheduled via Avails: ${url}`
+      : `Scheduled via Avails: ${url}`,
+    startDate: poll.finalTime,
+    endDate,
+    type: 'online',
+    status: 'published',
+    visibility: 'public',
+    source: {
+      type: 'bluesky',
+      id: auth.did,
+      url,
+      handle: auth.handle,
+    },
+    location: {
+      description: 'Online (scheduled via Avails)',
+      url,
+    },
+  };
+
+  const response = await fetch(`${OPENMEET_API}/api/events`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+      'x-tenant-id': process.env.OPENMEET_TENANT_ID || 'lsdfaopkljdfs',
+    },
+    body: JSON.stringify(eventPayload),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`OpenMeet API error: ${response.status} ${text}`);
+  }
+
+  const result = await response.json();
+  const eventUrl = result.slug
+    ? `https://platform.openmeet.net/events/${result.slug}`
+    : undefined;
+
+  return JSON.stringify({
+    published: true,
+    eventId: result.id,
+    eventUrl,
+    title: poll.title,
+    startDate: poll.finalTime,
+    endDate,
+  }, null, 2);
+}
+
 async function listCommunities() {
   const groupsRes = await fetch('https://scenius-digest.vercel.app/api/groups');
   if (!groupsRes.ok) throw new Error(`Failed to fetch communities: ${groupsRes.status}`);
@@ -552,6 +655,8 @@ export async function callTool(name, args, authContext) {
       return schedule(args, authContext);
     case 'share_poll':
       return sharePoll(args, authContext);
+    case 'publish_to_openmeet':
+      return publishToOpenmeet(args, authContext);
     case 'list_communities':
       return listCommunities();
     default:
