@@ -114,6 +114,29 @@ Calendar priority chain: OpenMeet (auto for signed-in users) → Google Calendar
 - Font: Geist Variable (via @fontsource-variable/geist)
 - shadcn/ui components in `client/src/components/ui/`
 
+## MCP endpoint
+
+Embedded `POST /mcp` JSON-RPC endpoint with ATProto OAuth. Six tools: `get_poll`, `list_polls`, `create_poll`, `list_my_polls`, `schedule`, `share_poll`.
+
+### share_poll — topic resolution
+
+`share_poll` posts to a community's Telegram channel or group topic. The `topic` param resolves in order:
+1. **Named topic from community config** — use topic names from `groups.json` (e.g., `topic: "events"`, `topic: "links"`)
+2. **Numeric thread ID** — pass raw Telegram thread ID (e.g., `topic: "902"`)
+3. **Omitted** — posts to the community's output channel
+
+**Always prefer named topics over numeric IDs.** The community config has these topics:
+
+| Community | Topics |
+|-----------|--------|
+| scenius | links, memes, events, ai-tools-library |
+| cibc | news, resources, events |
+| nsrt | links, events |
+
+For topics not in the config, use `/debug` in the Telegram topic to find the numeric thread ID.
+
+**Never distribute polls to Telegram without explicit user confirmation.**
+
 ## Skills
 
 Always use `frontend-design` skill for visual/UI tasks. Always query shadcn MCP before hand-rolling component CSS. When dispatching subagents for UI work, explicitly instruct them to use shadcn MCP tools.
