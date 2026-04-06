@@ -177,7 +177,7 @@ const TOOL_DEFINITIONS = [
   {
     name: 'share_poll',
     description:
-      'Share a poll to a community\'s Telegram channel. Posts a formatted message with the poll title, dates, time range, and link.',
+      'Share a poll to a community\'s Telegram channel or group topic. Posts a formatted message with the poll title, dates, time range, and link.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -192,6 +192,10 @@ const TOOL_DEFINITIONS = [
         community: {
           type: 'string',
           description: 'Community slug (e.g. "scenius", "cibc")',
+        },
+        topic: {
+          type: 'string',
+          description: 'Optional topic name to post to (e.g. "events", "links"). Posts to the community\'s source group topic instead of the output channel.',
         },
         message: {
           type: 'string',
@@ -404,7 +408,7 @@ async function schedule({ did, rkey, finalTime, finalDuration }, authContext) {
   });
 }
 
-async function sharePoll({ did, rkey, community, message }, authContext) {
+async function sharePoll({ did, rkey, community, topic, message }, authContext) {
   if (!authContext) throw new Error('AUTH_REQUIRED');
 
   // Fetch poll details from PDS
@@ -426,9 +430,27 @@ async function sharePoll({ did, rkey, community, message }, authContext) {
     throw new Error(`Unknown community: ${community}. Available: ${Object.keys(groups).join(', ')}`);
   }
 
-  const outputChannel = communityConfig.output_channel;
-  if (!outputChannel) {
-    throw new Error(`Community "${community}" has no output_channel configured`);
+  // Determine target: group topic or output channel
+  let chatId;
+  let messageThreadId;
+  let targetName;
+
+  if (topic) {
+    // Post to a specific topic in the community's source group
+    if (!communityConfig.topics || !communityConfig.topics[topic]) {
+      const available = communityConfig.topics ? Object.keys(communityConfig.topics).join(', ') : 'none';
+      throw new Error(`Topic "${topic}" not found in ${community}. Available: ${available}`);
+    }
+    chatId = communityConfig.group_id;
+    messageThreadId = communityConfig.topics[topic];
+    targetName = `${communityConfig.name || community} #${topic}`;
+  } else {
+    // Post to the output channel
+    chatId = communityConfig.output_channel;
+    if (!chatId) {
+      throw new Error(`Community "${community}" has no output_channel configured`);
+    }
+    targetName = communityConfig.name || community;
   }
 
   // Format message
@@ -447,11 +469,11 @@ async function sharePoll({ did, rkey, community, message }, authContext) {
   if (message) text += `\n${message}\n`;
   text += `\nFill in your availability: ${url}`;
 
-  const result = await sendTelegramMessage(outputChannel, text);
+  const result = await sendTelegramMessage(chatId, text, { messageThreadId });
 
   return JSON.stringify({
     shared: true,
-    channel: communityConfig.name || community,
+    target: targetName,
     messageId: result.result?.message_id,
     url,
   });
