@@ -5,13 +5,13 @@ import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import authRoutes, { getClient } from './routes/auth.js';
+import authRoutes, { getClient, oauthSessionStore } from './routes/auth.js';
 import pollRoutes from './routes/polls.js';
 import responseRoutes from './routes/responses.js';
 import communityRoutes from './routes/communities.js';
 import openmeetRoutes from './routes/openmeet.js';
-import { startPersistence } from './lib/persistence.js';
-import { restoreOAuthSessions } from './lib/sessionStore.js';
+import { startPersistence, markDirty, saveNow } from './lib/persistence.js';
+import { restoreOAuthSessions, sessions } from './lib/sessionStore.js';
 import mcpOauthRoutes from './mcp/oauth.js';
 import { handleMcp, handleMcpDelete } from './mcp/handler.js';
 
@@ -98,6 +98,22 @@ app.use('/mcp', mcpOauthRoutes);
 // MCP JSON-RPC endpoint
 app.post('/mcp', handleMcp);
 app.delete('/mcp', handleMcpDelete);
+
+// Admin: clear all sessions (requires SESSION_SECRET as query param)
+app.post('/api/admin/clear-sessions', async (req, res) => {
+  if (req.query.key !== process.env.SESSION_SECRET) {
+    return res.status(403).json({ error: 'Invalid key' });
+  }
+  const appCount = sessions.size;
+  const oauthCount = oauthSessionStore.size;
+  sessions.clear();
+  oauthSessionStore.clear();
+  markDirty('app-sessions');
+  markDirty('oauth-sessions');
+  await saveNow();
+  console.log(`Admin: cleared ${appCount} app sessions + ${oauthCount} OAuth sessions`);
+  res.json({ cleared: { app: appCount, oauth: oauthCount } });
+});
 
 // Health check
 app.get('/api/health', (req, res) => {
