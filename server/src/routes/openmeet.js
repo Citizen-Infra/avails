@@ -44,7 +44,7 @@ router.post('/publish', requireAuth, async (req, res, next) => {
 
     console.log('[openmeet] Creating event:', eventPayload.name);
 
-    const response = await fetch(`${OPENMEET_API}/api/integration/events`, {
+    const response = await fetch(`${OPENMEET_API}/api/events`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -155,11 +155,12 @@ router.post('/availability', requireAuth, async (req, res, next) => {
     }
 
     const eventsData = await eventsRes.json();
-    console.log('[openmeet] Got', eventsData.length || 0, 'calendar events');
+    const events = eventsData.events || eventsData || [];
+    console.log('[openmeet] Got', events.length, 'calendar events');
 
     res.json({
       available: true,
-      events: (eventsData || []).map(e => ({
+      events: events.map(e => ({
         summary: e.summary || e.title || e.name || 'Busy',
         start: e.start || e.startDate || e.startTime,
         end: e.end || e.endDate || e.endTime,
