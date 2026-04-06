@@ -47,7 +47,7 @@ router.get('/.well-known/oauth-authorization-server', (req, res) => {
     grant_types_supported: ['authorization_code', 'refresh_token'],
     token_endpoint_auth_methods_supported: ['none'],
     code_challenge_methods_supported: ['S256'],
-    scopes_supported: ['atproto', 'repo:chat.avails.scheduling.poll', 'repo:chat.avails.scheduling.response'],
+    scopes_supported: ['atproto', 'repo:chat.avails.scheduling.poll', 'repo:chat.avails.scheduling.response', 'rpc:net.openmeet.auth?aud=did:web:api.openmeet.net'],
   });
 });
 
@@ -142,7 +142,7 @@ router.get('/authorize', async (req, res) => {
 
     const authUrl = await oauthClient.authorize(handle, {
       state: internalState,
-      scope: 'atproto repo:chat.avails.scheduling.poll repo:chat.avails.scheduling.response',
+      scope: 'atproto repo:chat.avails.scheduling.poll repo:chat.avails.scheduling.response rpc:net.openmeet.auth?aud=did:web:api.openmeet.net',
     });
 
     res.redirect(authUrl.toString());
