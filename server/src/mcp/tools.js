@@ -37,7 +37,7 @@ async function xrpcCall(oauthSession, method, body) {
 
 function pollUrl(did, rkey) {
   const base = process.env.CLIENT_URL || 'http://localhost:5173';
-  return `${base}/poll/${did}/${rkey}`;
+  return `${base}/p/${did}/${rkey}`;
 }
 
 // ---------------------------------------------------------------------------
