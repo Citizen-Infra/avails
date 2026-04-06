@@ -153,10 +153,6 @@ router.get('/callback', async (req, res, next) => {
     const result = await client.callback(params);
     const session = result.session;
 
-    console.log('OAuth callback result keys:', Object.keys(result));
-    console.log('result.state:', result.state);
-    console.log('callback params state:', params.get('state'));
-
     // The DID might be on .sub or .did depending on SDK version
     const did = session.did || session.sub;
 
@@ -174,18 +170,13 @@ router.get('/callback', async (req, res, next) => {
     }
 
     const sessionId = createSession(session, did, handle);
-    console.log('Created app session for DID:', did, 'handle:', handle);
 
     // Check if this callback is from an MCP OAuth flow
-    // Try both: the state from callback params and from the SDK result
     const callbackState = params.get('state');
     const resultState = result.state;
-    console.log('Trying MCP callback with callbackState:', callbackState, 'resultState:', resultState);
-
     const mcpRedirect = tryMcpCallback(resultState, session, did, handle)
       || tryMcpCallback(callbackState, session, did, handle);
     if (mcpRedirect) {
-      console.log('MCP OAuth flow detected, redirecting to MCP client');
       return res.type('html').send(`<!DOCTYPE html>
 <html>
 <head><title>Avails — Connected</title>
