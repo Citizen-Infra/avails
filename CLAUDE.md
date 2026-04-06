@@ -73,18 +73,19 @@ There is no database. ATProto PDS is the data store:
 
 ### OpenMeet integration
 
-[OpenMeet](https://github.com/OpenMeet-Team/openmeet-api) is an open-source event platform on ATProto. Two integration points:
+[OpenMeet](https://github.com/OpenMeet-Team/openmeet-api) is an open-source event platform on ATProto. Two integration points + groups exploration:
 
-1. **Event publishing** (`POST /api/openmeet/publish`): creates an OpenMeet event when a meeting is scheduled. Uses their integration API (`POST /api/integration/events`) with `source.type: "bluesky"`.
+1. **Event publishing** (`POST /api/openmeet/publish` + MCP `publish_to_openmeet`): creates an OpenMeet event from a finalized poll. Uses `POST /api/events` (not `/api/integration/events`) with ATProto service auth.
 
-2. **Calendar availability** (`POST /api/openmeet/availability`): fetches the user's calendar events from OpenMeet. Proper ATProto service auth flow:
+2. **Calendar availability** (`POST /api/openmeet/availability`): fetches calendar events. Response shape: `{ events: [...], totalCount, dateRange }` — access `.events` array.
+
+Both use ATProto service auth flow:
    - Call `com.atproto.server.getServiceAuth` on user's PDS with `aud: did:web:api.openmeet.net`, `lxm: net.openmeet.auth`
-   - PDS signs a JWT
-   - Exchange JWT at OpenMeet's `POST /api/v1/auth/atproto/service-auth`
-   - Use returned bearer token for calendar APIs
-   - Service auth exchange now works with tenant ID `lsdfaopkljdfs` (public instance)
-   - **Event publishing blocked** — `/api/integration/events` returns 401 with user bearer token. Waiting on OpenMeet team for correct auth method ([openmeet-api#573](https://github.com/OpenMeet-Team/openmeet-api/issues/573)).
-   - **Calendar availability partially working** — endpoint returns non-array response, need to confirm expected shape with OpenMeet team.
+   - PDS signs a JWT → exchange at OpenMeet's `POST /api/v1/auth/atproto/service-auth`
+   - Requires `rpc:net.openmeet.auth?aud=did:web:api.openmeet.net` in OAuth scopes
+   - **Blocked by #49** — ATProto OAuth doesn't re-prompt for upgraded scopes on existing grants. Users who authorized before the scope was added can't use OpenMeet features until re-consent is forced.
+
+3. **Groups** (#50): OpenMeet has ATProto-native group management ("Groups you organize" / "Groups you're part of"). Could serve as shared community layer for poll scoping — explore once scope issue is resolved.
 
 Calendar priority chain: OpenMeet (auto for signed-in users) → Google Calendar (manual connect fallback) → nothing (anonymous).
 
@@ -116,7 +117,28 @@ Calendar priority chain: OpenMeet (auto for signed-in users) → Google Calendar
 
 ## MCP endpoint
 
-Embedded `POST /mcp` JSON-RPC endpoint with ATProto OAuth. Six tools: `get_poll`, `list_polls`, `create_poll`, `list_my_polls`, `schedule`, `share_poll`.
+Embedded `POST /mcp` JSON-RPC endpoint with ATProto OAuth (Smoke Signal pattern). Nine tools:
+
+| Tool | Auth | Description |
+|------|------|-------------|
+| `get_poll` | No | Poll details + responses + best slots ranked by overlap |
+| `list_polls` | No | List by community and/or status |
+| `list_communities` | No | All communities with named topics |
+| `create_poll` | Yes | Create scheduling poll |
+| `list_my_polls` | Yes | User's polls from PDS |
+| `schedule` | Yes | Set time, close poll, send invites |
+| `share_poll` | Yes | Post to Telegram channel or group topic |
+| `publish_to_openmeet` | Yes | Create OpenMeet event from finalized poll |
+
+### OAuth
+
+Standard OAuth 2.0 discovery (RFC 9728 + 8414) with PKCE S256 — Claude Code handles auth automatically. Granular ATProto scopes: `repo:chat.avails.scheduling.poll`, `repo:chat.avails.scheduling.response`, `rpc:net.openmeet.auth`.
+
+MCP OAuth flow piggybacks on the web UI's ATProto OAuth — `/api/auth/callback` detects MCP flows via `tryMcpCallback()` (exported from `mcp/oauth.js`) and redirects to the MCP client instead of the homepage.
+
+### Admin endpoint
+
+`POST /api/admin/clear-sessions?key=SESSION_SECRET` — clears all OAuth + app sessions. Needed when scopes change (ATProto doesn't re-prompt for upgraded scopes on an existing grant).
 
 ### share_poll — topic resolution
 
@@ -144,7 +166,7 @@ Always use `frontend-design` skill for visual/UI tasks. Always query shadcn MCP 
 ## Deployment
 
 Railway (single service, Nixpacks builder). Custom domain: avails.zhgnv.com.
-- `railway.json` configures build command and start command
+- `railway.json` configures build command, start command, and `watchPatterns` (only code changes trigger deploys — README/docs changes are skipped)
 - `.node-version` = 22 (required for Vite 7 + Tailwind v4)
 - Railway volume mounted at `/data` for session persistence
 - `Procfile`: `web: cd server && node src/index.js`
@@ -168,11 +190,12 @@ Railway (single service, Nixpacks builder). Custom domain: avails.zhgnv.com.
 
 ## Known architectural debts
 
-- **Poll index** (`pollIndex.js`) — persisted to Railway volume via `persistence.js` (auto-save every 30s). No longer lost on restart.
 - **Response storage coupled to creator session** (#42) — responses written to creator's PDS, sessions persist to volume but architecture limits data ownership and scaling.
+- **OAuth scope upgrade doesn't re-prompt** (#49) — ATProto OAuth caches grants; adding new scopes (like the OpenMeet RPC scope) doesn't trigger re-consent. Use admin clear-sessions endpoint + wait for bsky.social propagation (up to 15 min).
 - **No OG metadata** (#46) — poll links show no preview in Telegram/Slack/social media.
 - **ATProto DID URLs** (#45) — poll URLs contain long DIDs; slug-based URLs planned.
 - **No persistent availability** (#47) — users re-enter the same availability for every poll covering the same dates.
+- **Self-service community connection** (#44) — users can't connect their own Telegram groups; blocked by community-admin.
 
 ## Related Projects
 
