@@ -195,7 +195,7 @@ const TOOL_DEFINITIONS = [
         },
         topic: {
           type: 'string',
-          description: 'Optional topic name to post to (e.g. "events", "links"). Posts to the community\'s source group topic instead of the output channel.',
+          description: 'Optional topic name (e.g. "events") or numeric thread ID. Posts to the community\'s source group topic instead of the output channel.',
         },
         message: {
           type: 'string',
@@ -438,13 +438,23 @@ async function sharePoll({ did, rkey, community, topic, message }, authContext) 
 
   if (topic) {
     // Post to a specific topic in the community's source group
-    if (!communityConfig.topics || !communityConfig.topics[topic]) {
-      const available = communityConfig.topics ? Object.keys(communityConfig.topics).join(', ') : 'none';
-      throw new Error(`Topic "${topic}" not found in ${community}. Available: ${available}`);
-    }
     chatId = communityConfig.group_id;
-    messageThreadId = communityConfig.topics[topic];
-    targetName = `${communityConfig.name || community} #${topic}`;
+    if (!chatId) {
+      throw new Error(`Community "${community}" has no group_id configured`);
+    }
+
+    if (communityConfig.topics && communityConfig.topics[topic]) {
+      // Named topic from config
+      messageThreadId = communityConfig.topics[topic];
+      targetName = `${communityConfig.name || community} #${topic}`;
+    } else if (/^\d+$/.test(topic)) {
+      // Numeric thread ID passed directly
+      messageThreadId = topic;
+      targetName = `${communityConfig.name || community} thread:${topic}`;
+    } else {
+      const available = communityConfig.topics ? Object.keys(communityConfig.topics).join(', ') : 'none';
+      throw new Error(`Topic "${topic}" not found in ${community}. Available: ${available}. You can also pass a numeric thread ID directly.`);
+    }
   } else {
     // Post to the output channel
     chatId = communityConfig.output_channel;
