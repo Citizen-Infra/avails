@@ -12,6 +12,8 @@ import communityRoutes from './routes/communities.js';
 import openmeetRoutes from './routes/openmeet.js';
 import { startPersistence } from './lib/persistence.js';
 import { restoreOAuthSessions } from './lib/sessionStore.js';
+import mcpOauthRoutes from './mcp/oauth.js';
+import { handleMcp, handleMcpDelete } from './mcp/handler.js';
 
 dotenv.config();
 
@@ -43,7 +45,7 @@ app.use((req, res, next) => {
   const start = Date.now();
   res.on('finish', () => {
     const ms = Date.now() - start;
-    if (req.path.startsWith('/api')) {
+    if (req.path.startsWith('/api') || req.path.startsWith('/mcp')) {
       console.log(`${req.method} ${req.path} ${res.statusCode} ${ms}ms`);
     }
   });
@@ -86,6 +88,23 @@ app.use('/api/communities', communityRoutes);
 
 // OpenMeet integration
 app.use('/api/openmeet', openmeetRoutes);
+
+// MCP OAuth routes (register, authorize, callback, token)
+app.use('/mcp', mcpOauthRoutes);
+
+// MCP JSON-RPC endpoint
+app.post('/mcp', handleMcp);
+app.delete('/mcp', handleMcpDelete);
+
+// MCP resource metadata (well-known)
+app.get('/.well-known/oauth-protected-resource/mcp', (req, res) => {
+  const base = process.env.CLIENT_URL || 'http://localhost:5173';
+  res.json({
+    resource: `${base}/mcp`,
+    authorization_servers: [`${base}/mcp`],
+    bearer_methods_supported: ['header'],
+  });
+});
 
 // Health check
 app.get('/api/health', (req, res) => {
