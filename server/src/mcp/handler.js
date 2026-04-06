@@ -1,7 +1,7 @@
 // server/src/mcp/handler.js
 import { verifyToken } from './jwt.js';
 import { getClient } from './clients.js';
-import { sessions } from '../lib/sessionStore.js';
+import { getClient as getOAuthClient } from '../routes/auth.js';
 import { callTool, listTools } from './tools.js';
 
 const PROTOCOL_VERSION = '2025-03-26';
@@ -15,7 +15,7 @@ function getJwtSecret() {
  * Extract MCP auth context from Bearer JWT token.
  * Returns null if no auth or invalid.
  */
-function extractAuthContext(req) {
+async function extractAuthContext(req) {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) return null;
 
@@ -28,13 +28,14 @@ function extractAuthContext(req) {
     if (!mcpClient) return null;
     if (mcpClient.did !== claims.sub) return null;
 
-    // Find the user's OAuth session for PDS writes
+    // Get the canonical OAuth session from the ATProto client
+    // This ensures correct DPoP key bindings (not a stale session reference)
     let oauthSession = null;
-    for (const [, session] of sessions) {
-      if (session.did === claims.sub && session.oauthSession) {
-        oauthSession = session.oauthSession;
-        break;
-      }
+    try {
+      const oauthClient = await getOAuthClient();
+      oauthSession = await oauthClient.restore(claims.sub);
+    } catch (err) {
+      console.warn('Failed to restore OAuth session for', claims.sub, ':', err.message);
     }
 
     return {
@@ -68,7 +69,7 @@ export async function handleMcp(req, res) {
     return res.json(jsonRpcError(id, -32600, 'Invalid JSON-RPC version'));
   }
 
-  const authContext = extractAuthContext(req);
+  const authContext = await extractAuthContext(req);
 
   if (authContext) {
     console.log(`MCP request: ${method} (authenticated as ${authContext.did})`);
