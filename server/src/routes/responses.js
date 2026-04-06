@@ -53,7 +53,7 @@ router.post('/:did/:rkey/responses', validateResponseCreate, async (req, res, ne
     const creatorSession = findOauthSessionByDid(did);
     if (!creatorSession) {
       return res.status(503).json({
-        error: 'Creator is not currently logged in — responses cannot be recorded at this time',
+        error: 'This poll is temporarily unavailable. The poll creator needs to sign back in at avails.zhgnv.com for responses to work. Please try again in a few minutes.',
       });
     }
 
@@ -114,7 +114,7 @@ router.put('/:did/:rkey/responses/:responseRkey', async (req, res, next) => {
     const creatorSession = findOauthSessionByDid(did);
     if (!creatorSession) {
       return res.status(503).json({
-        error: 'Creator is not currently logged in — responses cannot be updated at this time',
+        error: 'This poll is temporarily unavailable. The poll creator needs to sign back in at avails.zhgnv.com for responses to work. Please try again in a few minutes.',
       });
     }
 
@@ -146,7 +146,7 @@ router.delete('/:did/:rkey/responses/:responseRkey', async (req, res, next) => {
 
     const creatorSession = findCreatorSession(did);
     if (!creatorSession) {
-      return res.status(503).json({ error: 'Creator is not currently logged in' });
+      return res.status(503).json({ error: 'This poll is temporarily unavailable. The poll creator needs to sign back in at avails.zhgnv.com for responses to work. Please try again in a few minutes.' });
     }
 
     const deleteResult = await creatorSession.fetchHandler(
