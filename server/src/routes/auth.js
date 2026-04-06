@@ -3,6 +3,7 @@ import { NodeOAuthClient } from '@atproto/oauth-client-node';
 import { JoseKey } from '@atproto/jwk-jose';
 import { createSession, deleteSession, getSession, sessions, restoreOAuthSessions, cleanupExpiredSessions } from '../lib/sessionStore.js';
 import { registerStore, markDirty } from '../lib/persistence.js';
+import { tryMcpCallback } from '../mcp/oauth.js';
 
 const router = Router();
 
@@ -175,6 +176,16 @@ router.get('/callback', async (req, res, next) => {
 
     const sessionId = createSession(session, did, handle);
     console.log('Created app session for DID:', did, 'handle:', handle);
+
+    // Check if this callback is from an MCP OAuth flow
+    const state = params.get('state');
+    if (state) {
+      const mcpRedirect = tryMcpCallback(state, session, did, handle);
+      if (mcpRedirect) {
+        console.log('MCP OAuth flow detected, redirecting to MCP client');
+        return res.redirect(mcpRedirect);
+      }
+    }
 
     const isProduction = process.env.NODE_ENV === 'production';
     res.cookie('avails_session', sessionId, {

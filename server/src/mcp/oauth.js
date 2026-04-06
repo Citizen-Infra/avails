@@ -152,67 +152,8 @@ router.get('/authorize', async (req, res) => {
   }
 });
 
-// --- ATProto OAuth Callback ---
-
-router.get('/callback', async (req, res) => {
-  try {
-    const oauthClient = await getOAuthClient();
-    const params = new URLSearchParams(req.query);
-
-    const { session: oauthSession } = await oauthClient.callback(params);
-    const did = oauthSession.did || oauthSession.sub;
-
-    // Resolve handle
-    let handle = did;
-    try {
-      const plcRes = await fetch(`https://plc.directory/${did}`);
-      if (plcRes.ok) {
-        const doc = await plcRes.json();
-        handle = doc.alsoKnownAs?.[0]?.replace('at://', '') || did;
-      }
-    } catch (_) { /* fall back to DID */ }
-
-    // Store session to Railway volume (same as web UI) for response persistence
-    createSession(oauthSession, did, handle);
-
-    // Find the pending auth by state
-    const internalState = req.query.state;
-    const pending = pendingAuths.get(internalState);
-    if (!pending) {
-      return res.status(400).json({ error: 'Invalid or expired OAuth state' });
-    }
-    pendingAuths.delete(internalState);
-
-    // Bind DID to MCP client
-    bindClientDid(pending.mcpClientId, did);
-
-    // Issue one-time auth code
-    const code = crypto.randomBytes(32).toString('hex');
-    authCodes.set(code, {
-      mcpClientId: pending.mcpClientId,
-      did,
-      handle,
-      codeChallenge: pending.codeChallenge,
-      redirectUri: pending.redirectUri,
-      createdAt: Date.now(),
-    });
-
-    // Clean up old auth codes (older than 5 minutes)
-    const fiveMinAgo = Date.now() - 5 * 60 * 1000;
-    for (const [key, val] of authCodes) {
-      if (val.createdAt < fiveMinAgo) authCodes.delete(key);
-    }
-
-    // Redirect to MCP client with auth code + original client state
-    const redirectUrl = new URL(pending.redirectUri);
-    redirectUrl.searchParams.set('code', code);
-    redirectUrl.searchParams.set('state', pending.clientState);
-    res.redirect(redirectUrl.toString());
-  } catch (err) {
-    console.error('MCP callback error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
+// Note: ATProto OAuth callback goes through /api/auth/callback (single configured redirect URI).
+// The web UI callback calls tryMcpCallback() to detect MCP flows and redirect accordingly.
 
 // --- Token Exchange ---
 
@@ -306,6 +247,50 @@ button:hover{background:#0b7f74}</style>
 </form>
 </body>
 </html>`;
+}
+
+/**
+ * Check if an OAuth callback state belongs to an MCP flow.
+ * If yes, processes it and returns the redirect URL for the MCP client.
+ * If no, returns null (caller should handle as normal web UI flow).
+ *
+ * @param {string} state - the state param from the OAuth callback
+ * @param {object} oauthSession - the ATProto OAuth session
+ * @param {string} did - the authenticated user's DID
+ * @param {string} handle - the authenticated user's handle
+ * @returns {string|null} redirect URL for MCP client, or null
+ */
+export function tryMcpCallback(state, oauthSession, did, handle) {
+  const pending = pendingAuths.get(state);
+  if (!pending) return null;
+
+  pendingAuths.delete(state);
+
+  // Bind DID to MCP client
+  bindClientDid(pending.mcpClientId, did);
+
+  // Issue one-time auth code
+  const code = crypto.randomBytes(32).toString('hex');
+  authCodes.set(code, {
+    mcpClientId: pending.mcpClientId,
+    did,
+    handle,
+    codeChallenge: pending.codeChallenge,
+    redirectUri: pending.redirectUri,
+    createdAt: Date.now(),
+  });
+
+  // Clean up old auth codes
+  const fiveMinAgo = Date.now() - 5 * 60 * 1000;
+  for (const [key, val] of authCodes) {
+    if (val.createdAt < fiveMinAgo) authCodes.delete(key);
+  }
+
+  // Build redirect URL for MCP client
+  const redirectUrl = new URL(pending.redirectUri);
+  redirectUrl.searchParams.set('code', code);
+  redirectUrl.searchParams.set('state', pending.clientState);
+  return redirectUrl.toString();
 }
 
 export default router;
