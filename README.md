@@ -172,12 +172,18 @@ Avails is part of the [Citizen Infrastructure](https://github.com/Citizen-Infra)
 - [Server-side calendar OAuth](https://github.com/Citizen-Infra/avails/issues/6) as fallback for users without OpenMeet
 - [Create calendar events directly](https://github.com/Citizen-Infra/avails/issues/7) via API on finalize (not just .ics email)
 
-**Next — MCP endpoint for AI agents:**
-- Embedded MCP endpoint (`POST /mcp`) so AI agents like Claude Code can create polls, analyze responses, schedule meetings, and share links to Telegram — following the [Smoke Signal](https://smokesignal.events) pattern
-- ATProto OAuth for multi-user access — any Bluesky user can authenticate
-- Server-side overlap analysis — `get_poll` returns best time slots ranked by participant count
-- `share_poll` tool posts poll links to connected community Telegram channels
+**Done — MCP endpoint for AI agents:**
+- Embedded MCP endpoint (`POST /mcp`) — create polls, analyze overlaps, schedule, share to Telegram
+- ATProto OAuth with granular scopes, standard OAuth discovery for Claude Code
+- 7 tools: `get_poll`, `list_polls`, `create_poll`, `list_my_polls`, `schedule`, `share_poll`, `list_communities`
+
+**Next — polish and ecosystem:**
+- [Human-readable poll URLs via slug](https://github.com/Citizen-Infra/avails/issues/45) — `avails.zhgnv.com/p/cibc-season-2` instead of DID paths
+- [Open Graph metadata](https://github.com/Citizen-Infra/avails/issues/46) — rich previews in Telegram, Slack, social media
+- [Persistent availability](https://github.com/Citizen-Infra/avails/issues/47) — fill once, apply to all overlapping polls, auto-update on scheduling
 - [Decouple response storage from creator session](https://github.com/Citizen-Infra/avails/issues/42)
+- [Self-service community connection](https://github.com/Citizen-Infra/avails/issues/44) — users connect their own Telegram groups (blocked by [community-admin](https://github.com/Citizen-Infra/community-admin))
+- [CLI tool](https://github.com/Citizen-Infra/avails/issues/43) — `avails create`, `avails share` from the terminal
 
 **Later — ecosystem:**
 - [Telegram bot](https://github.com/Citizen-Infra/avails/issues/9) for reminders and invites (Railway service #2)

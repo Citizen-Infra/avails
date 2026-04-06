@@ -154,6 +154,8 @@ Railway (single service, Nixpacks builder). Custom domain: avails.zhgnv.com.
 - `ATPROTO_REDIRECT_URI` — OAuth callback URL
 - `ATPROTO_PRIVATE_KEY` — base64-encoded ES256 JWK (Railway mangles raw JSON)
 - `SESSION_SECRET` — cookie signing
+- `MCP_JWT_SECRET` — optional, JWT signing for MCP tokens (falls back to SESSION_SECRET)
+- `TELEGRAM_BOT_TOKEN` — Avails bot token for share_poll
 - `RESEND_API_KEY` — email service
 - `CLIENT_URL` — deployed URL (for redirects and email links)
 - `DATA_DIR` — Railway volume mount path (`/data`)
@@ -167,7 +169,10 @@ Railway (single service, Nixpacks builder). Custom domain: avails.zhgnv.com.
 ## Known architectural debts
 
 - **Poll index** (`pollIndex.js`) — persisted to Railway volume via `persistence.js` (auto-save every 30s). No longer lost on restart.
-- **Anonymous responses via creator's session** — if creator's OAuth session expires, participants can't submit. Investigating did:web service identity as a cleaner alternative.
+- **Response storage coupled to creator session** (#42) — responses written to creator's PDS, sessions persist to volume but architecture limits data ownership and scaling.
+- **No OG metadata** (#46) — poll links show no preview in Telegram/Slack/social media.
+- **ATProto DID URLs** (#45) — poll URLs contain long DIDs; slug-based URLs planned.
+- **No persistent availability** (#47) — users re-enter the same availability for every poll covering the same dates.
 
 ## Related Projects
 
