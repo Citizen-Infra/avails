@@ -181,7 +181,7 @@ router.put('/:did/:rkey', requireAuth, validatePollUpdate, async (req, res, next
     });
 
     // Update in-memory index if title changed
-    if (title !== undefined) {
+    if (req.validatedBody.title !== undefined) {
       indexPoll(did, rkey, {
         title: updatedRecord.title,
         community: updatedRecord.community,
