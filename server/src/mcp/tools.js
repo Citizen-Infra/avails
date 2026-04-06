@@ -177,7 +177,7 @@ const TOOL_DEFINITIONS = [
   {
     name: 'share_poll',
     description:
-      'Share a poll to a community\'s Telegram channel or group topic. Posts a formatted message with the poll title, dates, time range, and link.',
+      'Share a poll to a community\'s Telegram channel or group topic. Use named topics (e.g. "events", "links") when possible — the response includes available topic names for the community. Always confirm with the user before sharing.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -195,7 +195,7 @@ const TOOL_DEFINITIONS = [
         },
         topic: {
           type: 'string',
-          description: 'Optional topic name (e.g. "events") or numeric thread ID. Posts to the community\'s source group topic instead of the output channel.',
+          description: 'Topic name (e.g. "events", "links", "news") or numeric thread ID. Omit to post to the output channel. Prefer named topics over numeric IDs.',
         },
         message: {
           type: 'string',
@@ -203,6 +203,15 @@ const TOOL_DEFINITIONS = [
         },
       },
       required: ['did', 'rkey', 'community'],
+    },
+  },
+  {
+    name: 'list_communities',
+    description:
+      'List available communities with their Telegram topics. Use this to discover topic names before calling share_poll.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
     },
   },
 ];
@@ -482,12 +491,33 @@ async function sharePoll({ did, rkey, community, topic, message }, authContext) 
 
   const result = await sendTelegramMessage(chatId, text, { messageThreadId });
 
+  const availableTopics = communityConfig.topics
+    ? Object.keys(communityConfig.topics)
+    : [];
+
   return JSON.stringify({
     shared: true,
     target: targetName,
     messageId: result.result?.message_id,
     url,
+    availableTopics,
   });
+}
+
+async function listCommunities() {
+  const groupsRes = await fetch('https://scenius-digest.vercel.app/api/groups');
+  if (!groupsRes.ok) throw new Error(`Failed to fetch communities: ${groupsRes.status}`);
+  const groupsData = await groupsRes.json();
+  const groups = groupsData.groups || groupsData;
+
+  const communities = Object.entries(groups).map(([key, cfg]) => ({
+    key,
+    name: cfg.name || key,
+    topics: cfg.topics ? Object.keys(cfg.topics) : [],
+    hasOutputChannel: !!cfg.output_channel,
+  }));
+
+  return JSON.stringify(communities, null, 2);
 }
 
 // ---------------------------------------------------------------------------
@@ -512,6 +542,8 @@ export async function callTool(name, args, authContext) {
       return schedule(args, authContext);
     case 'share_poll':
       return sharePoll(args, authContext);
+    case 'list_communities':
+      return listCommunities();
     default:
       throw new Error(`Unknown tool: ${name}`);
   }
