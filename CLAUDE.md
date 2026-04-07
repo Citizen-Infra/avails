@@ -30,6 +30,10 @@ cd server && npm test                     # All tests (validation + route integr
 
 Server syntax check: `node --check server/src/index.js`
 
+Tests use Node's built-in test runner (`node:test` + `node:assert`). Integration tests require `--experimental-test-module-mocks` for module mocking. Two test files:
+- `test/validate.test.js` — unit tests for all validation middleware (23 tests)
+- `test/responses.test.js` — integration tests for response routes with mocked PDS/session layer (10 tests)
+
 ## Architecture
 
 ### Two services, one repo
@@ -58,7 +62,7 @@ There is no database. ATProto PDS is the data store:
 - **Request logging** — all `/api` requests logged with method, path, status, duration
 - **JSON error middleware** — all API errors return `{ error: "message" }` with proper status codes, not HTML
 - **Rate limiting** — per IP: auth 20/hr, poll creation 30/hr, responses 60/hr. `trust proxy` enabled for Railway.
-- **Input validation** — `middleware/validate.js` whitelists fields and validates types/ranges for poll creation, update, and response submission. Routes use `req.validatedBody` (not `req.body`) to prevent field injection.
+- **Input validation** — `middleware/validate.js` whitelists fields and validates types/ranges for poll creation, update, and response submission. Routes use `req.validatedBody` (not `req.body`) to prevent field injection. **Every write endpoint MUST have validation middleware** — a missing middleware on the PUT response route caused silent data corruption (2026-04-07).
 - **Env var validation** — required vars checked at startup, exits with clear message if missing
 - **ErrorBoundary** — React ErrorBoundary wraps entire app + extra wrapper around PollView. Shows fallback UI instead of white screen.
 - **Unhandled rejection handler** — catches ATProto OAuth SDK's async TokenRefreshError to prevent crash loops
@@ -69,11 +73,13 @@ There is no database. ATProto PDS is the data store:
 - **Anonymous responses require creator's session** — if the creator's session expires or is lost, participants can't submit. Sessions persist to Railway volume to survive deploys.
 - **Old polls use different field names** — `earliestTime`/`latestTime`/`slotDuration` vs `timeRange`/`slotMinutes`. PollView has fallback handling for both formats.
 - **React render loops and hooks** — AvailGrid is sensitive to unstable object references in props. Never pass `new Set()` or `{}` inline as prop defaults. Use module-level constants (`const EMPTY_SET = new Set()`) and assign fallbacks in the function body, not destructuring. The SchedulingGrid was created as a separate component (instead of adding props to AvailGrid) specifically to avoid this. Also: never place hooks (`useMemo`, `useEffect`, etc.) after early returns — React error #310 ("Rendered more hooks than during the previous render").
+- **Document-level event handlers and stale closures** — AvailGrid attaches `pointerup`/`pointermove` to `document`. These handlers must use refs (not state) to read mutable values, or the `useCallback` dependency array causes constant listener teardown/re-add. Pattern: `activeSlotRef` mirrors `activeSlot` state; handler reads ref, state is only for rendering.
 - **CabbageMeet-style mode separation in grid** — viewing mode shows heatmap only, editing mode shows my slots only. Never mix the two (causes visual double-counting).
 - **`@atproto/lex` generated TypeScript** — server is plain JS, so generated TS in `server/src/lexicons/` is for type reference only. Server uses raw XRPC fetch calls.
 - **Google Calendar** — queries all owner/writer calendars (not just primary). Skips holidays/birthdays by name. Filters out transparent (show as available) and declined events.
 - **Poll edit strips old field names** — when editing a poll created with `earliestTime`/`latestTime`/`slotDuration`, the PUT handler removes these before writing to PDS (lexicon rejects unknown fields).
 - **Timezone conversion** — slot keys are stored in the creator's timezone (not UTC — see #33 for future migration). `client/src/lib/timezone.js` converts between creator's TZ and viewer's local TZ using **Luxon** (`DateTime.fromObject` with zone). Grid shows viewer's local times. Responses converted back to creator's TZ on save. Per-slot conversion handles DST correctly (better than CabbageMeet's first-date-only approach).
+- **PDS data can be corrupted** — `normalizeResponses()` in PollView.jsx ensures every response has `slots: []` and `name: 'Unknown'` before entering React state. Never access `r.slots` or `r.name` without this normalization layer. All `setResponses` calls MUST go through `normalizeResponses`.
 - **Date formatting must use local time** — never use `toISOString().slice(0, 10)` for dates. It converts to UTC which shifts dates for UTC+ timezones. Use `getFullYear()`/`getMonth()`/`getDate()` or the `formatDateLocal()` helper.
 
 ### OpenMeet integration
@@ -105,12 +111,12 @@ Calendar priority chain: OpenMeet (auto for signed-in users) → Google Calendar
 - `Privacy.jsx`, `Terms.jsx` — legal pages (required for Google OAuth consent screen)
 
 ### Key components
-- `AvailGrid.jsx` — drag-to-paint availability grid. Rectangle selection, commit-on-pointerup, document-level listener. Heatmap from responses, hover tooltips, busy slots overlay. **Paginated** — max 7 dates visible with left/right arrows.
+- `AvailGrid.jsx` — drag-to-paint availability grid. Rectangle selection, commit-on-pointerup, document-level listener. Heatmap from responses, hover tooltips, busy slots overlay. **Paginated** — max 7 dates visible with left/right arrows. Touch drag uses `pointermove` + `elementFromPoint()` (not `pointerenter`, which doesn't fire during touch). Tap-to-highlight in read-only mode uses `activeSlot` state + `activeSlotRef` ref (ref avoids stale closures in document listeners).
 - `Logo.jsx` — shared 4x4 heatmap grid icon representing overlapping availability. Used in all page headers.
 - `SchedulingGrid.jsx` — separate grid for creator scheduling mode. Single-column vertical drag, teal preview. Completely independent from AvailGrid to avoid render loop issues.
 - `GuestModal.jsx` — "Continue as guest" dialog: name + optional email. Shown when anonymous user clicks Save after painting.
 - `PollCreator.jsx` — single-page poll creation form
-- `ResponsePanel.jsx` — sidebar with participant list, bidirectional hover sync with grid
+- `ResponsePanel.jsx` — sidebar with participant list, bidirectional hover/tap sync with grid. Available names get green checkmark, unavailable dimmed on slot hover/tap.
 
 ### Design system
 - Warm off-white background: `#faf9f6`
