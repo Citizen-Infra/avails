@@ -23,7 +23,12 @@ cd client && npm run build                 # Production build → dist/
 npx @atproto/lex build --lexicons ./lexicons --out ./server/src/lexicons --indexFile
 ```
 
-No test framework configured yet. Server syntax check: `node --check server/src/index.js`
+```bash
+# Tests (Node built-in test runner, no extra dependencies)
+cd server && npm test                     # All tests (validation + route integration)
+```
+
+Server syntax check: `node --check server/src/index.js`
 
 ## Architecture
 
