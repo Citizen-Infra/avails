@@ -131,6 +131,15 @@ export default function PollView() {
     }
   }
 
+  // Normalize responses — corrupted PDS records may be missing slots/name
+  function normalizeResponses(responses) {
+    return (responses || []).map(r => ({
+      ...r,
+      slots: Array.isArray(r.slots) ? r.slots : [],
+      name: r.name || 'Unknown',
+    }))
+  }
+
   const fetchData = useCallback(async () => {
     try {
       const [pollData, sessionData] = await Promise.all([
@@ -138,7 +147,7 @@ export default function PollView() {
         getSession().catch(() => null),
       ])
       setPoll(pollData.poll)
-      setResponses(pollData.responses || [])
+      setResponses(normalizeResponses(pollData.responses))
       setSession(sessionData)
     } catch (err) {
       setError(err.message)
@@ -243,7 +252,7 @@ export default function PollView() {
       setSubmitted(true)
       // Refresh responses
       const updated = await getPoll(did, rkey)
-      setResponses(updated.responses || [])
+      setResponses(normalizeResponses(updated.responses))
     } catch (err) {
       setSubmitError(err.message)
     } finally {
@@ -266,7 +275,7 @@ export default function PollView() {
       setSubmitted(true)
       // Refresh responses
       const updated = await getPoll(did, rkey)
-      setResponses(updated.responses || [])
+      setResponses(normalizeResponses(updated.responses))
     } catch (err) {
       setSubmitError(err.message)
     } finally {
@@ -298,7 +307,7 @@ export default function PollView() {
       setParticipant(null)
       localStorage.removeItem(`avails:response:${window.location.pathname}`)
       const updated = await getPoll(did, rkey)
-      setResponses(updated.responses || [])
+      setResponses(normalizeResponses(updated.responses))
     } catch (err) {
       setSubmitError(err.message)
     }
