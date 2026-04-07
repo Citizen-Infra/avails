@@ -94,9 +94,21 @@ export default function AvailGrid({
   const downCell = useRef(null)   // { row, col } | null
   const curCell = useRef(null)    // { row, col } | null
   const downCellWasSelected = useRef(false)
+  const tapTarget = useRef(null) // key string for detecting taps in read-only mode
 
   // Only this triggers re-renders — for CSS class + pending visual
   const [dragState, setDragState] = useState(null) // null | { pending: Set<string>, removing: boolean }
+  const [activeSlot, setActiveSlot] = useState(null) // slot key tapped in read-only mode
+  const activeSlotRef = useRef(null) // ref mirror to avoid stale closure in commitDrag
+
+  // Clear activeSlot when entering edit mode
+  useEffect(() => {
+    if (!readOnly) {
+      activeSlotRef.current = null
+      setActiveSlot(null)
+      onHoverSlot?.(null)
+    }
+  }, [readOnly, onHoverSlot])
 
   const times = useMemo(
     () => generateSlots(dates, timeRange, slotMinutes),
@@ -167,9 +179,13 @@ export default function AvailGrid({
 
   const handlePointerDown = useCallback(
     (e, row, col) => {
-      if (readOnly) return
-      e.preventDefault()
       const key = `${visibleDates[col]}T${times[row]}`
+      if (readOnly) {
+        e.preventDefault()
+        tapTarget.current = key
+        return
+      }
+      e.preventDefault()
       const wasSelected = mySlots.has(key)
       downCell.current = { row, col }
       curCell.current = { row, col }
@@ -215,6 +231,17 @@ export default function AvailGrid({
 
   // Commit on pointerup — attached to document so it fires even outside the grid
   const commitDrag = useCallback(() => {
+    // Handle read-only tap
+    if (tapTarget.current) {
+      const key = tapTarget.current
+      tapTarget.current = null
+      const newActive = activeSlotRef.current === key ? null : key
+      activeSlotRef.current = newActive
+      setActiveSlot(newActive)
+      onHoverSlot?.(newActive)
+      return
+    }
+
     if (!downCell.current) return
     const pending = computePendingKeys(downCell.current, curCell.current)
     const next = new Set(mySlots)
@@ -229,7 +256,7 @@ export default function AvailGrid({
     downCell.current = null
     curCell.current = null
     setDragState(null)
-  }, [mySlots, onSlotsChange, computePendingKeys])
+  }, [mySlots, onSlotsChange, computePendingKeys, onHoverSlot])
 
   // Document-level pointerup + pointermove listeners
   useEffect(() => {
@@ -350,6 +377,7 @@ export default function AvailGrid({
                       rowIdx === 0 && 'rounded-t',
                       rowIdx === times.length - 1 && 'rounded-b',
                       readOnly && 'avail-cell--readonly cursor-default',
+                      activeSlot === key && 'avail-cell--active',
                       isScheduled && 'avail-cell--scheduled',
                       // Drag preview — highest priority
                       isPendingAdd && 'avail-cell--pending-add',

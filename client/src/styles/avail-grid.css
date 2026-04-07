@@ -159,3 +159,14 @@
   outline-offset: -2px;
   z-index: 1;
 }
+
+/* Active slot — tapped cell in read-only mode (mobile tap-to-highlight) */
+.avail-cell--active {
+  box-shadow: inset 0 0 0 2.5px #0d9488;
+  z-index: 2;
+}
+
+/* Override the grid line pseudo-element so the ring isn't hidden behind it */
+.avail-cell--active::after {
+  z-index: -1;
+}
