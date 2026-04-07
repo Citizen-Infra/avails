@@ -12,7 +12,6 @@ export function generateIcs(poll, pollUrl) {
       ? `${poll.description}\n\nScheduled via Avails: ${pollUrl}`
       : `Scheduled via Avails: ${pollUrl}`,
     url: pollUrl,
-    timezone: poll.timezone,
   });
   return calendar.toString();
 }
