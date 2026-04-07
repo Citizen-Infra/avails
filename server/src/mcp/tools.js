@@ -398,7 +398,8 @@ async function schedule({ did, rkey, finalTime, finalDuration }, authContext) {
       .map((r) => r.value);
 
     const url = pollUrl(did, rkey);
-    const icsContent = generateIcs(updatedRecord, url);
+    const participants = responses.filter((r) => r.name).map((r) => r.name);
+    const icsContent = generateIcs(updatedRecord, url, participants);
     const icsBase64 = Buffer.from(icsContent).toString('base64');
 
     const emailAddresses = responses
@@ -414,7 +415,7 @@ async function schedule({ did, rkey, finalTime, finalDuration }, authContext) {
           sendEmail({
             to: email,
             subject: `${updatedRecord.title} — time confirmed`,
-            html: `<p>The poll <strong>${updatedRecord.title}</strong> has been finalized.</p><p><a href="${url}">View poll</a></p><p>A calendar invite is attached.</p>`,
+            html: `<p><strong>${updatedRecord.title}</strong> has been scheduled.</p>${updatedRecord.description ? `<p>${updatedRecord.description}</p>` : ''}<p><strong>When:</strong> ${new Date(updatedRecord.finalTime).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short', timeZone: updatedRecord.timezone || 'UTC' })} (${updatedRecord.finalDuration} min)</p>${participants.length > 0 ? `<p><strong>Participants:</strong> ${participants.join(', ')}</p>` : ''}<p><a href="${url}">View poll</a></p><p>A calendar invite is attached.</p>`,
             attachments: [
               {
                 filename: 'invite.ics',

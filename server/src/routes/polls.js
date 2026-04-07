@@ -235,19 +235,30 @@ router.put('/:did/:rkey/finalize', requireAuth, async (req, res, next) => {
 
     updatePollStatus(did, rkey, 'finalized');
 
-    // Generate .ics and send email invites to all participants who provided an email
+    // Fetch responses for participant names and emails
     const pollUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/poll/${did}/${rkey}`;
-    const icsContent = generateIcs(updatedRecord, pollUrl);
+    const responsesUrl = `${pds}/xrpc/com.atproto.repo.listRecords?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(RESPONSE_COLLECTION)}&limit=100`;
+    const responsesRes = await fetch(responsesUrl);
+    const responseData = responsesRes.ok ? await responsesRes.json() : { records: [] };
+    const pollResponses = (responseData.records || [])
+      .filter((r) => r.value?.pollUri && r.value.pollUri.includes(`/${rkey}`))
+      .map((r) => r.value);
+
+    const participants = pollResponses.filter((r) => r.name).map((r) => r.name);
+    const icsContent = generateIcs(updatedRecord, pollUrl, participants);
     const icsBase64 = Buffer.from(icsContent).toString('base64');
 
-    const emailList = Array.isArray(notifyEmails) ? notifyEmails : [];
+    // Collect emails from responses (fallback to notifyEmails from client)
+    const responseEmails = pollResponses.filter((r) => r.email).map((r) => r.email);
+    const clientEmails = Array.isArray(notifyEmails) ? notifyEmails : [];
+    const emailList = [...new Set([...responseEmails, ...clientEmails])];
     if (emailList.length > 0) {
       await Promise.allSettled(
         emailList.map((email) =>
           sendEmail({
             to: email,
             subject: `${updatedRecord.title} — time confirmed`,
-            html: `<p>The poll <strong>${updatedRecord.title}</strong> has been finalized.</p><p><a href="${pollUrl}">View poll</a></p><p>A calendar invite is attached.</p>`,
+            html: `<p><strong>${updatedRecord.title}</strong> has been scheduled.</p>${updatedRecord.description ? `<p>${updatedRecord.description}</p>` : ''}<p><strong>When:</strong> ${new Date(updatedRecord.finalTime).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short', timeZone: updatedRecord.timezone || 'UTC' })} (${updatedRecord.finalDuration} min)</p>${participants.length > 0 ? `<p><strong>Participants:</strong> ${participants.join(', ')}</p>` : ''}<p><a href="${pollUrl}">View poll</a></p><p>A calendar invite is attached.</p>`,
             attachments: [
               {
                 filename: 'invite.ics',
