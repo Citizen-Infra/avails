@@ -195,6 +195,24 @@ export default function AvailGrid({
     [readOnly, computePendingKeys, visibleDates, times, onHoverSlot]
   )
 
+  const handlePointerMove = useCallback(
+    (e) => {
+      if (!downCell.current) return
+      const el = document.elementFromPoint(e.clientX, e.clientY)
+      if (!el) return
+      const cell = el.closest('[data-row]')
+      if (!cell) return
+      const row = parseInt(cell.dataset.row, 10)
+      const col = parseInt(cell.dataset.col, 10)
+      if (isNaN(row) || isNaN(col)) return
+      if (curCell.current && curCell.current.row === row && curCell.current.col === col) return
+      curCell.current = { row, col }
+      const pending = computePendingKeys(downCell.current, { row, col })
+      setDragState({ pending, removing: downCellWasSelected.current })
+    },
+    [computePendingKeys]
+  )
+
   // Commit on pointerup — attached to document so it fires even outside the grid
   const commitDrag = useCallback(() => {
     if (!downCell.current) return
@@ -213,11 +231,15 @@ export default function AvailGrid({
     setDragState(null)
   }, [mySlots, onSlotsChange, computePendingKeys])
 
-  // Document-level pointerup listener
+  // Document-level pointerup + pointermove listeners
   useEffect(() => {
     document.addEventListener('pointerup', commitDrag)
-    return () => document.removeEventListener('pointerup', commitDrag)
-  }, [commitDrag])
+    document.addEventListener('pointermove', handlePointerMove)
+    return () => {
+      document.removeEventListener('pointerup', commitDrag)
+      document.removeEventListener('pointermove', handlePointerMove)
+    }
+  }, [commitDrag, handlePointerMove])
 
   function getTooltipContent(date, time) {
     const key = `${date}T${time}`
@@ -320,6 +342,8 @@ export default function AvailGrid({
                 const cell = (
                   <div
                     key={key}
+                    data-row={rowIdx}
+                    data-col={colIdx}
                     className={cn(
                       'avail-cell h-8 cursor-pointer',
                       !(isScheduled && scheduledCards[colIdx]?.startRow === rowIdx) && 'overflow-hidden',
