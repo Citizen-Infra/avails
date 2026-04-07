@@ -321,7 +321,8 @@ export default function PollView() {
       const mins = poll.slotMinutes || poll.slotDuration || 30
       const finalTime = new Date(schedulingSlots[0]).toISOString()
       const finalDuration = schedulingSlots.length * mins
-      await finalizePoll(did, rkey, finalTime, finalDuration)
+      const notifyEmails = [...new Set(responses.filter(r => r.email).map(r => r.email))]
+      await finalizePoll(did, rkey, finalTime, finalDuration, notifyEmails)
       setSchedulingMode(false)
       setSchedulingSlots([])
       fetchData()

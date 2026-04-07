@@ -21,7 +21,7 @@ export async function createPoll(data) { return apiFetch('/api/polls', { method:
 export async function getPoll(did, rkey) { return apiFetch(`/api/polls/${did}/${rkey}`); }
 export async function submitResponse(did, rkey, data) { return apiFetch(`/api/polls/${did}/${rkey}/responses`, { method: 'POST', body: JSON.stringify(data) }); }
 export async function updateResponse(did, rkey, responseRkey, data) { return apiFetch(`/api/polls/${did}/${rkey}/responses/${responseRkey}`, { method: 'PUT', body: JSON.stringify(data) }); }
-export async function finalizePoll(did, rkey, finalTime, finalDuration) { return apiFetch(`/api/polls/${did}/${rkey}/finalize`, { method: 'PUT', body: JSON.stringify({ finalTime, finalDuration }) }); }
+export async function finalizePoll(did, rkey, finalTime, finalDuration, notifyEmails) { return apiFetch(`/api/polls/${did}/${rkey}/finalize`, { method: 'PUT', body: JSON.stringify({ finalTime, finalDuration, notifyEmails }) }); }
 export async function updatePoll(did, rkey, data) { return apiFetch(`/api/polls/${did}/${rkey}`, { method: 'PUT', body: JSON.stringify(data) }); }
 export async function getCommunities() { return apiFetch('/api/communities'); }
 export async function getMyPolls() { return apiFetch('/api/polls/my'); }
