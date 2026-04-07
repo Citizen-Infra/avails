@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch src/index.js",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "test": "node --test test/validate.test.js && node --experimental-test-module-mocks --test test/responses.test.js"
   },
   "license": "AGPL-3.0",
   "dependencies": {
