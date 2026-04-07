@@ -35,7 +35,7 @@ You don't need to know or care about any of this to use avails. It works like an
 - **Schedule on the grid** — creator selects a time block directly on the heatmap, seeing everyone's availability while choosing
 - **Edit and delete** — participants can edit or delete their availability after submitting
 - **Timezone support** — grid auto-converts to each viewer's local timezone. Creator in Budapest, participant in New York — everyone sees their own local times
-- **Mobile responsive** — grid adapts to small screens with horizontal scroll
+- **Mobile-native grid** — touch drag to paint availability, tap any slot to see who's available. Responsive layout with pagination for many dates.
 - **OpenMeet integration** — publish scheduled meetings as [OpenMeet](https://platform.openmeet.net) events. Calendar availability from OpenMeet (in progress — [openmeet-api#573](https://github.com/OpenMeet-Team/openmeet-api/issues/573))
 - **MCP endpoint for AI agents** — create polls, analyze overlaps, schedule meetings, and share to Telegram from Claude Code, Claude Desktop, or any MCP-compatible AI assistant. Authenticate with your Bluesky account via standard OAuth.
 
@@ -62,6 +62,12 @@ cd client && npm install && npm run dev
 ```
 
 The client dev server proxies `/api` requests to the Express server on port 3000.
+
+### Tests
+
+```bash
+cd server && npm test    # Validation + route integration tests (Node built-in test runner)
+```
 
 ### Environment variables
 
@@ -124,8 +130,12 @@ TypeScript types are generated with `npx @atproto/lex build`.
 | POST | `/api/polls` | ATProto | Create poll |
 | GET | `/api/polls/:did/:rkey` | — | Get poll + responses |
 | GET | `/api/polls?community=X` | — | List community polls |
+| PUT | `/api/polls/:did/:rkey` | ATProto | Update poll (creator only) |
+| DELETE | `/api/polls/:did/:rkey` | ATProto | Delete poll (creator only) |
 | PUT | `/api/polls/:did/:rkey/finalize` | ATProto | Pick a time, send invites |
 | POST | `/api/polls/:did/:rkey/responses` | — | Submit availability |
+| PUT | `/api/polls/:did/:rkey/responses/:rkey` | — | Update response |
+| DELETE | `/api/polls/:did/:rkey/responses/:rkey` | — | Delete response |
 | GET | `/api/communities` | — | List communities |
 
 ### MCP endpoint
@@ -162,20 +172,18 @@ Avails is part of the [Citizen Infrastructure](https://github.com/Citizen-Infra)
 
 ### Roadmap
 
-**Now — hardening:**
-- [Server-side input validation](https://github.com/Citizen-Infra/avails/issues/27) for poll creation and responses
-- [Health check with PDS verify](https://github.com/Citizen-Infra/avails/issues/25)
-
 **Next — OpenMeet integration:**
 - [OpenMeet as calendar layer](https://github.com/Citizen-Infra/avails/issues/32) — replace direct Google Calendar with OpenMeet's availability API (blocked by [openmeet-api#573](https://github.com/OpenMeet-Team/openmeet-api/issues/573))
 - [OpenMeet event publishing](https://github.com/Citizen-Infra/avails/issues/31) — auto-create events on schedule
 - [Server-side calendar OAuth](https://github.com/Citizen-Infra/avails/issues/6) as fallback for users without OpenMeet
 - [Create calendar events directly](https://github.com/Citizen-Infra/avails/issues/7) via API on finalize (not just .ics email)
 
-**Done — MCP endpoint for AI agents:**
+**Done:**
+- Server-side input validation and field whitelisting for all write endpoints
 - Embedded MCP endpoint (`POST /mcp`) — create polls, analyze overlaps, schedule, share to Telegram
 - ATProto OAuth with granular scopes, standard OAuth discovery for Claude Code
 - 7 tools: `get_poll`, `list_polls`, `create_poll`, `list_my_polls`, `schedule`, `share_poll`, `list_communities`
+- Mobile touch drag painting and tap-to-highlight availability
 
 **Next — polish and ecosystem:**
 - [Human-readable poll URLs via slug](https://github.com/Citizen-Infra/avails/issues/45) — `avails.zhgnv.com/p/cibc-season-2` instead of DID paths
