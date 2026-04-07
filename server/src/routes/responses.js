@@ -107,7 +107,7 @@ router.post('/:did/:rkey/responses', validateResponseCreate, async (req, res, ne
 });
 
 // PUT /api/polls/:did/:rkey/responses/:responseRkey — update an existing response
-router.put('/:did/:rkey/responses/:responseRkey', async (req, res, next) => {
+router.put('/:did/:rkey/responses/:responseRkey', validateResponseCreate, async (req, res, next) => {
   try {
     const { did, rkey, responseRkey } = req.params;
 

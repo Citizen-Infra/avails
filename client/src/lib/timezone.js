@@ -119,6 +119,7 @@ export function convertPollTimesToViewer(dates, timeRange, creatorTz) {
  * Convert an array of creator-timezone slot keys to viewer's timezone.
  */
 export function convertSlotsToViewer(slots, creatorTz) {
+  if (!slots || !Array.isArray(slots)) return []
   if (!creatorTz || creatorTz === viewerTz) return slots
   return slots.map(s => creatorSlotToViewerSlot(s, creatorTz))
 }
