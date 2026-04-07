@@ -15,7 +15,6 @@ export function generateIcs(poll, pollUrl, participants = []) {
     end,
     summary: poll.title,
     description: descParts.join('\n\n'),
-    location: pollUrl,
     url: pollUrl,
   });
   return calendar.toString();
