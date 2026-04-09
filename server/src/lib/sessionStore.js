@@ -27,6 +27,14 @@ export function cleanupExpiredSessions() {
 }
 
 export function createSession(oauthSession, did, handle) {
+  // Remove any existing sessions for this DID — ATProto only allows one active
+  // session per DID, so stale entries would cause "session was deleted" errors
+  for (const [existingId, data] of sessions) {
+    if (data.did === did) {
+      sessions.delete(existingId);
+    }
+  }
+
   const sessionId = crypto.randomBytes(32).toString('hex');
   sessions.set(sessionId, {
     oauthSession, // live object — not serialized, rebuilt on restore
