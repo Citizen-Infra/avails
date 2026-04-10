@@ -36,7 +36,7 @@ You don't need to know or care about any of this to use avails. It works like an
 - **Edit and delete** — participants can edit or delete their availability after submitting
 - **Timezone support** — grid auto-converts to each viewer's local timezone. Creator in Budapest, participant in New York — everyone sees their own local times
 - **Mobile-native grid** — touch drag to paint availability, tap any slot to see who's available. Responsive layout with pagination for many dates.
-- **OpenMeet integration** — publish scheduled meetings as [OpenMeet](https://platform.openmeet.net) events. Calendar availability from OpenMeet (in progress — [openmeet-api#573](https://github.com/OpenMeet-Team/openmeet-api/issues/573))
+- **OpenMeet integration** — publish scheduled meetings as [OpenMeet](https://platform.openmeet.net) events and fetch calendar availability (blocked by ATProto OAuth scope upgrade issue — [#49](https://github.com/Citizen-Infra/avails/issues/49))
 - **MCP endpoint for AI agents** — create polls, analyze overlaps, schedule meetings, and share to Telegram from Claude Code, Claude Desktop, or any MCP-compatible AI assistant. Authenticate with your Bluesky account via standard OAuth.
 
 ## Stack
@@ -146,10 +146,12 @@ TypeScript types are generated with `npx @atproto/lex build`.
 |------|------|-------------|
 | `get_poll` | — | Get poll details + responses + best available time slots |
 | `list_polls` | — | List polls by community and/or status |
+| `list_communities` | — | All communities with named topics |
 | `create_poll` | ATProto | Create a new scheduling poll |
 | `list_my_polls` | ATProto | List your polls |
 | `schedule` | ATProto | Pick the best time, close poll, send calendar invites |
 | `share_poll` | ATProto | Post poll link to a community's Telegram group or channel |
+| `publish_to_openmeet` | ATProto | Create OpenMeet event from finalized poll |
 
 **Authentication:** Standard OAuth 2.0 with ATProto — Claude Code handles the flow automatically via `/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server` discovery. Granular scopes (only poll and response record access, not full account).
 
@@ -172,18 +174,11 @@ Avails is part of the [Citizen Infrastructure](https://github.com/Citizen-Infra)
 
 ### Roadmap
 
-**Next — OpenMeet integration:**
-- [OpenMeet as calendar layer](https://github.com/Citizen-Infra/avails/issues/32) — replace direct Google Calendar with OpenMeet's availability API (blocked by [openmeet-api#573](https://github.com/OpenMeet-Team/openmeet-api/issues/573))
-- [OpenMeet event publishing](https://github.com/Citizen-Infra/avails/issues/31) — auto-create events on schedule
+**Next — OpenMeet integration (code ready, blocked by ATProto OAuth [#49](https://github.com/Citizen-Infra/avails/issues/49)):**
+- [OpenMeet as calendar layer](https://github.com/Citizen-Infra/avails/issues/32) — implemented, but users who authorized before the OpenMeet scope was added can't use it until re-consent is forced
+- [OpenMeet event publishing](https://github.com/Citizen-Infra/avails/issues/31) — implemented, same OAuth blocker
 - [Server-side calendar OAuth](https://github.com/Citizen-Infra/avails/issues/6) as fallback for users without OpenMeet
 - [Create calendar events directly](https://github.com/Citizen-Infra/avails/issues/7) via API on finalize (not just .ics email)
-
-**Done:**
-- Server-side input validation and field whitelisting for all write endpoints
-- Embedded MCP endpoint (`POST /mcp`) — create polls, analyze overlaps, schedule, share to Telegram
-- ATProto OAuth with granular scopes, standard OAuth discovery for Claude Code
-- 7 tools: `get_poll`, `list_polls`, `create_poll`, `list_my_polls`, `schedule`, `share_poll`, `list_communities`
-- Mobile touch drag painting and tap-to-highlight availability
 
 **Next — polish and ecosystem:**
 - [Human-readable poll URLs via slug](https://github.com/Citizen-Infra/avails/issues/45) — `avails.zhgnv.com/p/cibc-season-2` instead of DID paths
