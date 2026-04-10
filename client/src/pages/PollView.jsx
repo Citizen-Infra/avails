@@ -55,6 +55,7 @@ export default function PollView() {
   const [openmeetUrl, setOpenmeetUrl] = useState(null)
   const [publishingToOpenMeet, setPublishingToOpenMeet] = useState(false)
   const [openmeetError, setOpenmeetError] = useState(null)
+  const [showBreakdown, setShowBreakdown] = useState(false)
 
   const [busySlots, setBusySlots] = useState(new Set())
   const [slotEvents, setSlotEvents] = useState({})
@@ -198,6 +199,14 @@ export default function PollView() {
 
   // Compute which grid slots fall within the scheduled time
   // Must be before early returns to maintain stable hook order
+  // Compute which slots the current user saved (for dot overlay in read-only view)
+  const mySavedSlots = useMemo(() => {
+    if (!submitted || !participant?.name) return EMPTY_SET
+    const myResponse = responses.find(r => r.name === participant.name)
+    if (!myResponse) return EMPTY_SET
+    return new Set(convertSlotsToViewer(myResponse.slots, poll?.timezone))
+  }, [submitted, participant, responses, poll?.timezone])
+
   const scheduledSlots = useMemo(() => {
     if (!poll?.finalTime || !poll?.finalDuration) return EMPTY_SET
     const slotMins = poll.slotMinutes || poll.slotDuration || 30
@@ -403,6 +412,7 @@ export default function PollView() {
     slotEvents,
     highlightName,
     scheduledSlots,
+    mySavedSlots,
   }
 
   return (
@@ -432,68 +442,101 @@ export default function PollView() {
           schedulingMode={schedulingMode}
         />
 
-        {/* Finalized meeting banner */}
+        {/* Finalized result card */}
         {poll.finalTime && (
-          <div className="rounded-lg border border-[#c8dfc8] bg-[#f0f7f0] px-6 py-5 space-y-3">
-            <p className="text-base font-medium text-[#3a6b3a]">
-              Meeting scheduled:{' '}
+          <div className="rounded-xl bg-gradient-to-br from-[#f0fdf4] to-[#ecfdf5] border border-[#bbf7d0] p-6 sm:p-8 space-y-4">
+            <div className="flex items-center gap-2 text-[#15803d]">
+              <svg width="20" height="20" viewBox="0 0 16 16" fill="none">
+                <path d="M3 8.5L6.5 12L13 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span className="text-sm font-semibold uppercase tracking-wide">Scheduled</span>
+            </div>
+
+            <p className="text-xl sm:text-2xl font-medium text-[#15803d]">
               {new Date(poll.finalTime).toLocaleString(undefined, {
-                dateStyle: 'full',
-                timeStyle: 'short',
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
               })}
-              {poll.finalDuration && ` (${poll.finalDuration} min)`}
+              {poll.finalDuration && <span className="text-[#6b6560] text-lg ml-2">({poll.finalDuration} min)</span>}
             </p>
-            {isCreator && !openmeetUrl && (
-              <button
-                onClick={handlePublishToOpenMeet}
-                disabled={publishingToOpenMeet}
-                className="text-sm text-[#0d9488] hover:text-[#0f766e] underline underline-offset-2"
-              >
-                {publishingToOpenMeet ? 'Publishing...' : 'Publish to OpenMeet'}
-              </button>
-            )}
-            {openmeetError && (
-              <p className="text-sm text-red-600">{openmeetError}</p>
-            )}
-            {openmeetUrl && (
-              <a
-                href={openmeetUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-[#0d9488] hover:text-[#0f766e] underline underline-offset-2"
-              >
-                View on OpenMeet
-              </a>
-            )}
+
+            <div className="flex items-center gap-3 pt-2 flex-wrap">
+              {isCreator && !openmeetUrl && (
+                <Button variant="outline" size="sm" onClick={handlePublishToOpenMeet} disabled={publishingToOpenMeet}
+                  className="border-[#15803d] text-[#15803d] hover:bg-[#dcfce7]">
+                  {publishingToOpenMeet ? 'Publishing...' : 'Publish to OpenMeet'}
+                </Button>
+              )}
+              {openmeetUrl && (
+                <a
+                  href={openmeetUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-[#15803d] hover:text-[#166534] underline underline-offset-2"
+                >
+                  View on OpenMeet
+                </a>
+              )}
+              {openmeetError && (
+                <p className="text-sm text-red-600">{openmeetError}</p>
+              )}
+            </div>
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_14rem] gap-6">
+        {/* Grid toggle for finalized polls */}
+        {poll.finalTime && (
+          <button
+            onClick={() => setShowBreakdown(v => !v)}
+            className="flex items-center gap-2 text-sm font-medium text-[#6b6560] hover:text-[#1a1a1a] py-3"
+          >
+            <svg className={`w-4 h-4 transition-transform ${showBreakdown ? 'rotate-90' : ''}`} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M6 4l4 4-4 4"/>
+            </svg>
+            {showBreakdown ? 'Hide' : 'See'} availability breakdown ({responses.length} {responses.length === 1 ? 'response' : 'responses'})
+          </button>
+        )}
+
+        {(!poll.finalTime || showBreakdown) && (
+        <div className={`grid grid-cols-1 lg:grid-cols-[1fr_14rem] gap-6${poll.finalTime ? ' opacity-80' : ''}`}>
           {/* Main grid area */}
           <div className="space-y-4">
-            {/* Info bar above grid — identity + calendar connect */}
+            {/* Info bar — identity, coaching, calendar */}
             {isOpen && !submitted && (
-              <div className="flex items-center gap-4 flex-wrap text-base">
-                {session?.did ? (
-                  <span className="text-[#8a8580]">
+              <div className="space-y-2">
+                {/* Identity line */}
+                {session?.did && (
+                  <p className="text-sm text-[#8a8580]">
                     Signed in as <span className="text-[#1a1a1a] font-medium">@{session.handle}</span>
-                  </span>
-                ) : (
-                  <span className="text-[#8a8580]">Mark your availability below</span>
+                  </p>
                 )}
-                {calendarConnected ? (
-                  <span className="text-sm text-[#0d9488]">
-                    Calendar connected{calendarSource === 'openmeet' ? ' via OpenMeet' : ''}
-                  </span>
-                ) : (
-                  <>
+
+                {/* Coaching — dissolves on first paint */}
+                {mySlots.size === 0 && (
+                  <p className="text-base text-[#6b6560] flex items-center gap-2">
+                    <span className="inline-block w-5 h-5 rounded bg-[rgba(34,197,94,0.5)] shrink-0" />
+                    <span>
+                      {session?.did
+                        ? 'Tap or drag on the grid to mark times you\u2019re available'
+                        : 'Tap or drag to mark your availability, then save to share with the group'
+                      }
+                    </span>
+                  </p>
+                )}
+
+                {/* Calendar — deferred until user has started painting */}
+                {mySlots.size > 0 && !calendarConnected && (
+                  <div className="flex items-center gap-4 text-sm">
                     {isGoogleConfigured() && (
                       <button
                         onClick={connectGoogleCalendar}
                         disabled={connectingCalendar}
-                        className="text-sm text-[#0d9488] hover:text-[#0f766e] underline underline-offset-2"
+                        className="text-[#0d9488] hover:text-[#0f766e] underline underline-offset-2"
                       >
-                        {connectingCalendar ? 'Connecting...' : 'Connect Google Calendar'}
+                        {connectingCalendar ? 'Connecting...' : 'Overlay your Google Calendar'}
                       </button>
                     )}
                     {session?.did && (
@@ -501,12 +544,18 @@ export default function PollView() {
                         href="https://platform.openmeet.net"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm text-[#6b6560] hover:text-[#1a1a1a] underline underline-offset-2"
+                        className="text-[#6b6560] hover:text-[#1a1a1a] underline underline-offset-2"
                       >
                         Or connect via OpenMeet
                       </a>
                     )}
-                  </>
+                  </div>
+                )}
+
+                {calendarConnected && (
+                  <p className="text-sm text-[#0d9488]">
+                    Calendar connected{calendarSource === 'openmeet' ? ' via OpenMeet' : ''} — busy times shown in pink
+                  </p>
                 )}
               </div>
             )}
@@ -539,39 +588,26 @@ export default function PollView() {
 
           {/* Sidebar */}
           <aside className="space-y-4">
-            {/* Save card — appears when slots are painted */}
-            {isOpen && !submitted && !editing && mySlots.size > 0 && (
-              <div className="rounded-lg bg-[#0d9488] p-4 text-white space-y-3">
+            {/* Save card — desktop only (mobile gets sticky bar below) */}
+            {isOpen && !submitted && mySlots.size > 0 && (
+              <div className="hidden lg:block rounded-lg bg-[#0d9488] p-4 text-white space-y-3">
                 <p className="text-sm font-medium">{mySlots.size} slot{mySlots.size !== 1 ? 's' : ''} selected</p>
-                <button
-                  onClick={() => participant ? handleSubmit() : setShowGuestModal(true)}
+                <Button
+                  onClick={editing ? handleUpdate : (participant ? handleSubmit : () => setShowGuestModal(true))}
                   disabled={submitting}
-                  className="w-full py-2.5 rounded-lg bg-white text-[#0d9488] font-semibold text-base hover:bg-white/90 transition-colors disabled:opacity-50"
+                  className="w-full py-2.5 bg-white text-[#0d9488] font-semibold text-base hover:bg-white/90"
                 >
-                  {submitting ? 'Saving...' : 'Save availability'}
-                </button>
-                {submitError && <p className="text-xs text-red-200">{submitError}</p>}
-              </div>
-            )}
-
-            {/* Save card — editing */}
-            {isOpen && !submitted && editing && mySlots.size > 0 && (
-              <div className="rounded-lg bg-[#0d9488] p-4 text-white space-y-3">
-                <p className="text-sm font-medium">{mySlots.size} slot{mySlots.size !== 1 ? 's' : ''} selected</p>
-                <button
-                  onClick={handleUpdate}
-                  disabled={submitting}
-                  className="w-full py-2.5 rounded-lg bg-white text-[#0d9488] font-semibold text-base hover:bg-white/90 transition-colors disabled:opacity-50"
-                >
-                  {submitting ? 'Saving...' : 'Save changes'}
-                </button>
-                <button
-                  onClick={() => { setEditing(false); setSubmitted(true) }}
-                  disabled={submitting}
-                  className="w-full text-sm text-white/80 hover:text-white underline underline-offset-2"
-                >
-                  Cancel
-                </button>
+                  {submitting ? 'Saving...' : editing ? 'Save changes' : 'Save availability'}
+                </Button>
+                {editing && (
+                  <button
+                    onClick={() => { setEditing(false); setSubmitted(true) }}
+                    disabled={submitting}
+                    className="w-full text-sm text-white/80 hover:text-white underline underline-offset-2"
+                  >
+                    Cancel
+                  </button>
+                )}
                 {submitError && <p className="text-xs text-red-200">{submitError}</p>}
               </div>
             )}
@@ -601,6 +637,7 @@ export default function PollView() {
             />
           </aside>
         </div>
+        )}
       </main>
 
       {showEditPoll && (
@@ -627,6 +664,33 @@ export default function PollView() {
         onSubmit={handleGuestSubmit}
         submitting={submitting}
       />
+
+      {/* Mobile sticky save bar */}
+      {isOpen && !submitted && mySlots.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-[#0d9488] px-4 py-3 shadow-[0_-4px_12px_rgba(0,0,0,0.1)]" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-medium text-white/90">
+              {mySlots.size} slot{mySlots.size !== 1 ? 's' : ''} selected
+            </p>
+            <div className="flex items-center gap-2">
+              {editing && (
+                <Button variant="ghost" size="sm" onClick={() => { setEditing(false); setSubmitted(true) }} disabled={submitting}
+                  className="text-white/80 hover:text-white hover:bg-white/10">
+                  Cancel
+                </Button>
+              )}
+              <Button
+                onClick={editing ? handleUpdate : (participant ? handleSubmit : () => setShowGuestModal(true))}
+                disabled={submitting}
+                className="bg-white text-[#0d9488] font-semibold hover:bg-white/90"
+              >
+                {submitting ? 'Saving...' : editing ? 'Save changes' : 'Save'}
+              </Button>
+            </div>
+          </div>
+          {submitError && <p className="text-xs text-red-200 mt-1">{submitError}</p>}
+        </div>
+      )}
     </div>
   )
 }

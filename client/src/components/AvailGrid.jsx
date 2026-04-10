@@ -69,6 +69,7 @@ export default function AvailGrid({
   busySlots,
   slotEvents,
   scheduledSlots,
+  mySavedSlots,
   onHoverSlot,
 }) {
   // Stable defaults — never pass new Set() / {} inline (React render loop gotcha)
@@ -76,6 +77,7 @@ export default function AvailGrid({
   busySlots = busySlots || EMPTY_SET
   slotEvents = slotEvents || EMPTY_OBJ
   scheduledSlots = scheduledSlots || EMPTY_SET
+  mySavedSlots = mySavedSlots || EMPTY_SET
 
   const containerRef = useRef(null)
 
@@ -306,7 +308,7 @@ export default function AvailGrid({
 
         <div
           ref={containerRef}
-          className={cn('select-none relative overflow-x-auto', dragState && 'avail-grid--dragging')}
+          className={cn('select-none relative overflow-x-auto', dragState && 'avail-grid--dragging', mySlots.size > 0 && 'avail-grid--has-selection')}
           style={{ touchAction: 'none' }}
           onPointerLeave={() => { if (!downCell.current) onHoverSlot?.(null) }}
         >
@@ -379,6 +381,7 @@ export default function AvailGrid({
                       readOnly && 'avail-cell--readonly cursor-default',
                       activeSlot === key && 'avail-cell--active',
                       isScheduled && 'avail-cell--scheduled',
+                      readOnly && mySavedSlots.has(key) && 'avail-cell--mine-saved',
                       // Drag preview — highest priority
                       isPendingAdd && 'avail-cell--pending-add',
                       isPendingRemove && 'avail-cell--pending-remove',

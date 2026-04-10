@@ -29,6 +29,9 @@ export default function ResponsePanel({ responses = [], highlightName, onHighlig
         <div className="text-sm font-semibold text-[#1a1a1a] uppercase tracking-wide">
           {responses.length} {responses.length === 1 ? 'response' : 'responses'}
         </div>
+        {responses.length > 0 && (
+          <p className="text-xs text-[#a09a94] mt-1">Tap a name to see their availability</p>
+        )}
       </div>
       <ul className="space-y-0.5">
         {responses.map((r) => {
@@ -41,9 +44,9 @@ export default function ResponsePanel({ responses = [], highlightName, onHighlig
                 type="button"
                 className={cn(
                   'w-full text-left px-3 py-2.5 rounded-md text-base transition-all duration-150',
-                  'hover:bg-[#f0eeea]',
-                  isActive ? 'text-[#1a1a1a]' : 'text-[#6b6560]',
-                  isAvailableAtHover ? 'bg-[#f0fdf4]' : isActive ? 'bg-[#f0eeea]' : '',
+                  'cursor-pointer hover:bg-[#f0eeea]',
+                  isActive ? 'text-[#1a1a1a] bg-[#f0eeea] ring-1 ring-[#0d9488]/30' : 'text-[#6b6560]',
+                  isAvailableAtHover && 'bg-[#f0fdf4]',
                   isUnavailableAtHover && 'opacity-40'
                 )}
                 onMouseEnter={() => handleMouseEnter(r.name)}
