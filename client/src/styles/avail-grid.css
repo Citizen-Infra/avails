@@ -181,19 +181,6 @@
   z-index: 2;
 }
 
-/* My saved slot — teal dot in read-only view showing "these are yours" */
-.avail-cell--mine-saved::before {
-  content: '';
-  position: absolute;
-  top: 3px;
-  right: 3px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: #0d9488;
-  z-index: 2;
-  pointer-events: none;
-}
 
 /* Override the grid line pseudo-element so the ring isn't hidden behind it */
 .avail-cell--active::after {

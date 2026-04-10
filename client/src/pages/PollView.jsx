@@ -199,14 +199,6 @@ export default function PollView() {
 
   // Compute which grid slots fall within the scheduled time
   // Must be before early returns to maintain stable hook order
-  // Compute which slots the current user saved (for dot overlay in read-only view)
-  const mySavedSlots = useMemo(() => {
-    if (!submitted || !participant?.name) return EMPTY_SET
-    const myResponse = responses.find(r => r.name === participant.name)
-    if (!myResponse) return EMPTY_SET
-    return new Set(convertSlotsToViewer(myResponse.slots, poll?.timezone))
-  }, [submitted, participant, responses, poll?.timezone])
-
   const scheduledSlots = useMemo(() => {
     if (!poll?.finalTime || !poll?.finalDuration) return EMPTY_SET
     const slotMins = poll.slotMinutes || poll.slotDuration || 30
@@ -412,7 +404,6 @@ export default function PollView() {
     slotEvents,
     highlightName,
     scheduledSlots,
-    mySavedSlots,
   }
 
   return (
