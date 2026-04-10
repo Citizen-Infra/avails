@@ -63,9 +63,6 @@ export default function ResponsePanel({ responses = [], highlightName, onHighlig
                     {r.name}
                   </span>
                 </span>
-                <span className={cn('ml-2 text-sm', isUnavailableAtHover ? 'text-[#d8d4cf]' : 'text-[#a09a94]')}>
-                  {r.slots.length} {r.slots.length === 1 ? 'slot' : 'slots'}
-                </span>
               </button>
             </li>
           )
