@@ -431,6 +431,10 @@ export default function PollView() {
           onDeleteClick={() => setShowDeletePoll(true)}
           onScheduleClick={() => setSchedulingMode(true)}
           schedulingMode={schedulingMode}
+          submitted={submitted}
+          responseRkey={responseRkey}
+          onEditResponse={handleStartEdit}
+          onDeleteResponse={handleDeleteResponse}
         />
 
         {/* Finalized result card */}
@@ -600,23 +604,6 @@ export default function PollView() {
                   </button>
                 )}
                 {submitError && <p className="text-xs text-red-200">{submitError}</p>}
-              </div>
-            )}
-
-            {/* Post-save */}
-            {submitted && (
-              <div className="rounded-lg border border-[#e8e5df] bg-white p-4 space-y-2">
-                <p className="text-sm text-[#6b6560]">Availability saved</p>
-                {isOpen && responseRkey && (
-                  <div className="flex items-center gap-3">
-                    <button onClick={handleStartEdit} className="text-sm text-[#0d9488] hover:text-[#0f766e] underline underline-offset-2">
-                      Edit
-                    </button>
-                    <button onClick={handleDeleteResponse} className="text-sm text-red-500 hover:text-red-600 underline underline-offset-2">
-                      Delete
-                    </button>
-                  </div>
-                )}
               </div>
             )}
 

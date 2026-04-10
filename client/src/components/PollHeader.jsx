@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { MoreHorizontal } from 'lucide-react'
 
-export default function PollHeader({ poll, did, rkey, isCreator, onEditClick, onDeleteClick, onScheduleClick, schedulingMode }) {
+export default function PollHeader({ poll, did, rkey, isCreator, onEditClick, onDeleteClick, onScheduleClick, schedulingMode, submitted, responseRkey, onEditResponse, onDeleteResponse }) {
   const [copied, setCopied] = useState(false)
 
   function copyLink() {
@@ -56,7 +56,7 @@ export default function PollHeader({ poll, did, rkey, isCreator, onEditClick, on
         </p>
       )}
 
-      {/* Actions row — separated, with hierarchy */}
+      {/* Actions row */}
       <div className="flex items-center gap-2 flex-wrap">
         {isCreator && isOpen && onScheduleClick && !schedulingMode && (
           <Button onClick={onScheduleClick} className="bg-[#0d9488] text-white hover:bg-[#0f766e]">
@@ -80,6 +80,30 @@ export default function PollHeader({ poll, did, rkey, isCreator, onEditClick, on
               )}
             </DropdownMenuContent>
           </DropdownMenu>
+        )}
+
+        {/* Response status — inline after poll actions */}
+        {submitted && (
+          <>
+            <span className="text-[#d8d4cf] select-none" aria-hidden="true">·</span>
+            <span className="text-sm text-[#0d9488] font-medium flex items-center gap-1">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="shrink-0">
+                <path d="M3 8.5L6.5 12L13 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Saved
+            </span>
+            {isOpen && responseRkey && (
+              <>
+                <span className="text-[#d8d4cf] select-none" aria-hidden="true">·</span>
+                <button onClick={onEditResponse} className="text-sm text-[#6b6560] hover:text-[#1a1a1a] transition-colors">
+                  Edit
+                </button>
+                <button onClick={onDeleteResponse} className="text-sm text-[#6b6560] hover:text-red-600 transition-colors">
+                  Delete
+                </button>
+              </>
+            )}
+          </>
         )}
       </div>
     </div>
