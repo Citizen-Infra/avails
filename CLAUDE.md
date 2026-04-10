@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+<!-- EXPERIMENT: This file uses <important if="condition"> blocks (HumanLayer pattern) to
+improve instruction adherence. However, ETH Zurich research (arxiv.org/abs/2602.11988) found
+that detailed context files reduce agent success rates by 3% and increase cost by 20%.
+Only specific commands and hard constraints reliably help. Architecture overviews and component
+descriptions may hurt. This structure is an experiment — measure before applying elsewhere. -->
+
 **Avails** — open-source ATProto-powered group scheduling tool. Express server + React 19 SPA (Vite 7, Tailwind v4, shadcn/ui). No database — ATProto PDS is the data store.
 
 **Scope: time-finding, not event management.** Avails finds a common available time. It is NOT an event platform, RSVP system, or calendar app. Those are complementary.
