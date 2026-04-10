@@ -184,6 +184,17 @@ Railway (single service, Nixpacks builder). Custom domain: avails.zhgnv.com.
 - Railway volume mounted at `/data` for session persistence
 - `Procfile`: `web: cd server && node src/index.js`
 
+### Preview environment
+
+Railway preview environment at `avails-web-preview.up.railway.app`. Fully isolated from production (own domain, OAuth config, sessions volume). Deploys from `ui-audit-fixes` branch.
+
+- Push to `ui-audit-fixes` → auto-deploys preview
+- Push to `main` → auto-deploys production
+- OAuth is configured for the preview domain — sign-in works
+- Same ATProto PDS data (no database to duplicate)
+- To deploy manually: `railway environment preview && railway service avails-web && railway up --detach`
+- **Remember to switch back after**: `railway environment production`
+
 ### Environment variables
 - `ATPROTO_CLIENT_ID` — URL to client-metadata.json endpoint
 - `ATPROTO_REDIRECT_URI` — OAuth callback URL
