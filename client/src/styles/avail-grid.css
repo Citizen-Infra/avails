@@ -22,6 +22,21 @@
   background-color: #f5f3ef;
 }
 
+/* Subtle pulse on first empty cell to draw attention */
+.avail-cell--empty:first-of-type {
+  animation: cell-hint 2s ease-in-out 1s 2;
+}
+
+@keyframes cell-hint {
+  0%, 100% { background-color: #f5f3ef; }
+  50% { background-color: rgba(34, 197, 94, 0.15); }
+}
+
+/* Stop animation once any cell is selected */
+.avail-grid--has-selection .avail-cell--empty:first-of-type {
+  animation: none;
+}
+
 /* Busy cells — rose background with left accent */
 .avail-cell--busy {
   background-color: #fce4e4;
@@ -165,6 +180,7 @@
   box-shadow: inset 0 0 0 2.5px #0d9488;
   z-index: 2;
 }
+
 
 /* Override the grid line pseudo-element so the ring isn't hidden behind it */
 .avail-cell--active::after {

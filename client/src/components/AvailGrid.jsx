@@ -306,7 +306,7 @@ export default function AvailGrid({
 
         <div
           ref={containerRef}
-          className={cn('select-none relative overflow-x-auto', dragState && 'avail-grid--dragging')}
+          className={cn('select-none relative overflow-x-auto', dragState && 'avail-grid--dragging', mySlots.size > 0 && 'avail-grid--has-selection')}
           style={{ touchAction: 'none' }}
           onPointerLeave={() => { if (!downCell.current) onHoverSlot?.(null) }}
         >
