@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { sessions } from '../lib/sessionStore.js';
+import { getClient } from './auth.js';
 import { validateResponseCreate } from '../middleware/validate.js';
 import { incrementResponseCount } from '../lib/pollIndex.js';
 import { sendEmail } from '../lib/email.js';
@@ -9,10 +10,25 @@ const router = Router();
 const RESPONSE_COLLECTION = 'chat.avails.scheduling.response';
 const POLL_COLLECTION = 'chat.avails.scheduling.poll';
 
-// Find the OAuth session for a given DID by scanning the sessions Map
-function findOauthSessionByDid(did) {
+// Find the OAuth session for a given DID by scanning the sessions Map.
+// If the session exists but the live oauthSession is null (failed restore on startup),
+// attempt a lazy restore on the spot.
+async function findOauthSessionByDid(did) {
   for (const entry of sessions.values()) {
-    if (entry.did === did) return entry.oauthSession;
+    if (entry.did === did) {
+      if (entry.oauthSession) return entry.oauthSession;
+      // Session exists but oauthSession is null — try lazy restore
+      try {
+        const client = await getClient();
+        const oauthSession = await client.restore(did);
+        entry.oauthSession = oauthSession;
+        console.log(`Lazy-restored OAuth session for ${did}`);
+        return oauthSession;
+      } catch (err) {
+        console.warn(`Lazy restore failed for ${did}:`, err.message);
+        return null;
+      }
+    }
   }
   return null;
 }
@@ -50,7 +66,7 @@ router.post('/:did/:rkey/responses', validateResponseCreate, async (req, res, ne
     const { did, rkey } = req.params;
 
     // Find creator's OAuth session — required for writing to their PDS
-    const creatorSession = findOauthSessionByDid(did);
+    const creatorSession = await findOauthSessionByDid(did);
     if (!creatorSession) {
       return res.status(503).json({
         error: 'This poll is temporarily unavailable. The poll creator needs to sign back in at avails.zhgnv.com for responses to work. Please try again in a few minutes.',
@@ -111,7 +127,7 @@ router.put('/:did/:rkey/responses/:responseRkey', validateResponseCreate, async 
   try {
     const { did, rkey, responseRkey } = req.params;
 
-    const creatorSession = findOauthSessionByDid(did);
+    const creatorSession = await findOauthSessionByDid(did);
     if (!creatorSession) {
       return res.status(503).json({
         error: 'This poll is temporarily unavailable. The poll creator needs to sign back in at avails.zhgnv.com for responses to work. Please try again in a few minutes.',
@@ -144,7 +160,7 @@ router.delete('/:did/:rkey/responses/:responseRkey', async (req, res, next) => {
   try {
     const { did, responseRkey } = req.params;
 
-    const creatorSession = findCreatorSession(did);
+    const creatorSession = await findOauthSessionByDid(did);
     if (!creatorSession) {
       return res.status(503).json({ error: 'This poll is temporarily unavailable. The poll creator needs to sign back in at avails.zhgnv.com for responses to work. Please try again in a few minutes.' });
     }
