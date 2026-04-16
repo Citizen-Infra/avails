@@ -308,7 +308,7 @@ export default function AvailGrid({
           ref={containerRef}
           className={cn('select-none relative overflow-x-auto', dragState && 'avail-grid--dragging', mySlots.size > 0 && 'avail-grid--has-selection')}
           style={{ touchAction: 'none' }}
-          onPointerLeave={() => { if (!downCell.current) onHoverSlot?.(null) }}
+          onPointerLeave={() => { if (!downCell.current && !activeSlotRef.current) onHoverSlot?.(null) }}
         >
           <div
             className="grid w-full rounded-lg border border-[#d8d4cf] overflow-hidden"
