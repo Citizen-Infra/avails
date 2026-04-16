@@ -83,12 +83,15 @@ export async function restoreOAuthSessions(client) {
       data.oauthSession = oauthSession;
       restored++;
     } catch (err) {
-      console.warn(`Failed to restore OAuth session for ${data.did}:`, err.message);
-      sessions.delete(sessionId);
-      markDirty('app-sessions');
+      console.warn(`Failed to restore OAuth session for ${data.did} (will retry on demand):`, err.message);
+      data.oauthSession = null;
     }
   }
+  const deferred = [...sessions.values()].filter(d => d.did && !d.oauthSession).length;
   if (restored > 0) {
     console.log(`Restored ${restored} live OAuth sessions`);
+  }
+  if (deferred > 0) {
+    console.log(`${deferred} sessions deferred — will restore on demand`);
   }
 }
