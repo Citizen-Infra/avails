@@ -11,9 +11,16 @@ const router = Router();
 const POLL_COLLECTION = 'chat.avails.scheduling.poll';
 const RESPONSE_COLLECTION = 'chat.avails.scheduling.response';
 
+// Fetch with timeout — prevents hanging on slow PDS responses
+function fetchWithTimeout(url, options = {}, timeoutMs = 10000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(id));
+}
+
 // Resolve the PDS endpoint for a DID via the PLC directory
 async function resolvePds(did) {
-  const res = await fetch(`https://plc.directory/${encodeURIComponent(did)}`);
+  const res = await fetchWithTimeout(`https://plc.directory/${encodeURIComponent(did)}`);
   if (!res.ok) throw new Error(`Failed to resolve DID ${did}: ${res.status}`);
   const doc = await res.json();
   const svc = doc.service?.find(
@@ -88,7 +95,7 @@ router.get('/my', requireAuth, async (req, res, next) => {
 
     // Fetch all poll records from the user's PDS
     const listUrl = `${pds}/xrpc/com.atproto.repo.listRecords?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(POLL_COLLECTION)}&limit=100`;
-    const listRes = await fetch(listUrl);
+    const listRes = await fetchWithTimeout(listUrl);
     if (!listRes.ok) {
       return res.status(listRes.status).json({ error: 'Failed to fetch polls' });
     }
@@ -118,7 +125,7 @@ router.get('/:did/:rkey', async (req, res, next) => {
 
     // Fetch the poll record
     const pollUrl = `${pds}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(POLL_COLLECTION)}&rkey=${encodeURIComponent(rkey)}`;
-    const pollRes = await fetch(pollUrl);
+    const pollRes = await fetchWithTimeout(pollUrl);
     if (!pollRes.ok) {
       return res.status(pollRes.status).json({ error: 'Poll not found' });
     }
@@ -126,7 +133,7 @@ router.get('/:did/:rkey', async (req, res, next) => {
 
     // Fetch response records stored in the creator's PDS
     const responsesUrl = `${pds}/xrpc/com.atproto.repo.listRecords?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(RESPONSE_COLLECTION)}&limit=100`;
-    const responsesRes = await fetch(responsesUrl);
+    const responsesRes = await fetchWithTimeout(responsesUrl);
     let responses = [];
     if (responsesRes.ok) {
       const data = await responsesRes.json();
@@ -238,7 +245,7 @@ router.put('/:did/:rkey/finalize', requireAuth, async (req, res, next) => {
     // Fetch responses for participant names and emails
     const pollUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/poll/${did}/${rkey}`;
     const responsesUrl = `${pds}/xrpc/com.atproto.repo.listRecords?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(RESPONSE_COLLECTION)}&limit=100`;
-    const responsesRes = await fetch(responsesUrl);
+    const responsesRes = await fetchWithTimeout(responsesUrl);
     const responseData = responsesRes.ok ? await responsesRes.json() : { records: [] };
     const pollResponses = (responseData.records || [])
       .filter((r) => r.value?.pollUri && r.value.pollUri.includes(`/${rkey}`))

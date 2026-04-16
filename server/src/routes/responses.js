@@ -10,6 +10,13 @@ const router = Router();
 const RESPONSE_COLLECTION = 'chat.avails.scheduling.response';
 const POLL_COLLECTION = 'chat.avails.scheduling.poll';
 
+// Fetch with timeout — prevents hanging on slow PDS responses
+function fetchWithTimeout(url, options = {}, timeoutMs = 10000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(id));
+}
+
 // Find the OAuth session for a given DID by scanning the sessions Map.
 // If the session exists but the live oauthSession is null (failed restore on startup),
 // attempt a lazy restore on the spot.
@@ -35,7 +42,7 @@ async function findOauthSessionByDid(did) {
 
 // Resolve the PDS endpoint for a DID
 async function resolvePds(did) {
-  const res = await fetch(`https://plc.directory/${encodeURIComponent(did)}`);
+  const res = await fetchWithTimeout(`https://plc.directory/${encodeURIComponent(did)}`);
   if (!res.ok) throw new Error(`Failed to resolve DID ${did}: ${res.status}`);
   const doc = await res.json();
   const svc = doc.service?.find(
@@ -98,7 +105,7 @@ router.post('/:did/:rkey/responses', validateResponseCreate, async (req, res, ne
     try {
       const pds = await resolvePds(did);
       const pollUrl = `${pds}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(POLL_COLLECTION)}&rkey=${encodeURIComponent(rkey)}`;
-      const pollRes = await fetch(pollUrl);
+      const pollRes = await fetchWithTimeout(pollUrl);
       if (pollRes.ok) {
         const pollData = await pollRes.json();
         const poll = pollData.value;
