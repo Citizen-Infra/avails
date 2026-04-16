@@ -608,7 +608,7 @@ export default function PollView() {
             )}
 
             <ResponsePanel
-              responses={responses}
+              responses={viewerResponses}
               highlightName={highlightName}
               onHighlight={setHighlightName}
               hoverSlot={hoverSlot}
