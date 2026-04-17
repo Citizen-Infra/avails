@@ -154,14 +154,15 @@ export default function Landing() {
               </a>
 
               <h1 className="text-4xl sm:text-6xl leading-[1.1] font-bold text-[#1a1a1a] tracking-tight">
-                Find a time<br/>
-                that works<br/>
-                for everyone
+                Let your assistant<br/>
+                find a time that<br/>
+                works for everyone
               </h1>
 
               <p className="text-xl text-[#6b6560] leading-relaxed max-w-lg">
-                Group scheduling on the AT Protocol. Your polls live in your
-                Bluesky account. No lock-in. No account needed to respond.
+                Connect avails to Claude, Cursor, or any MCP-compatible tool.
+                Create polls, check availability, and schedule meetings — all
+                from your terminal. Built on ATProto so your data stays yours.
               </p>
 
               <div className="flex items-center gap-4 pt-2">
@@ -171,30 +172,29 @@ export default function Landing() {
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-8 pt-6 text-base text-[#6b6560]">
                 <div className="flex items-center gap-2.5">
                   <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="#0d9488" strokeWidth="1.5">
-                    <rect x="2" y="2" width="12" height="12" rx="2"/>
-                    <path d="M2 6h12M6 2v12"/>
+                    <path d="M5 3l-1 10M12 3l-1 10M3 6h11M2 10h11"/>
                   </svg>
-                  Availability grid
-                </div>
-                <div className="flex items-center gap-2.5">
-                  <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="#0d9488" strokeWidth="1.5">
-                    <path d="M2 8h12M8 2v12"/>
-                  </svg>
-                  Calendar invites
+                  AI assistant ready
                 </div>
                 <div className="flex items-center gap-2.5">
                   <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="#0d9488" strokeWidth="1.5">
                     <circle cx="8" cy="8" r="6"/>
-                    <path d="M8 4v4l3 2"/>
+                    <path d="M5 8.5l2 2 4-4"/>
                   </svg>
-                  No account to respond
+                  Respond without logging in
                 </div>
                 <div className="flex items-center gap-2.5">
                   <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="#0d9488" strokeWidth="1.5">
-                    <path d="M2 4l6 4 6-4"/>
-                    <rect x="2" y="3" width="12" height="10" rx="1.5"/>
+                    <path d="M4 8h8M8 4v8M2 2h4M10 2h4M2 14h4M10 14h4"/>
                   </svg>
-                  AI assistant ready
+                  ATProto interoperable
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="#0d9488" strokeWidth="1.5">
+                    <rect x="3" y="5" width="10" height="8" rx="1.5"/>
+                    <path d="M5 5V3.5a3 3 0 016 0V5"/>
+                  </svg>
+                  Can be self-hosted
                 </div>
               </div>
             </div>
@@ -210,7 +210,6 @@ export default function Landing() {
             <a href="/about" className="hover:text-[#6b6560] transition-colors">About</a>
             <a href="/privacy" className="hover:text-[#6b6560] transition-colors">Privacy</a>
             <a href="/terms" className="hover:text-[#6b6560] transition-colors">Terms</a>
-            <a href="https://github.com/Citizen-Infra/avails" className="hover:text-[#6b6560] transition-colors" target="_blank" rel="noopener noreferrer">GitHub</a>
           </div>
         </div>
       </footer>
