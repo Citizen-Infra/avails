@@ -4,6 +4,8 @@ Open-source group scheduling on the AT Protocol. An alternative to [LettuceMeet]
 
 **Live at [avails.zhgnv.com](https://avails.zhgnv.com)**
 
+<!-- TODO: Add screenshot of the heatmap grid with multiple responses -->
+
 ## How it works
 
 1. **Sign in with Bluesky** — your poll is stored as an ATProto record in your PDS
@@ -36,8 +38,26 @@ You don't need to know or care about any of this to use avails. It works like an
 - **Edit and delete** — participants can edit or delete their availability after submitting
 - **Timezone support** — grid auto-converts to each viewer's local timezone. Creator in Budapest, participant in New York — everyone sees their own local times
 - **Mobile-native grid** — touch drag to paint availability, tap any slot to see who's available. Responsive layout with pagination for many dates.
-- **OpenMeet integration** — publish scheduled meetings as [OpenMeet](https://platform.openmeet.net) events and fetch calendar availability (blocked by ATProto OAuth scope upgrade issue — [#49](https://github.com/Citizen-Infra/avails/issues/49))
-- **MCP endpoint for AI agents** — create polls, analyze overlaps, schedule meetings, and share to Telegram from Claude Code, Claude Desktop, or any MCP-compatible AI assistant. Authenticate with your Bluesky account via standard OAuth.
+- **OpenMeet integration** — publish scheduled meetings as [OpenMeet](https://platform.openmeet.net) events and fetch calendar availability (code ready, blocked by ATProto OAuth scope upgrade — [#49](https://github.com/Citizen-Infra/avails/issues/49))
+
+## Connect your AI assistant
+
+Avails has a built-in [MCP](https://modelcontextprotocol.io) endpoint — connect it to Claude Code, Cursor, or any MCP-compatible AI tool and manage polls from your terminal.
+
+```bash
+claude mcp add -s local -t http avails https://avails.zhgnv.com/mcp
+```
+
+Then just ask:
+
+- *"Create a poll for next week, 3-7pm, for the team retro"*
+- *"Who's available on Thursday?"*
+- *"Schedule the meeting at the best time and send invites"*
+- *"Share the poll to the events topic in our Telegram group"*
+
+You authenticate with your own Bluesky account — polls are created under your identity, stored in your PDS. No API keys, no shared accounts.
+
+**Available tools:** `create_poll`, `get_poll`, `list_polls`, `list_my_polls`, `schedule`, `share_poll`, `list_communities`, `publish_to_openmeet`
 
 ## Stack
 
@@ -140,7 +160,7 @@ TypeScript types are generated with `npx @atproto/lex build`.
 
 ### MCP endpoint
 
-`POST /mcp` — [Model Context Protocol](https://modelcontextprotocol.io) endpoint for AI agents. JSON-RPC over HTTP.
+`POST /mcp` — see [Connect your AI assistant](#connect-your-ai-assistant) above for setup and usage. Full tool reference:
 
 | Tool | Auth | Description |
 |------|------|-------------|
@@ -155,14 +175,6 @@ TypeScript types are generated with `npx @atproto/lex build`.
 
 **Authentication:** Standard OAuth 2.0 with ATProto — Claude Code handles the flow automatically via `/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server` discovery. Granular scopes (only poll and response record access, not full account).
 
-**Setup in Claude Code:**
-
-```bash
-claude mcp add -s local -t http avails https://avails.zhgnv.com/mcp
-```
-
-Then ask Claude to create a poll, and it will prompt you to authenticate via Bluesky.
-
 ## Part of Citizen Infrastructure
 
 Avails is part of the [Citizen Infrastructure](https://github.com/Citizen-Infra) ecosystem — community tools built on open protocols.
@@ -174,9 +186,10 @@ Avails is part of the [Citizen Infrastructure](https://github.com/Citizen-Infra)
 
 ### Roadmap
 
-**Next — OpenMeet integration (code ready, blocked by ATProto OAuth [#49](https://github.com/Citizen-Infra/avails/issues/49)):**
-- [OpenMeet as calendar layer](https://github.com/Citizen-Infra/avails/issues/32) — implemented, but users who authorized before the OpenMeet scope was added can't use it until re-consent is forced
-- [OpenMeet event publishing](https://github.com/Citizen-Infra/avails/issues/31) — implemented, same OAuth blocker
+**Next — OpenMeet integration (code ready, blocked by ATProto OAuth scope upgrade [#49](https://github.com/Citizen-Infra/avails/issues/49)):**
+ATProto OAuth doesn't re-prompt for upgraded scopes on existing grants. Users who authorized before the OpenMeet scope was added can't use these features until re-consent is forced (admin clear-sessions + wait for bsky.social propagation).
+- [OpenMeet as calendar layer](https://github.com/Citizen-Infra/avails/issues/32) — implemented
+- [OpenMeet event publishing](https://github.com/Citizen-Infra/avails/issues/31) — implemented
 - [Server-side calendar OAuth](https://github.com/Citizen-Infra/avails/issues/6) as fallback for users without OpenMeet
 - [Create calendar events directly](https://github.com/Citizen-Infra/avails/issues/7) via API on finalize (not just .ics email)
 
@@ -184,7 +197,7 @@ Avails is part of the [Citizen Infrastructure](https://github.com/Citizen-Infra)
 - [Human-readable poll URLs via slug](https://github.com/Citizen-Infra/avails/issues/45) — `avails.zhgnv.com/p/cibc-season-2` instead of DID paths
 - [Open Graph metadata](https://github.com/Citizen-Infra/avails/issues/46) — rich previews in Telegram, Slack, social media
 - [Persistent availability](https://github.com/Citizen-Infra/avails/issues/47) — fill once, apply to all overlapping polls, auto-update on scheduling
-- [Decouple response storage from creator session](https://github.com/Citizen-Infra/avails/issues/42)
+- [Decouple response storage from creator session](https://github.com/Citizen-Infra/avails/issues/42) — partially addressed: resilient session restore with lazy on-demand reconnection ([#42 comment](https://github.com/Citizen-Infra/avails/issues/42)). Full decoupling (server-managed identity) is future work.
 - [Self-service community connection](https://github.com/Citizen-Infra/avails/issues/44) — users connect their own Telegram groups (blocked by [community-admin](https://github.com/Citizen-Infra/community-admin))
 - [CLI tool](https://github.com/Citizen-Infra/avails/issues/43) — `avails create`, `avails share` from the terminal
 
