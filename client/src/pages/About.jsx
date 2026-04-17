@@ -14,26 +14,6 @@ function ExternalLink({ href, children, className = '' }) {
   )
 }
 
-function ProjectCard({ title, description, href }) {
-  return (
-    <ExternalLink
-      href={href}
-      className="group block rounded-xl border border-[#e8e5df] bg-white p-6 hover:border-[#0d9488] transition-all duration-200 hover:shadow-[0_2px_16px_rgba(13,148,136,0.08)]"
-    >
-      <h3 className="text-lg font-semibold text-[#1a1a1a] group-hover:text-[#0d9488] transition-colors">
-        {title}
-      </h3>
-      <p className="text-base text-[#6b6560] mt-2 leading-relaxed">{description}</p>
-      <span className="inline-flex items-center gap-1.5 mt-4 text-sm font-medium text-[#0d9488] opacity-0 group-hover:opacity-100 transition-opacity">
-        View on GitHub
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M6 3l5 5-5 5" />
-        </svg>
-      </span>
-    </ExternalLink>
-  )
-}
-
 export default function About() {
   return (
     <div className="min-h-screen bg-[#faf9f6]">
@@ -146,74 +126,50 @@ export default function About() {
         {/* Divider */}
         <div className="border-t border-[#e8e5df]" />
 
-        {/* Citizen Infrastructure */}
+        {/* AI Assistant */}
         <section className="py-16">
           <p className="text-sm font-medium text-[#0d9488] uppercase tracking-widest mb-4">
-            Citizen Infrastructure
+            AI-native scheduling
           </p>
           <h2 className="text-3xl font-bold text-[#1a1a1a] tracking-tight">
-            Forging digital pitchforks<br />against techno-feudalism.
+            Create polls from<br />your AI assistant.
           </h2>
           <p className="text-xl text-[#6b6560] leading-relaxed mt-6 max-w-xl">
-            Avails is part of{' '}
+            Avails has a built-in{' '}
             <ExternalLink
-              href="https://github.com/Citizen-Infra"
+              href="https://modelcontextprotocol.io"
               className="text-[#0d9488] hover:text-[#0f766e] underline underline-offset-2 decoration-[#0d9488]/30 hover:decoration-[#0d9488] transition-colors"
             >
-              Citizen Infrastructure
+              MCP
             </ExternalLink>
-            {' '}— a collective building community tools on open protocols. Tools
-            that teach collective action through use.
+            {' '}endpoint. Connect it to Claude Code, Cursor, or any
+            MCP-compatible tool and manage polls from your terminal.
           </p>
 
-          <div className="mt-10 grid sm:grid-cols-3 gap-4">
-            <ProjectCard
-              title="My Community"
-              description="Online community dashboard as a new tab — Bluesky feeds, Telegram and Slack digests, participation opportunities."
-              href="https://github.com/Citizen-Infra/my-community"
-            />
-            <ProjectCard
-              title="Dear Neighbors"
-              description="Neighborhood dashboard. Local information, community resources, and civic participation in one place."
-              href="https://github.com/Citizen-Infra/dear-neighbors"
-            />
-            <ProjectCard
-              title="Navidrome Jam"
-              description="Synchronized music listening for communities. Start a session, everyone hears the same track at the same time."
-              href="https://github.com/Citizen-Infra/navidrome-jam"
-            />
-          </div>
-        </section>
-
-        {/* Divider */}
-        <div className="border-t border-[#e8e5df]" />
-
-        {/* My Community integration */}
-        <section className="py-16">
-          <h2 className="text-3xl font-bold text-[#1a1a1a] tracking-tight">
-            Works with My Community
-          </h2>
-          <div className="mt-8 rounded-xl border border-[#e8e5df] bg-white p-8 sm:flex sm:items-start sm:gap-8">
-            <div className="shrink-0 w-12 h-12 rounded-lg bg-[#ccfbf1] flex items-center justify-center">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0d9488" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                <path d="M2 17l10 5 10-5" />
-                <path d="M2 12l10 5 10-5" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-base text-[#6b6560] leading-relaxed mt-4 sm:mt-0">
-                Avails polls show up in{' '}
-                <ExternalLink
-                  href="https://github.com/Citizen-Infra/my-community"
-                  className="text-[#0d9488] hover:text-[#0f766e] underline underline-offset-2 decoration-[#0d9488]/30 hover:decoration-[#0d9488] transition-colors"
-                >
-                  My Community
-                </ExternalLink>
-                's participation feed. When your community has an open scheduling
-                poll, it appears as a banner alongside events and sessions —
-                making collective coordination visible where people already look.
-              </p>
+          <div className="mt-10 rounded-xl bg-[#f5f3f0] p-8">
+            <p className="text-sm font-mono text-[#6b6560] mb-4">$ claude mcp add -s local -t http avails https://avails.zhgnv.com/mcp</p>
+            <div className="grid sm:grid-cols-2 gap-6 mt-6">
+              <div>
+                <p className="text-sm font-semibold text-[#0d9488] uppercase tracking-wider mb-2">
+                  What you can ask
+                </p>
+                <ul className="space-y-2 text-base text-[#6b6560]">
+                  <li>"Create a poll for next week, 3-7pm"</li>
+                  <li>"Who's available on Thursday?"</li>
+                  <li>"Schedule at the best time and send invites"</li>
+                  <li>"Share the poll to our Telegram group"</li>
+                </ul>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-[#0d9488] uppercase tracking-wider mb-2">
+                  How it works
+                </p>
+                <p className="text-base text-[#6b6560] leading-relaxed">
+                  You authenticate with your own Bluesky account. Polls are
+                  created under your identity, stored in your PDS. No API keys,
+                  no shared accounts — proper data ownership through the protocol.
+                </p>
+              </div>
             </div>
           </div>
         </section>
@@ -260,9 +216,15 @@ export default function About() {
       <footer className="border-t border-[#e8e5df] mt-auto">
         <div className="max-w-4xl mx-auto px-6 py-6 flex items-center justify-between text-base text-[#a09a94]">
           <span>Built on ATProto</span>
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
             <Link to="/about" className="hover:text-[#6b6560] transition-colors">
               About
+            </Link>
+            <Link to="/privacy" className="hover:text-[#6b6560] transition-colors">
+              Privacy
+            </Link>
+            <Link to="/terms" className="hover:text-[#6b6560] transition-colors">
+              Terms
             </Link>
             <ExternalLink
               href="https://github.com/Citizen-Infra/avails"

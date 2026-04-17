@@ -189,6 +189,13 @@ export default function Landing() {
                   </svg>
                   No account to respond
                 </div>
+                <div className="flex items-center gap-2.5">
+                  <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="#0d9488" strokeWidth="1.5">
+                    <path d="M2 4l6 4 6-4"/>
+                    <rect x="2" y="3" width="12" height="10" rx="1.5"/>
+                  </svg>
+                  AI assistant ready
+                </div>
               </div>
             </div>
           </div>
