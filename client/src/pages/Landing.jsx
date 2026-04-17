@@ -154,7 +154,7 @@ export default function Landing() {
               </a>
 
               <h1 className="text-4xl sm:text-6xl leading-[1.1] font-bold text-[#1a1a1a] tracking-tight">
-                Let your assistant<br/>
+                Let your AI<br/>
                 find a time that<br/>
                 works for everyone
               </h1>

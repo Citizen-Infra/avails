@@ -226,12 +226,6 @@ export default function About() {
             <Link to="/terms" className="hover:text-[#6b6560] transition-colors">
               Terms
             </Link>
-            <ExternalLink
-              href="https://github.com/Citizen-Infra/avails"
-              className="hover:text-[#6b6560] transition-colors"
-            >
-              GitHub
-            </ExternalLink>
           </div>
         </div>
       </footer>
