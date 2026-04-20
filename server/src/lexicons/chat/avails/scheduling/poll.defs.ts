@@ -25,6 +25,11 @@ type Main = {
   notifyVia?: 'email' | 'telegram' | l.UnknownString
   notifyEmail?: string
   notifyTelegram?: string
+
+  /**
+   * If true, respondents see no other responses on the grid until they submit their own.
+   */
+  hideResponsesUntilSubmit?: boolean
   createdAt: l.DatetimeString
 }
 
@@ -49,6 +54,7 @@ const main = l.record<'tid', Main>(
     notifyVia: l.optional(l.string<{ knownValues: ['email', 'telegram'] }>()),
     notifyEmail: l.optional(l.string()),
     notifyTelegram: l.optional(l.string()),
+    hideResponsesUntilSubmit: l.optional(l.boolean()),
     createdAt: l.string({ format: 'datetime' }),
   }),
 )
