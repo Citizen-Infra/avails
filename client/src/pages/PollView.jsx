@@ -572,7 +572,14 @@ export default function PollView() {
             ) : (
               <AvailGrid
                 {...gridProps}
-                mySlots={mySlots}
+                mySlots={
+                  // CabbageMeet-style mode separation when creator chose hide-mode:
+                  // once viewer has submitted, drop the teal overlay so they see the
+                  // pure heatmap (their own picks blend in with the group).
+                  poll.hideResponsesUntilSubmit && !isCreator && submitted && !editing
+                    ? EMPTY_SET
+                    : mySlots
+                }
                 onSlotsChange={setMySlots}
                 readOnly={readOnly(isOpen, submitted, editing)}
                 onHoverSlot={setHoverSlot}
