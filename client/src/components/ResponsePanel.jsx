@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 
-export default function ResponsePanel({ responses = [], highlightName, onHighlight, hoverSlot = null }) {
+export default function ResponsePanel({ responses = [], highlightName, onHighlight, hoverSlot = null, hiddenUntilSubmit = false }) {
   const [sticky, setSticky] = useState(null)
 
   function handleMouseEnter(name) {
@@ -27,9 +27,9 @@ export default function ResponsePanel({ responses = [], highlightName, onHighlig
       <div>
         <div className="w-8 h-1 bg-[#0d9488] rounded-full mb-2" />
         <div className="text-sm font-semibold text-[#1a1a1a] uppercase tracking-wide">
-          {responses.length} {responses.length === 1 ? 'response' : 'responses'}
+          {hiddenUntilSubmit ? 'Responses hidden' : `${responses.length} ${responses.length === 1 ? 'response' : 'responses'}`}
         </div>
-        {responses.length > 0 && (
+        {responses.length > 0 && !hiddenUntilSubmit && (
           <p className="text-xs text-[#a09a94] mt-1">Tap a name to see their availability</p>
         )}
       </div>
@@ -69,7 +69,9 @@ export default function ResponsePanel({ responses = [], highlightName, onHighlig
         })}
         {responses.length === 0 && (
           <li className="text-base text-[#a09a94] px-3 py-2">
-            No responses yet.
+            {hiddenUntilSubmit
+              ? 'Responses are hidden until you save your own availability.'
+              : 'No responses yet.'}
           </li>
         )}
       </ul>

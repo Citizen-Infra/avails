@@ -8,7 +8,7 @@ const TIME_REGEX = /^\d{2}:\d{2}$/;
 const SLOT_REGEX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 
 export function validatePollCreate(req, res, next) {
-  const { title, description, dates, timeRange, slotMinutes, timezone, community, notifyAfter, notifyVia, notifyEmail } = req.body;
+  const { title, description, dates, timeRange, slotMinutes, timezone, community, notifyAfter, notifyVia, notifyEmail, hideResponsesUntilSubmit } = req.body;
 
   const errors = [];
 
@@ -65,6 +65,10 @@ export function validatePollCreate(req, res, next) {
     errors.push('notifyEmail must be a string');
   }
 
+  if (hideResponsesUntilSubmit !== undefined && typeof hideResponsesUntilSubmit !== 'boolean') {
+    errors.push('hideResponsesUntilSubmit must be a boolean');
+  }
+
   if (errors.length > 0) {
     return res.status(400).json({ error: errors.join('; ') });
   }
@@ -81,6 +85,7 @@ export function validatePollCreate(req, res, next) {
     ...(notifyAfter && { notifyAfter }),
     ...(notifyVia && { notifyVia }),
     ...(notifyEmail && { notifyEmail: notifyEmail.trim() }),
+    ...(hideResponsesUntilSubmit === true && { hideResponsesUntilSubmit: true }),
   };
 
   next();
@@ -130,7 +135,7 @@ export function validateResponseCreate(req, res, next) {
 }
 
 export function validatePollUpdate(req, res, next) {
-  const { title, description, dates, timeRange, slotMinutes } = req.body;
+  const { title, description, dates, timeRange, slotMinutes, hideResponsesUntilSubmit } = req.body;
 
   const errors = [];
 
@@ -167,6 +172,10 @@ export function validatePollUpdate(req, res, next) {
     errors.push('slotMinutes must be 15, 30, or 60');
   }
 
+  if (hideResponsesUntilSubmit !== undefined && typeof hideResponsesUntilSubmit !== 'boolean') {
+    errors.push('hideResponsesUntilSubmit must be a boolean');
+  }
+
   if (errors.length > 0) {
     return res.status(400).json({ error: errors.join('; ') });
   }
@@ -178,6 +187,7 @@ export function validatePollUpdate(req, res, next) {
   if (dates !== undefined) req.validatedBody.dates = dates;
   if (timeRange !== undefined) req.validatedBody.timeRange = timeRange;
   if (slotMinutes !== undefined) req.validatedBody.slotMinutes = slotMinutes;
+  if (hideResponsesUntilSubmit !== undefined) req.validatedBody.hideResponsesUntilSubmit = hideResponsesUntilSubmit;
 
   next();
 }

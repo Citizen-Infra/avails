@@ -369,9 +369,7 @@ export default function AvailGrid({
                 const eventName = isBusy ? slotEvents[key] : null
                 const prevKey = rowIdx > 0 ? `${date}T${times[rowIdx - 1]}` : null
                 const prevEventName = prevKey ? slotEvents[prevKey] : null
-                // Hide event pill when user has painted this slot — their selection shouldn't be obscured.
-                // The rose left-border from --busy class still flags the conflict.
-                const showEventName = eventName && eventName !== prevEventName && !isMine
+                const showEventName = eventName && eventName !== prevEventName
 
                 const cell = (
                   <div
@@ -390,32 +388,21 @@ export default function AvailGrid({
                       // Drag preview — highest priority
                       isPendingAdd && 'avail-cell--pending-add',
                       isPendingRemove && 'avail-cell--pending-remove',
-                      // Mine wins via !important; heatmap shows underneath in editing mode.
-                      // --busy stacks with --mine so the rose left-border stays as a conflict flag.
-                      !isPendingAdd && !isPendingRemove && (
-                        readOnly
-                          // VIEWING MODE: heatmap only, no personal overlay
-                          ? (isBusy ? 'avail-cell--busy'
-                            : isHighlighted ? 'avail-cell--highlighted'
-                            : !bgColor ? 'avail-cell--empty'
-                            : null)
-                          // EDITING MODE: mine overlays heatmap of others, busy border stacks with mine
-                          : cn(
-                              isMine && 'avail-cell--mine',
-                              isBusy && 'avail-cell--busy',
-                              !isMine && !isBusy && isHighlighted && 'avail-cell--highlighted',
-                              !isMine && !isBusy && !isHighlighted && !bgColor && 'avail-cell--empty',
-                            )
+                      // Unified: mine = teal bg, busy = translucent rose overlay (heatmap/mine show through).
+                      // Independent of readOnly — same rules in both modes.
+                      !isPendingAdd && !isPendingRemove && cn(
+                        isMine && 'avail-cell--mine',
+                        isBusy && 'avail-cell--busy',
+                        !isMine && isHighlighted && 'avail-cell--highlighted',
+                        !isMine && !bgColor && 'avail-cell--empty',
                       ),
                     )}
                     style={{
+                      // Mine class wins via !important; else heatmap or empty class fills base.
+                      // Busy class adds translucent rose overlay on top via background-image.
                       backgroundColor: isPendingAdd || isPendingRemove
                         ? undefined
-                        : readOnly
-                          // Viewing: heatmap alpha OR busy rose
-                          ? (isBusy ? '#fce4e4' : bgColor)
-                          // Editing: mine (class) wins, else busy rose, else heatmap
-                          : (isMine ? undefined : isBusy ? '#fce4e4' : bgColor),
+                        : isMine ? undefined : bgColor,
                     }}
                     onPointerDown={(e) => handlePointerDown(e, rowIdx, colIdx)}
                     onPointerEnter={(e) => handlePointerEnter(e, rowIdx, colIdx)}

@@ -29,6 +29,7 @@
           "notifyVia": { "type": "string", "knownValues": ["email", "telegram"] },
           "notifyEmail": { "type": "string" },
           "notifyTelegram": { "type": "string" },
+          "hideResponsesUntilSubmit": { "type": "boolean", "description": "If true, respondents see no other responses on the grid until they submit their own." },
           "createdAt": { "type": "string", "format": "datetime" }
         }
       }

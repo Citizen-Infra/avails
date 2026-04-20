@@ -240,6 +240,7 @@ export default function PollView() {
         name: info.name,
         email: info.email,
         slots: creatorSlots,
+        ...(info.did && { did: info.did }),
       })
       if (result.responseRkey) {
         setResponseRkey(result.responseRkey)
@@ -271,6 +272,7 @@ export default function PollView() {
         name: participant.name,
         email: participant.email,
         slots: creatorSlots,
+        ...(participant.did && { did: participant.did }),
       })
       setEditing(false)
       setSubmitted(true)
@@ -285,9 +287,13 @@ export default function PollView() {
   }
 
   function handleStartEdit() {
-    // Load existing slots into the grid for editing (convert from creator's TZ to viewer's TZ)
-    if (participant?.name) {
-      const existing = responses.find(r => r.name === participant.name)
+    // Load existing slots into the grid for editing (convert from creator's TZ to viewer's TZ).
+    // Match by DID first (robust to handle changes), then fall back to name.
+    if (participant) {
+      const existing = responses.find(r =>
+        (participant.did && r.did === participant.did) ||
+        r.name === participant.name
+      )
       if (existing) {
         const viewerSlots = convertSlotsToViewer(existing.slots, poll?.timezone)
         setMySlots(new Set(viewerSlots))
@@ -395,11 +401,16 @@ export default function PollView() {
     slots: convertSlotsToViewer(r.slots, creatorTz),
   }))
 
+  // Hide others' responses from the grid until the viewer submits their own,
+  // if the creator opted in. Applies only while poll is open and viewer hasn't submitted.
+  const hideOthers = poll.hideResponsesUntilSubmit && isOpen && !submitted && !isCreator
+  const gridResponses = hideOthers ? [] : viewerResponses
+
   const gridProps = {
     dates: converted.dates,
     timeRange: converted.timeRange,
     slotMinutes: poll.slotMinutes || poll.slotDuration || 30,
-    responses: viewerResponses,
+    responses: gridResponses,
     busySlots,
     slotEvents,
     highlightName,
@@ -598,10 +609,11 @@ export default function PollView() {
             )}
 
             <ResponsePanel
-              responses={viewerResponses}
+              responses={hideOthers ? [] : viewerResponses}
               highlightName={highlightName}
               onHighlight={setHighlightName}
               hoverSlot={hoverSlot}
+              hiddenUntilSubmit={hideOthers}
             />
           </aside>
         </div>

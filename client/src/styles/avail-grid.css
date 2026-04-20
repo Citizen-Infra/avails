@@ -42,10 +42,9 @@
   animation: none;
 }
 
-/* Busy cells — rose background with left accent */
+/* Busy — translucent rose overlay so heatmap/mine show through */
 .avail-cell--busy {
-  background-color: #fce4e4;
-  border-left: 3px solid #f87171 !important;
+  background-image: linear-gradient(rgba(248, 113, 113, 0.38), rgba(248, 113, 113, 0.38));
 }
 
 /* Hover: dashed outline via ::before (above background) */
@@ -58,9 +57,10 @@
   pointer-events: none;
 }
 
-/* My selected slots (editing mode) — teal, distinct from group heatmap green */
+/* My selected slots — teal fill + teal left-stripe flags "I added this" */
 .avail-cell--mine {
   background-color: rgba(13, 148, 136, 0.78) !important;
+  border-left: 3px solid #0d9488 !important;
 }
 
 /* Scroll hint — gradient fade on right edge when grid overflows */

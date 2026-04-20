@@ -29,6 +29,7 @@ export default function PollCreator() {
   const [communityId, setCommunityId] = useState('')
   const [notifyAfter, setNotifyAfter] = useState('')
   const [notifyEmail, setNotifyEmail] = useState('')
+  const [hideResponsesUntilSubmit, setHideResponsesUntilSubmit] = useState(false)
   const [communities, setCommunities] = useState([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
@@ -64,6 +65,7 @@ export default function PollCreator() {
         communityId: communityId || undefined,
         notifyAfter: notifyAfter ? parseInt(notifyAfter, 10) : undefined,
         notifyEmail: notifyEmail.trim() || undefined,
+        hideResponsesUntilSubmit: hideResponsesUntilSubmit || undefined,
       }
       const result = await createPoll(payload)
       navigate(`/p/${result.did}/${result.rkey}`)
@@ -227,6 +229,22 @@ export default function PollCreator() {
             className="border-[#e8e5df] bg-white text-[#1a1a1a] placeholder:text-[#a09a94] focus-visible:ring-[#0d9488]"
           />
         </div>
+
+        <div className="border-t border-[#e8e5df]" />
+
+        {/* Privacy option */}
+        <label className="flex items-start gap-3 cursor-pointer group">
+          <input
+            type="checkbox"
+            checked={hideResponsesUntilSubmit}
+            onChange={e => setHideResponsesUntilSubmit(e.target.checked)}
+            className="mt-1 h-4 w-4 rounded border-[#d8d4cf] text-[#0d9488] focus:ring-[#0d9488] focus:ring-offset-0 accent-[#0d9488] cursor-pointer"
+          />
+          <span className="flex-1">
+            <span className="text-base font-medium text-[#1a1a1a] block">Hide other responses until people submit</span>
+            <span className="text-sm text-[#8a8580] block mt-0.5">Respondents see an empty grid until they save their own availability. Prevents early picks from anchoring others.</span>
+          </span>
+        </label>
 
         {/* Error */}
         {error && (

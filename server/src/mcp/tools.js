@@ -134,6 +134,10 @@ const TOOL_DEFINITIONS = [
           type: 'string',
           description: 'Optional: email address for notifications',
         },
+        hideResponsesUntilSubmit: {
+          type: 'boolean',
+          description: 'Optional: if true, respondents see no other responses on the grid until they submit their own',
+        },
       },
       required: ['title', 'dates', 'timeRange', 'slotMinutes', 'timezone'],
     },
@@ -146,6 +150,51 @@ const TOOL_DEFINITIONS = [
       type: 'object',
       properties: {},
       required: [],
+    },
+  },
+  {
+    name: 'update_poll',
+    description:
+      'Update fields on an existing open poll. Only the poll creator can call this. Omit any field to leave it unchanged. Cannot be used on finalized polls.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rkey: {
+          type: 'string',
+          description: 'Record key of the poll to update',
+        },
+        title: {
+          type: 'string',
+          description: 'New poll title',
+        },
+        description: {
+          type: 'string',
+          description: 'New poll description',
+        },
+        dates: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'New array of date strings (YYYY-MM-DD)',
+        },
+        timeRange: {
+          type: 'object',
+          properties: {
+            start: { type: 'string', description: 'Start time HH:MM' },
+            end: { type: 'string', description: 'End time HH:MM' },
+          },
+          required: ['start', 'end'],
+          description: 'New time range for availability slots',
+        },
+        slotMinutes: {
+          type: 'number',
+          description: 'New slot duration in minutes (15, 30, or 60)',
+        },
+        hideResponsesUntilSubmit: {
+          type: 'boolean',
+          description: 'If true, respondents see no other responses on the grid until they submit their own',
+        },
+      },
+      required: ['rkey'],
     },
   },
   {
@@ -283,7 +332,7 @@ async function createPoll(args, authContext) {
   if (!authContext) throw new Error('AUTH_REQUIRED');
   if (!authContext.oauthSession) throw new Error('AUTH_REQUIRED');
 
-  const { title, dates, timeRange, slotMinutes, timezone, description, community, notifyAfter, notifyEmail } = args;
+  const { title, dates, timeRange, slotMinutes, timezone, description, community, notifyAfter, notifyEmail, hideResponsesUntilSubmit } = args;
 
   const record = {
     $type: POLL_COLLECTION,
@@ -296,6 +345,7 @@ async function createPoll(args, authContext) {
     ...(community !== undefined && { community }),
     ...(notifyAfter !== undefined && { notifyAfter }),
     ...(notifyEmail !== undefined && { notifyEmail }),
+    ...(hideResponsesUntilSubmit === true && { hideResponsesUntilSubmit: true }),
     createdAt: new Date().toISOString(),
     status: 'open',
   };
@@ -323,6 +373,62 @@ async function createPoll(args, authContext) {
     did: authContext.did,
     url: pollUrl(authContext.did, rkey),
   });
+}
+
+async function updatePoll(args, authContext) {
+  if (!authContext) throw new Error('AUTH_REQUIRED');
+  if (!authContext.oauthSession) throw new Error('AUTH_REQUIRED');
+
+  const { rkey, title, description, dates, timeRange, slotMinutes, hideResponsesUntilSubmit } = args;
+  if (!rkey) throw new Error('rkey is required');
+
+  const did = authContext.did;
+  const pds = await resolvePds(did);
+
+  const getRes = await fetch(
+    `${pds}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(POLL_COLLECTION)}&rkey=${encodeURIComponent(rkey)}`
+  );
+  if (!getRes.ok) throw new Error(`Poll not found: ${getRes.status}`);
+  const existingData = await getRes.json();
+
+  if (existingData.value.finalTime) {
+    throw new Error('Cannot edit a finalized poll');
+  }
+
+  const updatedRecord = {
+    ...existingData.value,
+    ...(title !== undefined && { title: title.trim() }),
+    ...(description !== undefined && { description: description.trim() }),
+    ...(dates !== undefined && { dates }),
+    ...(timeRange !== undefined && { timeRange }),
+    ...(slotMinutes !== undefined && { slotMinutes }),
+    ...(hideResponsesUntilSubmit !== undefined && { hideResponsesUntilSubmit }),
+  };
+
+  // Remove old field names that aren't in the lexicon schema
+  delete updatedRecord.earliestTime;
+  delete updatedRecord.latestTime;
+  delete updatedRecord.slotDuration;
+
+  await xrpcCall(authContext.oauthSession, 'com.atproto.repo.putRecord', {
+    repo: did,
+    collection: POLL_COLLECTION,
+    rkey,
+    record: updatedRecord,
+    swapRecord: existingData.cid,
+  });
+
+  if (title !== undefined) {
+    indexPoll(did, rkey, {
+      title: updatedRecord.title,
+      community: updatedRecord.community,
+      status: updatedRecord.status || 'open',
+      responseCount: 0,
+      createdAt: updatedRecord.createdAt,
+    });
+  }
+
+  return JSON.stringify({ ok: true, poll: updatedRecord, url: pollUrl(did, rkey) });
 }
 
 async function listMyPolls(_args, authContext) {
@@ -650,6 +756,8 @@ export async function callTool(name, args, authContext) {
       return listPolls(args);
     case 'create_poll':
       return createPoll(args, authContext);
+    case 'update_poll':
+      return updatePoll(args, authContext);
     case 'list_my_polls':
       return listMyPolls(args, authContext);
     case 'schedule':
