@@ -369,7 +369,9 @@ export default function AvailGrid({
                 const eventName = isBusy ? slotEvents[key] : null
                 const prevKey = rowIdx > 0 ? `${date}T${times[rowIdx - 1]}` : null
                 const prevEventName = prevKey ? slotEvents[prevKey] : null
-                const showEventName = eventName && eventName !== prevEventName
+                // Hide event pill when user has painted this slot — their selection shouldn't be obscured.
+                // The rose left-border from --busy class still flags the conflict.
+                const showEventName = eventName && eventName !== prevEventName && !isMine
 
                 const cell = (
                   <div
@@ -388,7 +390,8 @@ export default function AvailGrid({
                       // Drag preview — highest priority
                       isPendingAdd && 'avail-cell--pending-add',
                       isPendingRemove && 'avail-cell--pending-remove',
-                      // Mine wins via !important; heatmap shows underneath in editing mode
+                      // Mine wins via !important; heatmap shows underneath in editing mode.
+                      // --busy stacks with --mine so the rose left-border stays as a conflict flag.
                       !isPendingAdd && !isPendingRemove && (
                         readOnly
                           // VIEWING MODE: heatmap only, no personal overlay
@@ -396,12 +399,13 @@ export default function AvailGrid({
                             : isHighlighted ? 'avail-cell--highlighted'
                             : !bgColor ? 'avail-cell--empty'
                             : null)
-                          // EDITING MODE: mine overlays heatmap of others
-                          : (isMine ? 'avail-cell--mine'
-                            : isBusy ? 'avail-cell--busy'
-                            : isHighlighted ? 'avail-cell--highlighted'
-                            : !bgColor ? 'avail-cell--empty'
-                            : null)
+                          // EDITING MODE: mine overlays heatmap of others, busy border stacks with mine
+                          : cn(
+                              isMine && 'avail-cell--mine',
+                              isBusy && 'avail-cell--busy',
+                              !isMine && !isBusy && isHighlighted && 'avail-cell--highlighted',
+                              !isMine && !isBusy && !isHighlighted && !bgColor && 'avail-cell--empty',
+                            )
                       ),
                     )}
                     style={{

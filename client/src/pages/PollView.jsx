@@ -435,6 +435,9 @@ export default function PollView() {
           responseRkey={responseRkey}
           onEditResponse={handleStartEdit}
           onDeleteResponse={handleDeleteResponse}
+          showCalendarConnect={isOpen && !submitted && !calendarConnected && isGoogleConfigured()}
+          onConnectGoogleCalendar={connectGoogleCalendar}
+          connectingCalendar={connectingCalendar}
         />
 
         {/* Finalized result card */}
@@ -512,7 +515,7 @@ export default function PollView() {
                 {/* Coaching — dissolves on first paint */}
                 {mySlots.size === 0 && (
                   <p className="text-base text-[#6b6560] flex items-center gap-2">
-                    <span className="inline-block w-5 h-5 rounded bg-[rgba(34,197,94,0.5)] shrink-0" />
+                    <span className="inline-block w-5 h-5 rounded bg-[rgba(13,148,136,0.78)] shrink-0" />
                     <span>
                       {session?.did
                         ? 'Tap or drag on the grid to mark times you\u2019re available'
@@ -522,29 +525,16 @@ export default function PollView() {
                   </p>
                 )}
 
-                {/* Calendar — deferred until user has started painting */}
-                {mySlots.size > 0 && !calendarConnected && (
-                  <div className="flex items-center gap-4 text-sm">
-                    {isGoogleConfigured() && (
-                      <button
-                        onClick={connectGoogleCalendar}
-                        disabled={connectingCalendar}
-                        className="text-[#0d9488] hover:text-[#0f766e] underline underline-offset-2"
-                      >
-                        {connectingCalendar ? 'Connecting...' : 'Overlay your Google Calendar'}
-                      </button>
-                    )}
-                    {session?.did && (
-                      <a
-                        href="https://platform.openmeet.net"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[#6b6560] hover:text-[#1a1a1a] underline underline-offset-2"
-                      >
-                        Or connect via OpenMeet
-                      </a>
-                    )}
-                  </div>
+                {/* OpenMeet fallback link for signed-in users who haven't connected a calendar */}
+                {mySlots.size > 0 && !calendarConnected && session?.did && (
+                  <a
+                    href="https://platform.openmeet.net"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-[#6b6560] hover:text-[#1a1a1a] underline underline-offset-2"
+                  >
+                    Or connect via OpenMeet
+                  </a>
                 )}
 
                 {calendarConnected && (

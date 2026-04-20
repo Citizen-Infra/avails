@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { MoreHorizontal } from 'lucide-react'
 
-export default function PollHeader({ poll, did, rkey, isCreator, onEditClick, onDeleteClick, onScheduleClick, schedulingMode, submitted, responseRkey, onEditResponse, onDeleteResponse }) {
+export default function PollHeader({ poll, did, rkey, isCreator, onEditClick, onDeleteClick, onScheduleClick, schedulingMode, submitted, responseRkey, onEditResponse, onDeleteResponse, showCalendarConnect, onConnectGoogleCalendar, connectingCalendar }) {
   const [copied, setCopied] = useState(false)
 
   function copyLink() {
@@ -66,6 +66,20 @@ export default function PollHeader({ poll, did, rkey, isCreator, onEditClick, on
         <Button variant="outline" onClick={copyLink} className="border-[#d8d4cf] text-[#6b6560] hover:bg-[#f0eeea]">
           {copied ? 'Copied!' : 'Copy link'}
         </Button>
+        {showCalendarConnect && (
+          <Button
+            variant="outline"
+            onClick={onConnectGoogleCalendar}
+            disabled={connectingCalendar}
+            className="border-[#d8d4cf] text-[#6b6560] hover:bg-[#f0eeea] gap-1.5"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="1.8" />
+              <path d="M3 9h18M8 3v4M16 3v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+            {connectingCalendar ? 'Connecting…' : 'Google Calendar'}
+          </Button>
+        )}
         {isCreator && isOpen && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
