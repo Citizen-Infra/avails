@@ -323,12 +323,12 @@ export default function AvailGrid({
             return (
               <div
                 key={date}
-                className="flex flex-col items-center pb-2 pt-1 text-center"
+                className="flex flex-col items-center gap-0.5 pb-2 pt-1 text-center"
               >
-                <span className="text-sm font-medium text-[#6b6560] uppercase tracking-wide">
+                <span className="text-[11px] font-medium text-[#8a8580] uppercase tracking-[0.1em]">
                   {dayName}
                 </span>
-                <span className="text-sm text-[#1a1a1a] font-medium">{monthDay}</span>
+                <span className="text-base text-[#1a1a1a] font-semibold tabular-nums leading-none">{monthDay}</span>
               </div>
             )
           })}
@@ -339,9 +339,14 @@ export default function AvailGrid({
               {/* Time label */}
               <div
                 key={`label-${time}`}
-                className="pr-2 flex items-center justify-end"
+                className="pr-2 flex items-start justify-end -mt-[7px]"
               >
-                <span className="text-sm text-[#6b6560] tabular-nums leading-none">
+                <span className={cn(
+                  'text-xs tabular-nums leading-none',
+                  time.endsWith(':00')
+                    ? 'text-[#1a1a1a] font-medium'
+                    : 'text-[#a09a94]'
+                )}>
                   {time}
                 </span>
               </div>
@@ -373,6 +378,7 @@ export default function AvailGrid({
                     data-col={colIdx}
                     className={cn(
                       'avail-cell h-8 cursor-pointer',
+                      time.endsWith(':00') && rowIdx > 0 && slotMinutes < 60 && 'avail-cell--hour',
                       !(isScheduled && scheduledCards[colIdx]?.startRow === rowIdx) && 'overflow-hidden',
                       rowIdx === 0 && 'rounded-t',
                       rowIdx === times.length - 1 && 'rounded-b',
@@ -382,7 +388,7 @@ export default function AvailGrid({
                       // Drag preview — highest priority
                       isPendingAdd && 'avail-cell--pending-add',
                       isPendingRemove && 'avail-cell--pending-remove',
-                      // Mutually exclusive modes (CabbageMeet pattern):
+                      // Mine wins via !important; heatmap shows underneath in editing mode
                       !isPendingAdd && !isPendingRemove && (
                         readOnly
                           // VIEWING MODE: heatmap only, no personal overlay
@@ -390,20 +396,22 @@ export default function AvailGrid({
                             : isHighlighted ? 'avail-cell--highlighted'
                             : !bgColor ? 'avail-cell--empty'
                             : null)
-                          // EDITING MODE: my selection only, no heatmap
+                          // EDITING MODE: mine overlays heatmap of others
                           : (isMine ? 'avail-cell--mine'
                             : isBusy ? 'avail-cell--busy'
-                            : 'avail-cell--empty')
+                            : isHighlighted ? 'avail-cell--highlighted'
+                            : !bgColor ? 'avail-cell--empty'
+                            : null)
                       ),
                     )}
                     style={{
                       backgroundColor: isPendingAdd || isPendingRemove
                         ? undefined
                         : readOnly
-                          // Viewing: show heatmap alpha OR busy rose
+                          // Viewing: heatmap alpha OR busy rose
                           ? (isBusy ? '#fce4e4' : bgColor)
-                          // Editing: no heatmap, just busy rose
-                          : (isBusy && !isMine ? '#fce4e4' : undefined),
+                          // Editing: mine (class) wins, else busy rose, else heatmap
+                          : (isMine ? undefined : isBusy ? '#fce4e4' : bgColor),
                     }}
                     onPointerDown={(e) => handlePointerDown(e, rowIdx, colIdx)}
                     onPointerEnter={(e) => handlePointerEnter(e, rowIdx, colIdx)}

@@ -11,10 +11,15 @@
   content: '';
   position: absolute;
   inset: 0;
-  border-top: 1px solid #d8d4cf;
-  border-left: 1px solid #d8d4cf;
+  border-top: 1px solid #ecebe7;
+  border-left: 1px solid #ecebe7;
   z-index: -1;
   pointer-events: none;
+}
+
+/* Stronger top border on hour-boundary rows — helps vertical scanning */
+.avail-cell--hour::after {
+  border-top-color: #c9c4be;
 }
 
 /* Empty cells — subtle warm tint, not white void */
