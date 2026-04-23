@@ -10,7 +10,9 @@
       "client/index.html",
       "server/src/**",
       "server/package.json",
-      "lexicons/**"
+      "lexicons/**",
+      ".railwayignore",
+      "railway.json"
     ]
   },
   "deploy": {
