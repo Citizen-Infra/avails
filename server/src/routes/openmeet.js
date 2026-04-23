@@ -5,10 +5,22 @@ const router = Router();
 
 const OPENMEET_API = process.env.OPENMEET_API_URL || 'https://api.openmeet.net';
 
+// Resolve a DID's PDS endpoint via PLC. Mirrors polls.js — kept local
+// rather than shared to avoid a circular import between the two routes.
+async function resolvePdsForDid(did) {
+  const res = await fetch(`https://plc.directory/${encodeURIComponent(did)}`);
+  if (!res.ok) throw new Error(`Failed to resolve DID ${did}: ${res.status}`);
+  const doc = await res.json();
+  const svc = doc.service?.find(
+    (s) => s.id === '#atproto_pds' || s.type === 'AtprotoPersonalDataServer'
+  );
+  return svc?.serviceEndpoint || 'https://bsky.social';
+}
+
 // POST /api/openmeet/publish — create an OpenMeet event from a finalized poll
 router.post('/publish', requireAuth, async (req, res, next) => {
   try {
-    const { title, description, startDate, endDate, timezone, pollUrl } = req.body;
+    const { title, description, startDate, endDate, timezone, pollUrl, did, rkey } = req.body;
 
     if (!title || !startDate) {
       return res.status(400).json({ error: 'title and startDate required' });
@@ -71,12 +83,43 @@ router.post('/publish', requireAuth, async (req, res, next) => {
     const result = await response.json();
     console.log('[openmeet] Event created:', result.slug || result.id);
 
+    // Persist the slug back to the poll record so we can later delete the
+    // OpenMeet event on unschedule (survives page refresh). Best-effort: if
+    // did/rkey aren't supplied or the PUT fails, the publish still succeeds —
+    // worst case is the OpenMeet event becomes orphaned on unschedule.
+    if (result.slug && did && rkey && req.userDid === did) {
+      try {
+        const pds = await resolvePdsForDid(did);
+        const getUrl = `${pds}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(did)}&collection=chat.avails.scheduling.poll&rkey=${encodeURIComponent(rkey)}`;
+        const existing = await fetch(getUrl);
+        if (existing.ok) {
+          const existingData = await existing.json();
+          const updatedRecord = { ...existingData.value, openmeetEventSlug: result.slug };
+          await req.oauthSession.fetchHandler('/xrpc/com.atproto.repo.putRecord', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              repo: did,
+              collection: 'chat.avails.scheduling.poll',
+              rkey,
+              record: updatedRecord,
+              swapRecord: existingData.cid,
+            }),
+          });
+          console.log('[openmeet] Persisted slug to poll record');
+        }
+      } catch (err) {
+        console.log('[openmeet] Failed to persist slug (non-fatal):', err.message);
+      }
+    }
+
     res.json({
       ok: true,
       eventUrl: result.slug
         ? `https://platform.openmeet.net/events/${result.slug}`
         : undefined,
       eventId: result.id,
+      eventSlug: result.slug,
     });
   } catch (err) {
     next(err);
@@ -84,6 +127,40 @@ router.post('/publish', requireAuth, async (req, res, next) => {
 });
 
 const OPENMEET_DID = 'did:web:api.openmeet.net';
+
+/**
+ * Delete an OpenMeet event by slug using the user's service-auth token.
+ * Best-effort: returns true on 200/204, false on any error (caller decides
+ * whether that's fatal). Used from unfinalize flow so unscheduling a poll
+ * also removes the downstream OpenMeet event.
+ */
+export async function deleteOpenMeetEvent(oauthSession, slug) {
+  if (!slug) return false;
+  const tokenResult = await getOpenMeetToken(oauthSession);
+  if (!tokenResult.token) {
+    console.log('[openmeet] delete skipped — no token (error:', tokenResult.error, ')');
+    return false;
+  }
+  try {
+    const res = await fetch(`${OPENMEET_API}/api/events/${encodeURIComponent(slug)}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${tokenResult.token}`,
+        'x-tenant-id': process.env.OPENMEET_TENANT_ID || 'lsdfaopkljdfs',
+      },
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      console.log('[openmeet] delete failed:', res.status, text);
+      return false;
+    }
+    console.log('[openmeet] Event deleted:', slug);
+    return true;
+  } catch (err) {
+    console.log('[openmeet] delete error:', err.message);
+    return false;
+  }
+}
 
 /**
  * Get an OpenMeet bearer token via ATProto service auth.

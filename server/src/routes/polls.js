@@ -4,6 +4,7 @@ import { validatePollCreate, validatePollUpdate } from '../middleware/validate.j
 import { indexPoll, updatePollStatus, removePoll, listByCommunity } from '../lib/pollIndex.js';
 import { generateIcs } from '../lib/ical.js';
 import { sendEmail } from '../lib/email.js';
+import { deleteOpenMeetEvent } from './openmeet.js';
 import { sessions } from '../lib/sessionStore.js';
 
 const router = Router();
@@ -252,7 +253,14 @@ router.put('/:did/:rkey/finalize', requireAuth, async (req, res, next) => {
       .map((r) => r.value);
 
     const participants = pollResponses.filter((r) => r.name).map((r) => r.name);
-    const icsContent = generateIcs(updatedRecord, pollUrl, participants);
+    const icsContent = generateIcs({
+      poll: updatedRecord,
+      pollUrl,
+      did,
+      rkey,
+      participants,
+      method: 'REQUEST',
+    });
     const icsBase64 = Buffer.from(icsContent).toString('base64');
 
     // Collect emails from responses (fallback to notifyEmails from client)
@@ -278,6 +286,110 @@ router.put('/:did/:rkey/finalize', requireAuth, async (req, res, next) => {
     }
 
     res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /:did/:rkey/finalize — unschedule a scheduled poll.
+// Clears finalTime + finalDuration + openmeetEventSlug, reverts status to 'open',
+// deletes the OpenMeet event if one was published, and sends METHOD:CANCEL .ics
+// emails so participants' calendars auto-remove the previously-imported invite.
+router.delete('/:did/:rkey/finalize', requireAuth, async (req, res, next) => {
+  try {
+    const { did, rkey } = req.params;
+
+    if (req.userDid !== did) {
+      return res.status(403).json({ error: 'Only the poll creator can unschedule' });
+    }
+
+    const pds = await resolvePds(did);
+    const getUrl = `${pds}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(POLL_COLLECTION)}&rkey=${encodeURIComponent(rkey)}`;
+    const existing = await fetch(getUrl);
+    if (!existing.ok) return res.status(404).json({ error: 'Poll not found' });
+    const existingData = await existing.json();
+    const existingValue = existingData.value;
+
+    if (!existingValue.finalTime) {
+      return res.status(400).json({ error: 'Poll is not scheduled' });
+    }
+
+    const openmeetSlug = existingValue.openmeetEventSlug;
+
+    // Snapshot for the cancellation email — needs title + finalTime/Duration pre-clear
+    const snapshot = { ...existingValue };
+
+    // Build the new record without the scheduling fields
+    const { finalTime: _ft, finalDuration: _fd, openmeetEventSlug: _oes, ...rest } = existingValue;
+    const updatedRecord = { ...rest, status: 'open' };
+
+    await xrpcCall(req.oauthSession, 'com.atproto.repo.putRecord', {
+      repo: did,
+      collection: POLL_COLLECTION,
+      rkey,
+      record: updatedRecord,
+      swapRecord: existingData.cid,
+    });
+
+    updatePollStatus(did, rkey, 'open');
+
+    // Best-effort: delete the OpenMeet event
+    let openmeetDeleted = false;
+    if (openmeetSlug) {
+      openmeetDeleted = await deleteOpenMeetEvent(req.oauthSession, openmeetSlug);
+    }
+
+    // Best-effort: send cancellation emails with METHOD:CANCEL .ics
+    const pollUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/poll/${did}/${rkey}`;
+    const responsesUrl = `${pds}/xrpc/com.atproto.repo.listRecords?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(RESPONSE_COLLECTION)}&limit=100`;
+    const responsesRes = await fetchWithTimeout(responsesUrl);
+    const responseData = responsesRes.ok ? await responsesRes.json() : { records: [] };
+    const pollResponses = (responseData.records || [])
+      .filter((r) => r.value?.pollUri && r.value.pollUri.includes(`/${rkey}`))
+      .map((r) => r.value);
+
+    const participants = pollResponses.filter((r) => r.name).map((r) => r.name);
+    const emailList = [...new Set(pollResponses.filter((r) => r.email).map((r) => r.email))];
+
+    if (emailList.length > 0) {
+      const cancelIcs = generateIcs({
+        poll: snapshot,
+        pollUrl,
+        did,
+        rkey,
+        participants,
+        method: 'CANCEL',
+      });
+      const icsBase64 = Buffer.from(cancelIcs).toString('base64');
+
+      const whenStr = new Date(snapshot.finalTime).toLocaleString('en-US', {
+        dateStyle: 'full',
+        timeStyle: 'short',
+        timeZone: snapshot.timezone || 'UTC',
+      });
+
+      await Promise.allSettled(
+        emailList.map((email) =>
+          sendEmail({
+            to: email,
+            subject: `Cancelled: ${snapshot.title}`,
+            html: `<p><strong>${snapshot.title}</strong> has been unscheduled.</p><p>The previously-scheduled time (${whenStr}) is cancelled. Your calendar should remove it automatically.</p><p><a href="${pollUrl}">View poll</a> — the poll is open again and you can update your availability.</p>`,
+            attachments: [
+              {
+                filename: 'cancel.ics',
+                content: icsBase64,
+              },
+            ],
+          })
+        )
+      );
+    }
+
+    res.json({
+      ok: true,
+      openmeetDeleted,
+      emailsSent: emailList.length,
+    });
   } catch (err) {
     next(err);
   }

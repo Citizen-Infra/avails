@@ -25,6 +25,7 @@
           "status": { "type": "string", "knownValues": ["open", "closed"] },
           "finalTime": { "type": "string" },
           "finalDuration": { "type": "integer", "minimum": 15 },
+          "openmeetEventSlug": { "type": "string", "description": "Slug of the OpenMeet event created when the poll was published. Cleared on unschedule so the OpenMeet event can be deleted." },
           "notifyAfter": { "type": "integer", "minimum": 1 },
           "notifyVia": { "type": "string", "knownValues": ["email", "telegram"] },
           "notifyEmail": { "type": "string" },

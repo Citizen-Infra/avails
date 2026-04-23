@@ -719,6 +719,26 @@ async function publishToOpenmeet({ did, rkey }, authContext) {
     ? `https://platform.openmeet.net/events/${result.slug}`
     : undefined;
 
+  // Persist slug on the poll record so unscheduling can delete the OpenMeet
+  // event later. Best-effort — if the PUT fails the publish still succeeded.
+  if (result.slug) {
+    try {
+      await auth.oauthSession.fetchHandler('/xrpc/com.atproto.repo.putRecord', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          repo: did,
+          collection: POLL_COLLECTION,
+          rkey,
+          record: { ...poll, openmeetEventSlug: result.slug },
+          swapRecord: pollData.cid,
+        }),
+      });
+    } catch (err) {
+      console.log('[openmeet-mcp] Failed to persist slug (non-fatal):', err.message);
+    }
+  }
+
   return JSON.stringify({
     published: true,
     eventId: result.id,

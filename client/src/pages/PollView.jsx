@@ -1,7 +1,7 @@
 import Logo from '@/components/Logo'
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useParams } from 'react-router'
-import { getPoll, getSession, submitResponse, updateResponse, finalizePoll, deleteResponse, publishToOpenMeet, getOpenMeetAvailability } from '@/lib/api'
+import { getPoll, getSession, submitResponse, updateResponse, finalizePoll, unfinalizePoll, deleteResponse, publishToOpenMeet, getOpenMeetAvailability } from '@/lib/api'
 import { isGoogleConfigured, requestGoogleAccess, fetchBusyTimes } from '@/lib/googleCalendar'
 import { convertPollTimesToViewer, convertSlotsToViewer, convertSlotsToCreator, getViewerTimezone, needsConversion } from '@/lib/timezone'
 import { Button } from '@/components/ui/button'
@@ -373,6 +373,26 @@ export default function PollView() {
     }
   }
 
+  async function handleUnschedule() {
+    const published = !!poll?.openmeetEventSlug || !!openmeetUrl
+    const parts = [
+      'Unschedule this meeting?',
+      '',
+      'Participants with emails will get a calendar-cancel message so the event disappears from their calendars.',
+    ]
+    if (published) parts.push('The OpenMeet event will also be deleted.')
+    parts.push('', 'The poll will reopen and you can pick a different time.')
+    if (!confirm(parts.join('\n'))) return
+    try {
+      await unfinalizePoll(did, rkey)
+      setOpenmeetUrl(null)
+      setOpenmeetError(null)
+      fetchData()
+    } catch (err) {
+      alert(`Could not unschedule: ${err.message}`)
+    }
+  }
+
   async function handlePublishToOpenMeet() {
     if (!poll?.finalTime) return
     setPublishingToOpenMeet(true)
@@ -389,6 +409,8 @@ export default function PollView() {
         endDate,
         timezone: poll.timezone,
         pollUrl,
+        did,
+        rkey,
       })
       if (result.eventUrl) {
         setOpenmeetUrl(result.eventUrl)
@@ -474,6 +496,7 @@ export default function PollView() {
           onEditClick={() => setShowEditPoll(true)}
           onDeleteClick={() => setShowDeletePoll(true)}
           onScheduleClick={() => setSchedulingMode(true)}
+          onUnscheduleClick={!isOpen ? handleUnschedule : undefined}
           schedulingMode={schedulingMode}
           submitted={submitted}
           responseRkey={responseRkey}

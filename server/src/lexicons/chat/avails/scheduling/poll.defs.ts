@@ -21,6 +21,11 @@ type Main = {
   status: 'open' | 'closed' | l.UnknownString
   finalTime?: string
   finalDuration?: number
+
+  /**
+   * Slug of the OpenMeet event created when the poll was published. Cleared on unschedule so the OpenMeet event can be deleted.
+   */
+  openmeetEventSlug?: string
   notifyAfter?: number
   notifyVia?: 'email' | 'telegram' | l.UnknownString
   notifyEmail?: string
@@ -50,6 +55,7 @@ const main = l.record<'tid', Main>(
     status: l.string<{ knownValues: ['open', 'closed'] }>(),
     finalTime: l.optional(l.string()),
     finalDuration: l.optional(l.integer({ minimum: 15 })),
+    openmeetEventSlug: l.optional(l.string()),
     notifyAfter: l.optional(l.integer({ minimum: 1 })),
     notifyVia: l.optional(l.string<{ knownValues: ['email', 'telegram'] }>()),
     notifyEmail: l.optional(l.string()),

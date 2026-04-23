@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { MoreHorizontal } from 'lucide-react'
 
-export default function PollHeader({ poll, did, rkey, isCreator, onEditClick, onDeleteClick, onScheduleClick, schedulingMode, submitted, responseRkey, onEditResponse, onDeleteResponse, showCalendarConnect, onConnectGoogleCalendar, connectingCalendar }) {
+export default function PollHeader({ poll, did, rkey, isCreator, onEditClick, onDeleteClick, onScheduleClick, onUnscheduleClick, schedulingMode, submitted, responseRkey, onEditResponse, onDeleteResponse, showCalendarConnect, onConnectGoogleCalendar, connectingCalendar }) {
   const [copied, setCopied] = useState(false)
 
   function copyLink() {
@@ -80,7 +80,7 @@ export default function PollHeader({ poll, did, rkey, isCreator, onEditClick, on
             {connectingCalendar ? 'Connecting…' : 'Google Calendar'}
           </Button>
         )}
-        {isCreator && isOpen && (
+        {isCreator && (isOpen || onUnscheduleClick) && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="text-[#6b6560] hover:bg-[#f0eeea]">
@@ -88,7 +88,10 @@ export default function PollHeader({ poll, did, rkey, isCreator, onEditClick, on
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {onEditClick && <DropdownMenuItem onClick={onEditClick}>Edit poll</DropdownMenuItem>}
+              {isOpen && onEditClick && <DropdownMenuItem onClick={onEditClick}>Edit poll</DropdownMenuItem>}
+              {!isOpen && onUnscheduleClick && (
+                <DropdownMenuItem onClick={onUnscheduleClick}>Unschedule meeting</DropdownMenuItem>
+              )}
               {onDeleteClick && (
                 <DropdownMenuItem onClick={onDeleteClick} className="text-red-600">Delete poll</DropdownMenuItem>
               )}
