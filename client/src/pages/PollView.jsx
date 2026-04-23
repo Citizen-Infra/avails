@@ -200,8 +200,12 @@ export default function PollView() {
   // rkey against the loaded responses. This is authoritative — if the rkey
   // matches a response, it is definitely the viewer's. Signed-in users hit
   // this path alongside the DID-based effect above; whichever finds first wins.
+  //
+  // Must NOT run while `editing` is true — otherwise clicking Edit (which
+  // flips submitted=false) re-triggers the effect, restores the stored
+  // slots, and snaps submitted back to true, cancelling the edit silently.
   useEffect(() => {
-    if (!responseRkey || submitted || responses.length === 0) return
+    if (!responseRkey || submitted || editing || responses.length === 0) return
     const mine = responses.find(r => r.uri?.split('/').pop() === responseRkey)
     if (mine) {
       const viewerSlots = convertSlotsToViewer(mine.slots, poll?.timezone)
@@ -216,7 +220,7 @@ export default function PollView() {
       localStorage.removeItem(`avails:response:${window.location.pathname}`)
       setResponseRkey(null)
     }
-  }, [responseRkey, responses, submitted, participant, poll?.timezone])
+  }, [responseRkey, responses, submitted, editing, participant, poll?.timezone])
 
   // Auto-fetch calendar from OpenMeet for signed-in users
   useEffect(() => {
