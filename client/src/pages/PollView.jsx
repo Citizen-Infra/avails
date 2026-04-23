@@ -25,23 +25,29 @@ export default function PollView() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  const [participant, setParticipant] = useState(null) // { name, email }
+  // Restore prior-submission identity from localStorage so guests can
+  // edit/delete their response after a refresh. Signed-in users match by
+  // DID in a later effect; this is the fallback for anonymous responders.
+  const savedResponse = (() => {
+    try {
+      const raw = localStorage.getItem(`avails:response:${window.location.pathname}`)
+      return raw ? JSON.parse(raw) : null
+    } catch {
+      return null
+    }
+  })()
+
+  const [participant, setParticipant] = useState(
+    savedResponse?.name
+      ? { name: savedResponse.name, email: savedResponse.email || '', did: savedResponse.did }
+      : null
+  )
   const [mySlots, setMySlots] = useState(new Set())
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
   const [editing, setEditing] = useState(false)
-  const [responseRkey, setResponseRkey] = useState(() => {
-    // Restore saved response rkey from localStorage on mount
-    try {
-      const saved = localStorage.getItem(`avails:response:${window.location.pathname}`)
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        return parsed.responseRkey || null
-      }
-    } catch {}
-    return null
-  })
+  const [responseRkey, setResponseRkey] = useState(savedResponse?.responseRkey || null)
 
   const [focusedName, setFocusedName] = useState(null)
   const [hoverSlot, setHoverSlot] = useState(null)
@@ -190,6 +196,28 @@ export default function PollView() {
     }
   }, [session, responses, participant, submitted])
 
+  // Restore prior submission (guest OR signed-in) by matching the localStorage
+  // rkey against the loaded responses. This is authoritative — if the rkey
+  // matches a response, it is definitely the viewer's. Signed-in users hit
+  // this path alongside the DID-based effect above; whichever finds first wins.
+  useEffect(() => {
+    if (!responseRkey || submitted || responses.length === 0) return
+    const mine = responses.find(r => r.uri?.split('/').pop() === responseRkey)
+    if (mine) {
+      const viewerSlots = convertSlotsToViewer(mine.slots, poll?.timezone)
+      setMySlots(new Set(viewerSlots))
+      setSubmitted(true)
+      if (!participant) {
+        setParticipant({ name: mine.name, email: '', did: mine.did })
+      }
+    } else {
+      // Stale rkey — response was deleted server-side or the PDS lost it.
+      // Clear local state so the user can re-submit without confusion.
+      localStorage.removeItem(`avails:response:${window.location.pathname}`)
+      setResponseRkey(null)
+    }
+  }, [responseRkey, responses, submitted, participant, poll?.timezone])
+
   // Auto-fetch calendar from OpenMeet for signed-in users
   useEffect(() => {
     if (session?.did && poll?.dates && !calendarConnected) {
@@ -247,7 +275,12 @@ export default function PollView() {
         try {
           localStorage.setItem(
             `avails:response:${window.location.pathname}`,
-            JSON.stringify({ responseRkey: result.responseRkey })
+            JSON.stringify({
+              responseRkey: result.responseRkey,
+              name: info.name,
+              email: info.email || '',
+              did: info.did,
+            })
           )
         } catch {}
       }
