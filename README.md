@@ -96,7 +96,7 @@ Copy `server/.env.example` and fill in:
 ```
 PORT=3000
 CLIENT_URL=http://localhost:5173
-ATPROTO_CLIENT_ID=https://avails.zhgnv.com/client-metadata.json
+ATPROTO_CLIENT_ID=https://avails.zhgnv.com/api/auth/client-metadata-v2.json
 ATPROTO_REDIRECT_URI=https://avails.zhgnv.com/api/auth/callback
 SESSION_SECRET=<random string>
 RESEND_API_KEY=<from resend.com>

@@ -660,10 +660,14 @@ async function publishToOpenmeet({ did, rkey }, authContext) {
   }
 
   // Get OpenMeet token via ATProto service auth
-  const token = await getOpenMeetToken(auth.oauthSession);
-  if (!token) {
+  const tokenResult = await getOpenMeetToken(auth.oauthSession);
+  if (tokenResult.error === 'scope-missing') {
+    throw new Error('Your Bluesky session is missing the OpenMeet permission. Sign out and sign back in via the Avails web UI to grant it.');
+  }
+  if (!tokenResult.token) {
     throw new Error('Could not authenticate with OpenMeet. Do you have an OpenMeet account linked to your Bluesky?');
   }
+  const token = tokenResult.token;
 
   const url = pollUrl(did, rkey);
   const OPENMEET_API = process.env.OPENMEET_API_URL || 'https://api.openmeet.net';
