@@ -14,6 +14,7 @@ import { startPersistence, markDirty, saveNow } from './lib/persistence.js';
 import { restoreOAuthSessions, sessions } from './lib/sessionStore.js';
 import mcpOauthRoutes from './mcp/oauth.js';
 import { handleMcp, handleMcpDelete } from './mcp/handler.js';
+import { pollOgHandler } from './lib/og.js';
 
 dotenv.config();
 
@@ -122,6 +123,12 @@ app.get('/api/health', (req, res) => {
 
 // Serve static client build in production
 const clientDist = path.join(__dirname, '../../client/dist');
+
+// Intercept poll URLs BEFORE express.static so we can inject per-poll Open
+// Graph metadata for link-preview crawlers (Telegram, Slack, Discord, etc).
+// SPA crawlers don't run JS, so the HTML has to carry the tags.
+app.get('/p/:did/:rkey', pollOgHandler(clientDist));
+
 app.use(express.static(clientDist));
 
 // SPA fallback
