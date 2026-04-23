@@ -37,15 +37,16 @@ router.post('/publish', requireAuth, async (req, res, next) => {
       type: 'online',
       status: 'published',
       visibility: 'public',
+      timeZone: timezone || 'UTC',
+      maxAttendees: 0,
+      categories: [],
+      location: 'Online (scheduled via Avails)',
+      locationOnline: pollUrl || undefined,
       source: {
         type: 'bluesky',
         id: req.userDid,
         url: pollUrl || undefined,
         handle: req.userHandle,
-      },
-      location: {
-        description: 'Online (scheduled via Avails)',
-        url: pollUrl || undefined,
       },
     };
 

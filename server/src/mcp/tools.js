@@ -686,15 +686,16 @@ async function publishToOpenmeet({ did, rkey }, authContext) {
     type: 'online',
     status: 'published',
     visibility: 'public',
+    timeZone: poll.timezone || 'UTC',
+    maxAttendees: 0,
+    categories: [],
+    location: 'Online (scheduled via Avails)',
+    locationOnline: url,
     source: {
       type: 'bluesky',
       id: auth.did,
       url,
       handle: auth.handle,
-    },
-    location: {
-      description: 'Online (scheduled via Avails)',
-      url,
     },
   };
 
