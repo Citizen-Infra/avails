@@ -61,8 +61,8 @@ There is no database. ATProto PDS is the data store:
 Both use ATProto service auth flow:
    - Call `com.atproto.server.getServiceAuth` on user's PDS with `aud: did:web:api.openmeet.net`, `lxm: net.openmeet.auth`
    - PDS signs a JWT → exchange at OpenMeet's `POST /api/v1/auth/atproto/service-auth`
-   - Requires `rpc:net.openmeet.auth?aud=did:web:api.openmeet.net` in OAuth scopes
-   - **Blocked by #49** — ATProto OAuth doesn't re-prompt for upgraded scopes on existing grants. Users who authorized before the scope was added can't use OpenMeet features until re-consent is forced.
+   - Requires `rpc:net.openmeet.auth?aud=*` in OAuth scopes. The pinned DID form (`aud=did:web:api.openmeet.net`) was silently dropped from the consent grant by bsky; the wildcard form is what OpenMeet's own documentation recommends.
+   - **#49 gotcha** — ATProto OAuth doesn't re-prompt for upgraded scopes on existing grants. Rotate the `client_id` (client-metadata URL version bump) to force re-consent for every user with the current scope set.
 
 3. **Groups** (#50): OpenMeet has ATProto-native group management ("Groups you organize" / "Groups you're part of"). Could serve as shared community layer for poll scoping — explore once scope issue is resolved.
 
@@ -111,7 +111,7 @@ Embedded `POST /mcp` JSON-RPC endpoint with ATProto OAuth (Smoke Signal pattern)
 
 ### OAuth
 
-Standard OAuth 2.0 discovery (RFC 9728 + 8414) with PKCE S256 — Claude Code handles auth automatically. Granular ATProto scopes: `repo:chat.avails.scheduling.poll`, `repo:chat.avails.scheduling.response`, `rpc:net.openmeet.auth`.
+Standard OAuth 2.0 discovery (RFC 9728 + 8414) with PKCE S256 — Claude Code handles auth automatically. Granular ATProto scopes: `repo:chat.avails.scheduling.poll`, `repo:chat.avails.scheduling.response`, `rpc:net.openmeet.auth?aud=*`.
 
 MCP OAuth flow piggybacks on the web UI's ATProto OAuth — `/api/auth/callback` detects MCP flows via `tryMcpCallback()` (exported from `mcp/oauth.js`) and redirects to the MCP client instead of the homepage.
 
