@@ -142,7 +142,7 @@ router.get('/authorize', async (req, res) => {
 
     const authUrl = await oauthClient.authorize(handle, {
       state: internalState,
-      scope: 'atproto repo:chat.avails.scheduling.poll repo:chat.avails.scheduling.response rpc:net.openmeet.auth?aud=did:web:api.openmeet.net',
+      scope: 'atproto repo:chat.avails.scheduling.poll repo:chat.avails.scheduling.response rpc:net.openmeet.auth?aud=*',
     });
 
     res.redirect(authUrl.toString());
