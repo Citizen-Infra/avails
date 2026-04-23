@@ -57,10 +57,19 @@
   pointer-events: none;
 }
 
-/* My selected slots — teal fill + teal left-stripe flags "I added this" */
+/* My selected slots — translucent teal wash + left-stripe.
+   The wash sits on top of the heatmap (inline background-color) so the
+   group signal stays visible underneath; the stripe is the hard "mine" cue. */
 .avail-cell--mine {
-  background-color: rgba(13, 148, 136, 0.78) !important;
-  border-left: 3px solid #0d9488 !important;
+  background-image: linear-gradient(rgba(13, 148, 136, 0.45), rgba(13, 148, 136, 0.45));
+  border-left: 3px solid #0d9488;
+}
+
+/* Mine + busy: stack both washes so heatmap → rose → teal all read. */
+.avail-cell--mine.avail-cell--busy {
+  background-image:
+    linear-gradient(rgba(13, 148, 136, 0.45), rgba(13, 148, 136, 0.45)),
+    linear-gradient(rgba(248, 113, 113, 0.38), rgba(248, 113, 113, 0.38));
 }
 
 /* Scroll hint — gradient fade on right edge when grid overflows */
@@ -171,13 +180,6 @@
 @keyframes scheduled-shimmer {
   0%, 100% { transform: translateX(-100%); }
   50% { transform: translateX(100%); }
-}
-
-/* Highlighted respondent */
-.avail-cell--highlighted {
-  outline: 2px solid #3b82f6;
-  outline-offset: -2px;
-  z-index: 1;
 }
 
 /* Active slot — tapped cell in read-only mode (mobile tap-to-highlight) */

@@ -65,7 +65,7 @@ export default function AvailGrid({
   mySlots,
   onSlotsChange,
   readOnly = false,
-  highlightName = null,
+  focusedName = null,
   busySlots,
   slotEvents,
   scheduledSlots,
@@ -115,18 +115,21 @@ export default function AvailGrid({
     [dates, timeRange, slotMinutes]
   )
 
+  // When a name is focused, filter responses to just that person's — heatmap
+  // becomes a single-person view (cells they picked = full green, everything
+  // else empty). Outline-style per-cell highlighting is gone in favor of this.
+  const effectiveResponses = useMemo(() => {
+    if (!focusedName) return responses
+    const r = responses.find((r) => r.name === focusedName)
+    return r ? [r] : []
+  }, [responses, focusedName])
+
   const heatmap = useMemo(
-    () => computeHeatmap(responses, dates, times),
-    [responses, dates, times]
+    () => computeHeatmap(effectiveResponses, dates, times),
+    [effectiveResponses, dates, times]
   )
 
-  const highlightSlots = useMemo(() => {
-    if (!highlightName) return new Set()
-    const r = responses.find((r) => r.name === highlightName)
-    return r ? new Set(r.slots) : new Set()
-  }, [responses, highlightName])
-
-  const totalRespondents = responses.length
+  const totalRespondents = effectiveResponses.length
 
   // Precompute scheduled card positions: for each column, find first scheduled row and span
   const scheduledCards = useMemo(() => {
@@ -272,9 +275,10 @@ export default function AvailGrid({
     const key = `${date}T${time}`
     const count = heatmap[key] || 0
     if (count === 0) return null
-    const names = responses
+    const names = effectiveResponses
       .filter((r) => r.slots.includes(key))
       .map((r) => r.name)
+    if (focusedName) return `${focusedName} available`
     return `${count}/${totalRespondents} available — ${names.join(', ')}`
   }
 
@@ -354,9 +358,10 @@ export default function AvailGrid({
               {/* Slot cells for each date */}
               {visibleDates.map((date, colIdx) => {
                 const key = `${date}T${time}`
-                const isMine = mySlots.has(key)
+                // When a name is focused, the grid is a view of their availability —
+                // drop the teal "mine" overlay so we don't mix two lenses at once.
+                const isMine = mySlots.has(key) && !focusedName
                 const isBusy = busySlots.has(key)
-                const isHighlighted = highlightSlots.has(key)
                 const isScheduled = scheduledSlots.has(key)
                 const heatCount = heatmap[key] || 0
                 const bgColor = heatCount > 0 ? slotColor(heatCount, totalRespondents) : undefined
@@ -388,21 +393,19 @@ export default function AvailGrid({
                       // Drag preview — highest priority
                       isPendingAdd && 'avail-cell--pending-add',
                       isPendingRemove && 'avail-cell--pending-remove',
-                      // Unified: mine = teal bg, busy = translucent rose overlay (heatmap/mine show through).
-                      // Independent of readOnly — same rules in both modes.
+                      // Three-layer composition:
+                      //  - bgColor (inline style)    = heatmap base, always paints when count>0
+                      //  - .avail-cell--mine          = translucent teal wash on top + left stripe
+                      //  - .avail-cell--busy          = translucent rose wash on top
+                      //  - .avail-cell--empty         = warm neutral tint when no heatmap
                       !isPendingAdd && !isPendingRemove && cn(
                         isMine && 'avail-cell--mine',
                         isBusy && 'avail-cell--busy',
-                        !isMine && isHighlighted && 'avail-cell--highlighted',
-                        !isMine && !bgColor && 'avail-cell--empty',
+                        !bgColor && 'avail-cell--empty',
                       ),
                     )}
                     style={{
-                      // Mine class wins via !important; else heatmap or empty class fills base.
-                      // Busy class adds translucent rose overlay on top via background-image.
-                      backgroundColor: isPendingAdd || isPendingRemove
-                        ? undefined
-                        : isMine ? undefined : bgColor,
+                      backgroundColor: isPendingAdd || isPendingRemove ? undefined : bgColor,
                     }}
                     onPointerDown={(e) => handlePointerDown(e, rowIdx, colIdx)}
                     onPointerEnter={(e) => handlePointerEnter(e, rowIdx, colIdx)}

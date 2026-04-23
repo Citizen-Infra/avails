@@ -43,7 +43,7 @@ export default function PollView() {
     return null
   })
 
-  const [highlightName, setHighlightName] = useState(null)
+  const [focusedName, setFocusedName] = useState(null)
   const [hoverSlot, setHoverSlot] = useState(null)
   const [schedulingMode, setSchedulingMode] = useState(false)
   const [schedulingSlots, setSchedulingSlots] = useState([])
@@ -413,7 +413,7 @@ export default function PollView() {
     responses: gridResponses,
     busySlots,
     slotEvents,
-    highlightName,
+    focusedName,
     scheduledSlots,
   }
 
@@ -526,7 +526,10 @@ export default function PollView() {
                 {/* Coaching — dissolves on first paint */}
                 {mySlots.size === 0 && (
                   <p className="text-base text-[#6b6560] flex items-center gap-2">
-                    <span className="inline-block w-5 h-5 rounded bg-[rgba(13,148,136,0.78)] shrink-0" />
+                    <span
+                      className="inline-block w-5 h-5 rounded bg-[#f5f3ef] border-l-[3px] border-[#0d9488] shrink-0"
+                      style={{ backgroundImage: 'linear-gradient(rgba(13,148,136,0.45), rgba(13,148,136,0.45))' }}
+                    />
                     <span>
                       {session?.did
                         ? 'Tap or drag on the grid to mark times you\u2019re available'
@@ -572,14 +575,7 @@ export default function PollView() {
             ) : (
               <AvailGrid
                 {...gridProps}
-                mySlots={
-                  // CabbageMeet-style mode separation when creator chose hide-mode:
-                  // once viewer has submitted, drop the teal overlay so they see the
-                  // pure heatmap (their own picks blend in with the group).
-                  poll.hideResponsesUntilSubmit && !isCreator && submitted && !editing
-                    ? EMPTY_SET
-                    : mySlots
-                }
+                mySlots={mySlots}
                 onSlotsChange={setMySlots}
                 readOnly={readOnly(isOpen, submitted, editing)}
                 onHoverSlot={setHoverSlot}
@@ -617,8 +613,8 @@ export default function PollView() {
 
             <ResponsePanel
               responses={hideOthers ? [] : viewerResponses}
-              highlightName={highlightName}
-              onHighlight={setHighlightName}
+              focusedName={focusedName}
+              onFocus={setFocusedName}
               hoverSlot={hoverSlot}
               hiddenUntilSubmit={hideOthers}
             />

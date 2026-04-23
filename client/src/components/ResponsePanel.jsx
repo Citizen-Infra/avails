@@ -1,24 +1,24 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 
-export default function ResponsePanel({ responses = [], highlightName, onHighlight, hoverSlot = null, hiddenUntilSubmit = false }) {
-  const [sticky, setSticky] = useState(null)
+export default function ResponsePanel({ responses = [], focusedName, onFocus, hoverSlot = null, hiddenUntilSubmit = false }) {
+  const [pinned, setPinned] = useState(null)
 
   function handleMouseEnter(name) {
-    if (!sticky) onHighlight(name)
+    if (!pinned) onFocus(name)
   }
 
   function handleMouseLeave() {
-    if (!sticky) onHighlight(null)
+    if (!pinned) onFocus(null)
   }
 
   function handleClick(name) {
-    if (sticky === name) {
-      setSticky(null)
-      onHighlight(null)
+    if (pinned === name) {
+      setPinned(null)
+      onFocus(null)
     } else {
-      setSticky(name)
-      onHighlight(name)
+      setPinned(name)
+      onFocus(name)
     }
   }
 
@@ -30,12 +30,13 @@ export default function ResponsePanel({ responses = [], highlightName, onHighlig
           {hiddenUntilSubmit ? 'Responses hidden' : `${responses.length} ${responses.length === 1 ? 'response' : 'responses'}`}
         </div>
         {responses.length > 0 && !hiddenUntilSubmit && (
-          <p className="text-xs text-[#a09a94] mt-1">Tap a name to see their availability</p>
+          <p className="text-xs text-[#a09a94] mt-1">Hover or tap a name to see only their availability</p>
         )}
       </div>
       <ul className="space-y-0.5">
         {responses.map((r) => {
-          const isActive = highlightName === r.name
+          const isFocused = focusedName === r.name
+          const isPinned = pinned === r.name
           const isAvailableAtHover = hoverSlot !== null && r.slots.includes(hoverSlot)
           const isUnavailableAtHover = hoverSlot !== null && !r.slots.includes(hoverSlot)
           return (
@@ -45,7 +46,8 @@ export default function ResponsePanel({ responses = [], highlightName, onHighlig
                 className={cn(
                   'w-full text-left px-3 py-2.5 rounded-md text-base transition-all duration-150',
                   'cursor-pointer hover:bg-[#f0eeea]',
-                  isActive ? 'text-[#1a1a1a] bg-[#f0eeea] ring-1 ring-[#0d9488]/30' : 'text-[#6b6560]',
+                  isFocused ? 'text-[#1a1a1a] bg-[#f0eeea]' : 'text-[#6b6560]',
+                  isPinned && 'ring-1 ring-[#0d9488]/40',
                   isAvailableAtHover && 'bg-[#f0fdf4]',
                   isUnavailableAtHover && 'opacity-40'
                 )}
