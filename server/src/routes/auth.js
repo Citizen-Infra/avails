@@ -78,7 +78,7 @@ export async function getClient() {
       token_endpoint_auth_method: 'private_key_jwt',
       token_endpoint_auth_signing_alg: 'ES256',
       dpop_bound_access_tokens: true,
-      scope: 'atproto repo:chat.avails.scheduling.poll repo:chat.avails.scheduling.response rpc:net.openmeet.auth?aud=did:web:api.openmeet.net',
+      scope: 'atproto repo:chat.avails.scheduling.poll repo:chat.avails.scheduling.response rpc:net.openmeet.auth?aud=*',
       jwks_uri: `${clientUri}/api/auth/jwks.json`,
     },
 
@@ -107,7 +107,7 @@ export async function getClient() {
 // OAuth has no prompt=consent; bsky caches grants per client_id and auto-approves
 // existing users without re-prompting for new scopes (see #49). Bumping the path
 // forces every user through a fresh consent flow with the current scope set.
-router.get('/client-metadata-v2.json', async (req, res, next) => {
+router.get('/client-metadata-v3.json', async (req, res, next) => {
   try {
     const client = await getClient();
     res.json(client.clientMetadata);
@@ -139,7 +139,7 @@ router.get('/login', async (req, res, next) => {
 
     const url = await client.authorize(handle, {
       signal: ac.signal,
-      scope: 'atproto repo:chat.avails.scheduling.poll repo:chat.avails.scheduling.response rpc:net.openmeet.auth?aud=did:web:api.openmeet.net',
+      scope: 'atproto repo:chat.avails.scheduling.poll repo:chat.avails.scheduling.response rpc:net.openmeet.auth?aud=*',
     });
 
     res.redirect(url.toString());
