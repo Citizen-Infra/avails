@@ -42,29 +42,21 @@ function formatDate(dateStr) {
 // Build the OG description from the poll record. Deliberately does NOT mention
 // response count — that's poll-state info that shouldn't leak into link previews,
 // and in hideResponsesUntilSubmit polls it would be counterproductive.
+//
+// Priority: authored poll.description > computed dates/times summary. If the
+// creator wrote a description, that's what they want to share — don't push it
+// down with noisy metadata.
 export function buildOgDescription(poll) {
-  const parts = [];
-
-  // Dates: list up to 3, otherwise summarise as range
-  const dates = Array.isArray(poll.dates) ? poll.dates : [];
-  if (dates.length > 0) {
-    if (dates.length <= 3) {
-      parts.push(dates.map(formatDate).join(', '));
-    } else {
-      parts.push(`${dates.length} dates, ${formatDate(dates[0])}–${formatDate(dates[dates.length - 1])}`);
-    }
+  if (poll.description && poll.description.trim()) {
+    const d = poll.description.trim();
+    // Most platforms truncate OG descriptions around 200 chars — clamp ourselves
+    // so we keep a clean ellipsis instead of a mid-word cut.
+    return d.length > 200 ? d.slice(0, 197).trimEnd() + '…' : d;
   }
 
-  // Time range + timezone
-  const tr = poll.timeRange || {
-    start: poll.earliestTime || '09:00',
-    end: poll.latestTime || '17:00',
-  };
-  const timeStr = tr.start && tr.end ? `${tr.start}–${tr.end}` : '';
-  const tzStr = poll.timezone || '';
-  if (timeStr) parts.push(timeStr + (tzStr ? ' ' + tzStr : ''));
+  // No description — synthesize one from the poll shape.
+  const parts = [];
 
-  // Finalized polls: note the scheduled time
   if (poll.finalTime) {
     try {
       const when = new Date(poll.finalTime).toLocaleString('en-US', {
@@ -75,8 +67,25 @@ export function buildOgDescription(poll) {
         minute: '2-digit',
         timeZone: poll.timezone || 'UTC',
       });
-      parts.unshift(`Scheduled ${when}`);
+      parts.push(`Scheduled ${when}`);
     } catch {}
+  }
+
+  const dates = Array.isArray(poll.dates) ? poll.dates : [];
+  if (dates.length > 0) {
+    if (dates.length <= 3) {
+      parts.push(dates.map(formatDate).join(', '));
+    } else {
+      parts.push(`${dates.length} dates, ${formatDate(dates[0])}–${formatDate(dates[dates.length - 1])}`);
+    }
+  }
+
+  const tr = poll.timeRange || {
+    start: poll.earliestTime || '09:00',
+    end: poll.latestTime || '17:00',
+  };
+  if (tr.start && tr.end) {
+    parts.push(`${tr.start}–${tr.end}${poll.timezone ? ' ' + poll.timezone : ''}`);
   }
 
   return parts.join(' · ') || 'Group scheduling on AT Protocol';
@@ -183,11 +192,10 @@ export function pollOgHandler(clientDist) {
     const host = req.get('host');
     const protocol = req.protocol;
     const ogUrl = `${protocol}://${host}/p/${encodeURIComponent(did)}/${encodeURIComponent(rkey)}`;
-    const ogImage = `${protocol}://${host}/og-image.png`;
 
     const title = poll.title ? `${poll.title} — Avails` : 'Avails — Group Scheduling';
     const description = buildOgDescription(poll);
 
-    res.type('html').send(injectOg(html, { title, description, url: ogUrl, image: ogImage }));
+    res.type('html').send(injectOg(html, { title, description, url: ogUrl }));
   };
 }
