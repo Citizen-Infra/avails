@@ -38,7 +38,7 @@ You don't need to know or care about any of this to use avails. It works like an
 - **Edit and delete** — participants can edit or delete their availability after submitting
 - **Timezone support** — grid auto-converts to each viewer's local timezone. Creator in Budapest, participant in New York — everyone sees their own local times
 - **Mobile-native grid** — touch drag to paint availability, tap any slot to see who's available. Responsive layout with pagination for many dates.
-- **OpenMeet integration** — publish scheduled meetings as [OpenMeet](https://platform.openmeet.net) events and fetch calendar availability (code ready, blocked by ATProto OAuth scope upgrade — [#49](https://github.com/Citizen-Infra/avails/issues/49))
+- **OpenMeet integration** — publish scheduled meetings as [OpenMeet](https://platform.openmeet.net) events and fetch calendar availability. Busy times from your OpenMeet calendar overlay the grid as you pick availability; when a meeting is scheduled you can publish it as an OpenMeet event in one click.
 
 ## Connect your AI assistant
 
@@ -96,11 +96,13 @@ Copy `server/.env.example` and fill in:
 ```
 PORT=3000
 CLIENT_URL=http://localhost:5173
-ATPROTO_CLIENT_ID=https://avails.zhgnv.com/api/auth/client-metadata-v3.json
-ATPROTO_REDIRECT_URI=https://avails.zhgnv.com/api/auth/callback
+ATPROTO_CLIENT_ID=https://<your-domain>/api/auth/client-metadata-v3.json
+ATPROTO_REDIRECT_URI=https://<your-domain>/api/auth/callback
 SESSION_SECRET=<random string>
 RESEND_API_KEY=<from resend.com>
 ```
+
+`ATPROTO_CLIENT_ID` is the public URL where your server serves its OAuth client metadata — bsky fetches it during sign-in, so it must be reachable over HTTPS from the public internet. The path is versioned (`v3`) so you can rotate the client_id when you change the requested scopes — bsky caches grants per `client_id` URL and won't re-prompt users on scope changes within the same `client_id`. Bump the version to force fresh consent.
 
 ### Google Calendar integration (optional)
 
@@ -111,7 +113,7 @@ Participants can connect their Google Calendar to see busy times on the grid. To
 3. Enable the **Google Calendar API** (APIs & Services > Library > search "Google Calendar API" > Enable)
 4. Go to **APIs & Services > Credentials > Create Credentials > OAuth Client ID**
 5. Application type: **Web application**
-6. Authorized JavaScript origins: `https://avails.zhgnv.com` (and `http://localhost:5173` for local dev)
+6. Authorized JavaScript origins: `https://<your-domain>` (and `http://localhost:5173` for local dev)
 7. No redirect URI needed (uses Google Identity Services client-side flow)
 8. Copy the **Client ID** (looks like `123456789-abc.apps.googleusercontent.com`)
 
@@ -125,8 +127,8 @@ Note: `VITE_` prefix means it's baked into the client build — needs a redeploy
 
 **Google OAuth consent screen requirements:**
 - Set to "External" for public access
-- Privacy policy URL: `https://avails.zhgnv.com/privacy`
-- Terms URL: `https://avails.zhgnv.com/terms`
+- Privacy policy URL: `https://<your-domain>/privacy`
+- Terms URL: `https://<your-domain>/terms`
 - Verify domain ownership via Google Search Console
 - **To go to production:** the `calendar.readonly` scope requires a demo video showing how the app uses calendar data. Until approved, only manually added test users can connect their calendar. Record a screen capture of: open poll → click Connect Google Calendar → grant access → busy times appear on grid.
 
@@ -186,15 +188,16 @@ Avails is part of the [Citizen Infrastructure](https://github.com/Citizen-Infra)
 
 ### Roadmap
 
-**Next — OpenMeet integration (code ready, blocked by ATProto OAuth scope upgrade [#49](https://github.com/Citizen-Infra/avails/issues/49)):**
-ATProto OAuth doesn't re-prompt for upgraded scopes on existing grants. Users who authorized before the OpenMeet scope was added can't use these features until re-consent is forced (admin clear-sessions + wait for bsky.social propagation).
-- [OpenMeet as calendar layer](https://github.com/Citizen-Infra/avails/issues/32) — implemented
-- [OpenMeet event publishing](https://github.com/Citizen-Infra/avails/issues/31) — implemented
+**Shipped:**
+- [OpenMeet as calendar layer](https://github.com/Citizen-Infra/avails/issues/32) — busy times from your OpenMeet calendar overlay the grid
+- [OpenMeet event publishing](https://github.com/Citizen-Infra/avails/issues/31) — one-click publish of a scheduled meeting as an OpenMeet event
+
+**Next — calendar integrations:**
 - [Server-side calendar OAuth](https://github.com/Citizen-Infra/avails/issues/6) as fallback for users without OpenMeet
 - [Create calendar events directly](https://github.com/Citizen-Infra/avails/issues/7) via API on finalize (not just .ics email)
 
 **Next — polish and ecosystem:**
-- [Human-readable poll URLs via slug](https://github.com/Citizen-Infra/avails/issues/45) — `avails.zhgnv.com/p/cibc-season-2` instead of DID paths
+- [Human-readable poll URLs via slug](https://github.com/Citizen-Infra/avails/issues/45) — `/p/cibc-season-2` instead of DID paths
 - [Open Graph metadata](https://github.com/Citizen-Infra/avails/issues/46) — rich previews in Telegram, Slack, social media
 - [Persistent availability](https://github.com/Citizen-Infra/avails/issues/47) — fill once, apply to all overlapping polls, auto-update on scheduling
 - [Decouple response storage from creator session](https://github.com/Citizen-Infra/avails/issues/42) — partially addressed: resilient session restore with lazy on-demand reconnection ([#42 comment](https://github.com/Citizen-Infra/avails/issues/42)). Full decoupling (server-managed identity) is future work.
