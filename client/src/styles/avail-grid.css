@@ -57,12 +57,11 @@
   pointer-events: none;
 }
 
-/* My selected slots — translucent teal wash + left-stripe.
+/* My selected slots — translucent teal wash.
    The wash sits on top of the heatmap (inline background-color) so the
-   group signal stays visible underneath; the stripe is the hard "mine" cue. */
+   group signal stays visible underneath. */
 .avail-cell--mine {
   background-image: linear-gradient(rgba(13, 148, 136, 0.45), rgba(13, 148, 136, 0.45));
-  border-left: 3px solid #0d9488;
 }
 
 /* Mine + busy: stack both washes so heatmap → rose → teal all read. */

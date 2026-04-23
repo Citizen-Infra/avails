@@ -583,7 +583,7 @@ export default function PollView() {
                 {mySlots.size === 0 && (
                   <p className="text-base text-[#6b6560] flex items-center gap-2">
                     <span
-                      className="inline-block w-5 h-5 rounded bg-[#f5f3ef] border-l-[3px] border-[#0d9488] shrink-0"
+                      className="inline-block w-5 h-5 rounded bg-[#f5f3ef] shrink-0"
                       style={{ backgroundImage: 'linear-gradient(rgba(13,148,136,0.45), rgba(13,148,136,0.45))' }}
                     />
                     <span>
