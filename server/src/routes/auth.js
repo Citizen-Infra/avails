@@ -102,8 +102,12 @@ export async function getClient() {
   return _client;
 }
 
-// Expose client metadata at the URL declared as client_id
-router.get('/client-metadata.json', async (req, res, next) => {
+// Expose client metadata at the URL declared as client_id.
+// Path is versioned so we can rotate the client_id when scopes change — ATProto
+// OAuth has no prompt=consent; bsky caches grants per client_id and auto-approves
+// existing users without re-prompting for new scopes (see #49). Bumping the path
+// forces every user through a fresh consent flow with the current scope set.
+router.get('/client-metadata-v2.json', async (req, res, next) => {
   try {
     const client = await getClient();
     res.json(client.clientMetadata);

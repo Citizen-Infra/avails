@@ -15,10 +15,17 @@ router.post('/publish', requireAuth, async (req, res, next) => {
     }
 
     // Get OpenMeet auth token via ATProto service auth
-    const token = await getOpenMeetToken(req.oauthSession);
-    if (!token) {
+    const tokenResult = await getOpenMeetToken(req.oauthSession);
+    if (tokenResult.error === 'scope-missing') {
+      return res.status(403).json({
+        error: 'needs-reauth',
+        message: 'Your Bluesky session is missing the OpenMeet permission. Sign out and sign back in to grant it.',
+      });
+    }
+    if (!tokenResult.token) {
       return res.status(502).json({ error: 'Could not authenticate with OpenMeet. Do you have an OpenMeet account linked to your Bluesky?' });
     }
+    const token = tokenResult.token;
 
     const eventPayload = {
       name: title,
@@ -81,6 +88,10 @@ const OPENMEET_DID = 'did:web:api.openmeet.net';
  * Get an OpenMeet bearer token via ATProto service auth.
  * 1. Call user's PDS to get a service auth JWT (signed by their identity)
  * 2. Exchange that JWT for OpenMeet access tokens
+ *
+ * Returns { token } on success, { error: 'scope-missing' } when the PDS
+ * rejects for lack of the OpenMeet RPC scope (grant needs re-consent),
+ * or { token: null } for any other failure.
  */
 export async function getOpenMeetToken(oauthSession) {
   // Step 1: Get a service auth JWT from the user's PDS
@@ -96,11 +107,14 @@ export async function getOpenMeetToken(oauthSession) {
   if (!serviceAuthRes.ok) {
     const text = await serviceAuthRes.text();
     console.log('[openmeet] PDS getServiceAuth failed:', serviceAuthRes.status, text);
-    return null;
+    if (serviceAuthRes.status === 403 && text.includes('ScopeMissingError')) {
+      return { error: 'scope-missing', token: null };
+    }
+    return { token: null };
   }
 
   const { token: pdsJwt } = await serviceAuthRes.json();
-  if (!pdsJwt) return null;
+  if (!pdsJwt) return { token: null };
 
   // Step 2: Exchange PDS JWT for OpenMeet tokens
   const exchangeRes = await fetch(`${OPENMEET_API}/api/v1/auth/atproto/service-auth`, {
@@ -115,11 +129,11 @@ export async function getOpenMeetToken(oauthSession) {
   if (!exchangeRes.ok) {
     const text = await exchangeRes.text();
     console.log('[openmeet] Token exchange failed:', exchangeRes.status, text);
-    return null;
+    return { token: null };
   }
 
   const authData = await exchangeRes.json();
-  return authData.token || authData.accessToken || null;
+  return { token: authData.token || authData.accessToken || null };
 }
 
 // POST /api/openmeet/availability — get calendar events from OpenMeet for authenticated user
@@ -132,10 +146,14 @@ router.post('/availability', requireAuth, async (req, res, next) => {
     }
 
     // Get OpenMeet token via ATProto service auth
-    const token = await getOpenMeetToken(req.oauthSession);
-    if (!token) {
+    const tokenResult = await getOpenMeetToken(req.oauthSession);
+    if (tokenResult.error === 'scope-missing') {
+      return res.json({ available: false, reason: 'needs-reauth', events: [] });
+    }
+    if (!tokenResult.token) {
       return res.json({ available: false, reason: 'no-openmeet-account', events: [] });
     }
+    const token = tokenResult.token;
 
     // Fetch calendar events from OpenMeet
     const eventsRes = await fetch(`${OPENMEET_API}/api/external-calendar/events`, {
