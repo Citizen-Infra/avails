@@ -8,6 +8,7 @@ import {
   fetchBusyTimes,
   listWritableCalendars,
   insertEvent,
+  deleteEvent,
   GOOGLE_SCOPES,
 } from '@/lib/googleCalendar'
 import { convertPollTimesToViewer, convertSlotsToViewer, convertSlotsToCreator, getViewerTimezone, needsConversion } from '@/lib/timezone'
@@ -480,22 +481,49 @@ export default function PollView() {
 
   async function handleUnschedule() {
     const published = !!poll?.openmeetEventSlug || !!openmeetUrl
+    const hasGoogleEvent = !!poll?.googleEventId && !!poll?.googleCalendarId
     const parts = [
       'Unschedule this meeting?',
       '',
       'Participants with emails will get a calendar-cancel message so the event disappears from their calendars.',
     ]
     if (published) parts.push('The OpenMeet event will also be deleted.')
+    if (hasGoogleEvent) parts.push('The Google Calendar event will also be removed.')
     parts.push('', 'The poll will reopen and you can pick a different time.')
     if (!confirm(parts.join('\n'))) return
+
+    // Capture before unfinalize strips them from the record
+    const googleEventId = poll?.googleEventId
+    const googleCalendarId = poll?.googleCalendarId
+
     try {
       await unfinalizePoll(did, rkey)
       setOpenmeetUrl(null)
       setOpenmeetError(null)
-      fetchData()
     } catch (err) {
       alert(`Could not unschedule: ${err.message}`)
+      return
     }
+
+    // Best-effort: remove the Google Calendar event. Failure here doesn't roll back the unschedule.
+    if (googleEventId && googleCalendarId) {
+      try {
+        let token = googleToken
+        try {
+          token = await requestGoogleAccess(GOOGLE_SCOPES.EVENTS)
+          setGoogleToken(token)
+        } catch (err) {
+          console.warn('[avails] token request for unschedule failed:', err)
+        }
+        if (!token) throw new Error('No Google token')
+        await deleteEvent(token, googleCalendarId, googleEventId)
+      } catch (err) {
+        console.warn('[avails] deleteEvent on unschedule failed:', err)
+        alert("Schedule cancelled. Couldn't remove the event from Google Calendar — please delete it manually.")
+      }
+    }
+
+    fetchData()
   }
 
   async function handlePublishToOpenMeet() {
