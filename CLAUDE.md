@@ -16,7 +16,7 @@ cd client && npm install && npm run dev    # Vite dev server (localhost:5173, pr
 cd client && npm run build                 # Production build → dist/
 
 # Lexicon codegen (after editing lexicons/*.json)
-npx @atproto/lex build --lexicons ./lexicons --out ./server/src/lexicons --indexFile
+npx @atproto/lex build --lexicons ./lexicons --out ./server/src/lexicons --indexFile --override
 ```
 
 ```bash
