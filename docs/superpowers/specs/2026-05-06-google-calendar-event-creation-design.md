@@ -23,7 +23,7 @@ Avails' charter is "time-finding, not event management" (`CLAUDE.md`). This feat
 
 - **Per-community calendar config** in the community-admin config endpoint (option 2 from brainstorming) — filed as [community-admin#12](https://github.com/Citizen-Infra/community-admin/issues/12). Depends on polls being associated with a community at creation time, which doesn't exist yet.
 - **Participants as Google Calendar attendees.** The shared-calendar pattern is "everyone's subscribed, so the event just appears." Attendees would (a) overlap with the existing `.ics` email and create double-notifications, and (b) push Avails into the RSVP-system territory it explicitly disclaims.
-- **Updating or cancelling the Google event when a poll is re-scheduled.** No re-schedule path exists in the product today. Adding update/cancel would also require persisting the Google event ID on the poll record (lexicon change). Defer until re-scheduling exists.
+- **Updating or cancelling the Google event when a poll is unscheduled or re-scheduled.** A poll *can* be unfinalized today (`handleUnschedule`) and re-scheduled. Auto-cancel/update of the Google event would require persisting `googleEventId` + `googleCalendarId` on the poll record (lexicon change). Until then, on re-schedule v1 leaves the previous event in place — the creator deletes the orphan from the shared calendar manually if needed. Acceptable trade for v1; revisit alongside the lexicon change.
 
 ## Permissions & OAuth
 
@@ -34,24 +34,23 @@ Avails' charter is "time-finding, not event management" (`CLAUDE.md`). This feat
 
 ## UI
 
-At the schedule confirmation step (where the creator picks a final time and clicks Confirm), add a calendar picker:
+The schedule confirmation today is the teal toolbar at the top of `SchedulingGrid` (Cancel | Schedule). Add the calendar picker as an inline row in that bar — no new dialog:
 
 ```
-Schedule for [time] (X min)
-  Add to calendar:  [▾ Sensemaking Scenius]
-                       Don't add
-                       Sensemaking Scenius     ← default: last-used per creator
-                       My personal calendar
-                       …
-  [Cancel]  [Confirm]
+┌─────────────────────────────────────────────────────────────────────┐
+│ Select a time block on the grid                                     │
+│ Add to: [▾ Sensemaking Scenius]            [Cancel]  [Schedule]     │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-States:
-- **Creator already OAuth'd Google (any scope):** Dropdown is populated from `calendarList`, filtered to `accessRole: writer | owner`.
-- **Creator has not OAuth'd Google:** Show a "Connect Google Calendar" link in place of the dropdown. Never auto-trigger OAuth — the user opts in by clicking.
-- **Creator OAuth'd but `calendarList` fetch fails:** Dropdown shows only "Don't add"; surface a small error.
+States of the "Add to" control:
+- **Creator already OAuth'd Google (any scope):** Dropdown populated from `calendarList`, filtered to `accessRole: writer | owner`. Default selection: last-used calendar from `localStorage`, falling back to "Don't add".
+- **Creator has not OAuth'd Google:** Show a "Connect Google Calendar to add event" link in place of the dropdown. Never auto-trigger OAuth — the user opts in by clicking.
+- **Creator OAuth'd but `calendarList` fetch fails:** Dropdown collapses to "Don't add" only; small inline error.
 
-After confirmation succeeds: the success view includes "Added to Sensemaking Scenius calendar" with a link to the inserted Google event (`htmlLink` returned by the API).
+Note on coexistence with the busy-time overlay: PollView already manages a Google access token for `fetchBusyTimes` (`calendar.readonly`). The dropdown reuses that token and that calendar list — no separate OAuth flow at picker-open time. The scope upgrade to `calendar.events` only happens when the creator actually clicks Schedule with a calendar selected.
+
+After Schedule succeeds: the existing success view should include "Added to Sensemaking Scenius calendar" with a link to the inserted Google event (`htmlLink` returned by the API).
 
 ## Data flow on Confirm
 
@@ -97,8 +96,11 @@ The invariant: **a calendar failure never rolls back a schedule.** The poll's PD
 ## Files affected (anticipated)
 
 - `client/src/lib/googleCalendar.js` — add `requestEventsAccess()` (scope upgrade), `listWritableCalendars(token)`, `insertEvent(token, calendarId, eventBody)`.
-- `client/src/pages/PollView.jsx` (or wherever the schedule-confirm UI lives) — add calendar dropdown to the confirmation step, wire up the post-schedule insert and `localStorage` default.
-- No server-side changes. No lexicon changes. No `schedule` MCP tool changes.
+- `client/src/components/SchedulingGrid.jsx` — render the new "Add to" control in the toolbar, accept new props from PollView.
+- `client/src/pages/PollView.jsx` — own the writable-calendars state, the chosen-calendar state, the `localStorage` default, and the post-schedule insert call. Pass props down to `SchedulingGrid`. Surface the post-success "Added to X calendar" link.
+- No server-side changes. No lexicon changes. No `schedule` MCP tool / `finalizePoll` changes.
+
+`client/src/components/FinalizeDialog.jsx` is dead code (no callers); ignore it.
 
 ## Future work (filed)
 
