@@ -82,6 +82,7 @@ export default function PollView() {
   const [chosenCalendarId, setChosenCalendarId] = useState('none')
   const [googleEventLink, setGoogleEventLink] = useState(null)      // set on successful insert (used by Task 4)
   const [calendarInsertError, setCalendarInsertError] = useState(null)
+  const [retryingCalendar, setRetryingCalendar] = useState(false)
 
   // Convert OpenMeet events to busySlots + slotEvents format
   function processCalendarEvents(events) {
@@ -447,8 +448,14 @@ export default function PollView() {
   async function retryCalendarInsert() {
     if (!poll?.finalTime || !poll?.finalDuration) return
     if (chosenCalendarId === 'none' || !googleToken) return
+    if (retryingCalendar) return
     setCalendarInsertError(null)
-    await insertGoogleEvent({ finalTime: poll.finalTime, finalDuration: poll.finalDuration })
+    setRetryingCalendar(true)
+    try {
+      await insertGoogleEvent({ finalTime: poll.finalTime, finalDuration: poll.finalDuration })
+    } finally {
+      setRetryingCalendar(false)
+    }
   }
 
   async function handleUnschedule() {
@@ -619,9 +626,10 @@ export default function PollView() {
                 <span>Couldn't add to calendar — schedule still confirmed.</span>
                 <button
                   onClick={retryCalendarInsert}
-                  className="underline underline-offset-2 hover:text-red-900"
+                  disabled={retryingCalendar}
+                  className="underline underline-offset-2 hover:text-red-900 disabled:opacity-60 disabled:no-underline"
                 >
-                  Retry
+                  {retryingCalendar ? 'Retrying…' : 'Retry'}
                 </button>
               </div>
             )}
