@@ -21,7 +21,7 @@ Avails' charter is "time-finding, not event management" (`CLAUDE.md`). This feat
 
 ### Out of scope (deferred)
 
-- **Per-community calendar config** in `scenius-digest`'s `groups.json` (option 2 from brainstorming) — filed for community-admin backlog.
+- **Per-community calendar config** in the community-admin config endpoint (option 2 from brainstorming) — filed as [community-admin#12](https://github.com/Citizen-Infra/community-admin/issues/12). Depends on polls being associated with a community at creation time, which doesn't exist yet.
 - **Participants as Google Calendar attendees.** The shared-calendar pattern is "everyone's subscribed, so the event just appears." Attendees would (a) overlap with the existing `.ics` email and create double-notifications, and (b) push Avails into the RSVP-system territory it explicitly disclaims.
 - **Updating or cancelling the Google event when a poll is re-scheduled.** No re-schedule path exists in the product today. Adding update/cancel would also require persisting the Google event ID on the poll record (lexicon change). Defer until re-scheduling exists.
 
@@ -102,6 +102,6 @@ The invariant: **a calendar failure never rolls back a schedule.** The poll's PD
 
 ## Future work (filed)
 
-- Per-community calendar pre-config (option 2 from brainstorming): extend `scenius-digest`'s `groups.json` with `googleCalendarId`. Polls that are tied to a community at creation can default to it; for now defer until community-admin work.
+- Per-community calendar pre-config — [community-admin#12](https://github.com/Citizen-Infra/community-admin/issues/12). Polls tied to a community at creation time would default to that community's shared calendar in the dropdown.
 - Update/cancel Google event on re-schedule. Requires persisting `googleEventId` and `googleCalendarId` on the poll record (lexicon change).
 - Auto-attendees for use cases where the shared-calendar pattern doesn't apply (e.g., one-off polls with non-overlapping participant groups). Only revisit if there's user demand and the RSVP-scope question is reopened.
