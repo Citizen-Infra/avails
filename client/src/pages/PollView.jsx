@@ -389,7 +389,7 @@ export default function PollView() {
     }
   }
 
-  async function insertGoogleEvent({ finalTime, finalDuration }) {
+  async function insertGoogleEvent({ finalTime, finalDuration, tokenOverride }) {
     const tz = poll?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
     const startDt = new Date(finalTime)
     const endDt = new Date(startDt.getTime() + finalDuration * 60 * 1000)
@@ -403,8 +403,9 @@ export default function PollView() {
       source: { url: pollUrl, title: 'View poll' },
     }
 
+    const token = tokenOverride || googleToken
     try {
-      const created = await insertEvent(googleToken, chosenCalendarId, eventBody)
+      const created = await insertEvent(token, chosenCalendarId, eventBody)
       setGoogleEventLink({
         url: created.htmlLink,
         calendarSummary: writableCalendars?.find(c => c.id === chosenCalendarId)?.summary || 'calendar',
@@ -447,12 +448,24 @@ export default function PollView() {
 
   async function retryCalendarInsert() {
     if (!poll?.finalTime || !poll?.finalDuration) return
-    if (chosenCalendarId === 'none' || !googleToken) return
+    if (chosenCalendarId === 'none') return
     if (retryingCalendar) return
     setCalendarInsertError(null)
     setRetryingCalendar(true)
     try {
-      await insertGoogleEvent({ finalTime: poll.finalTime, finalDuration: poll.finalDuration })
+      // Refresh token first — expired GIS tokens are the most common retry-failure cause.
+      let token = googleToken
+      try {
+        token = await requestGoogleAccess(GOOGLE_SCOPES.EVENTS)
+        setGoogleToken(token)
+      } catch (err) {
+        console.warn('[avails] token refresh on retry failed, falling back to existing token:', err)
+      }
+      if (!token) {
+        setCalendarInsertError('Connect Google Calendar to retry')
+        return
+      }
+      await insertGoogleEvent({ finalTime: poll.finalTime, finalDuration: poll.finalDuration, tokenOverride: token })
     } finally {
       setRetryingCalendar(false)
     }
