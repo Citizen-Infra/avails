@@ -27,7 +27,7 @@ cd server && npm test                     # All tests (validation + route integr
 Server syntax check: `node --check server/src/index.js`
 
 Tests use Node's built-in test runner (`node:test` + `node:assert`). Integration tests require `--experimental-test-module-mocks` for module mocking. Two test files:
-- `test/validate.test.js` — unit tests for all validation middleware (23 tests)
+- `test/validate.test.js` — unit tests for all validation middleware (31 tests)
 - `test/responses.test.js` — integration tests for response routes with mocked PDS/session layer (10 tests)
 
 ## Hard Constraints
@@ -41,6 +41,7 @@ Tests use Node's built-in test runner (`node:test` + `node:assert`). Integration
 - **Date formatting must use local time.** Never `toISOString().slice(0, 10)` — it shifts dates for UTC+ timezones. Use `formatDateLocal()` helper.
 - **Old polls use different field names.** `earliestTime`/`latestTime`/`slotDuration` vs `timeRange`/`slotMinutes`. PollView has fallback handling.
 - **Never distribute polls to Telegram without explicit user confirmation.**
+- **Google Calendar insert/cancel failures must never roll back finalize/unfinalize.** PDS state is source of truth; the Google event is a courtesy artifact. Encoded via inner try/catches in `insertGoogleEvent` and `handleUnschedule` — don't "improve" them by letting errors propagate.
 
 ## Skills
 
@@ -64,7 +65,7 @@ Railway (single service, Nixpacks builder). Custom domain: avails.zhgnv.com.
 - `RESEND_API_KEY` — email service
 - `CLIENT_URL` — deployed URL (for redirects and email links)
 - `DATA_DIR` — Railway volume mount path (`/data`)
-- `VITE_GOOGLE_CLIENT_ID` — optional, for Google Calendar overlay (baked into client build)
+- `VITE_GOOGLE_CLIENT_ID` — optional, for Google Calendar integration: busy-time overlay, event create on schedule, event cancel on unschedule, writable-calendar picker (baked into client build)
 - `OPENMEET_TENANT_ID` — OpenMeet instance tenant (default: `lsdfaopkljdfs`)
 
 ## Task Tracking
