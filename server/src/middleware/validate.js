@@ -191,3 +191,26 @@ export function validatePollUpdate(req, res, next) {
 
   next();
 }
+
+export function validateGoogleEvent(req, res, next) {
+  const { googleEventId, googleCalendarId } = req.body;
+
+  const errors = [];
+  if (typeof googleEventId !== 'string' || googleEventId.length === 0) {
+    errors.push('googleEventId must be a non-empty string');
+  } else if (googleEventId.length > 256) {
+    errors.push('googleEventId must be under 256 characters');
+  }
+  if (typeof googleCalendarId !== 'string' || googleCalendarId.length === 0) {
+    errors.push('googleCalendarId must be a non-empty string');
+  } else if (googleCalendarId.length > 256) {
+    errors.push('googleCalendarId must be under 256 characters');
+  }
+
+  if (errors.length > 0) {
+    return res.status(400).json({ error: errors.join('; ') });
+  }
+
+  req.validatedBody = { googleEventId, googleCalendarId };
+  next();
+}

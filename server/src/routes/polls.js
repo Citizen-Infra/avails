@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
-import { validatePollCreate, validatePollUpdate } from '../middleware/validate.js';
+import { validatePollCreate, validatePollUpdate, validateGoogleEvent } from '../middleware/validate.js';
 import { indexPoll, updatePollStatus, removePoll, listByCommunity } from '../lib/pollIndex.js';
 import { generateIcs } from '../lib/ical.js';
 import { sendEmail } from '../lib/email.js';
@@ -320,7 +320,7 @@ router.delete('/:did/:rkey/finalize', requireAuth, async (req, res, next) => {
     const snapshot = { ...existingValue };
 
     // Build the new record without the scheduling fields
-    const { finalTime: _ft, finalDuration: _fd, openmeetEventSlug: _oes, ...rest } = existingValue;
+    const { finalTime: _ft, finalDuration: _fd, openmeetEventSlug: _oes, googleEventId: _gei, googleCalendarId: _gci, ...rest } = existingValue;
     const updatedRecord = { ...rest, status: 'open' };
 
     await xrpcCall(req.oauthSession, 'com.atproto.repo.putRecord', {
@@ -390,6 +390,50 @@ router.delete('/:did/:rkey/finalize', requireAuth, async (req, res, next) => {
       openmeetDeleted,
       emailsSent: emailList.length,
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /:did/:rkey/google-event — persist the Google Calendar event ID + calendar ID
+// on a finalized poll. Called by the client AFTER a successful Google Calendar insert.
+// Cleared on unschedule.
+router.put('/:did/:rkey/google-event', requireAuth, validateGoogleEvent, async (req, res, next) => {
+  try {
+    const { did, rkey } = req.params;
+
+    if (req.userDid !== did) {
+      return res.status(403).json({ error: 'Only the poll creator can update google-event fields' });
+    }
+
+    const { googleEventId, googleCalendarId } = req.validatedBody;
+
+    const pds = await resolvePds(did);
+    const getUrl = `${pds}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(POLL_COLLECTION)}&rkey=${encodeURIComponent(rkey)}`;
+    const existing = await fetch(getUrl);
+    if (!existing.ok) return res.status(404).json({ error: 'Poll not found' });
+    const existingData = await existing.json();
+    const existingValue = existingData.value;
+
+    if (!existingValue.finalTime) {
+      return res.status(400).json({ error: 'Poll is not scheduled' });
+    }
+
+    const updatedRecord = {
+      ...existingValue,
+      googleEventId,
+      googleCalendarId,
+    };
+
+    await xrpcCall(req.oauthSession, 'com.atproto.repo.putRecord', {
+      repo: did,
+      collection: POLL_COLLECTION,
+      rkey,
+      record: updatedRecord,
+      swapRecord: existingData.cid,
+    });
+
+    res.json({ ok: true });
   } catch (err) {
     next(err);
   }
