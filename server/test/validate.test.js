@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { validateResponseCreate, validatePollCreate, validatePollUpdate } from '../src/middleware/validate.js';
+import { validateResponseCreate, validatePollCreate, validatePollUpdate, validateGoogleEvent } from '../src/middleware/validate.js';
 
 // Helper: create mock req/res/next for middleware testing
 function createMocks(body = {}) {
@@ -260,6 +260,84 @@ describe('validatePollUpdate', () => {
       dates: ['not-a-date'],
     });
     validatePollUpdate(req, res, next);
+    assert.ok(!nextCalled());
+    assert.equal(res._status, 400);
+  });
+});
+
+// ── validateGoogleEvent ─────────────────────────────────────────────────
+
+describe('validateGoogleEvent', () => {
+  const validBody = {
+    googleEventId: 'abc123xyz',
+    googleCalendarId: 'sensemakingscenius@gmail.com',
+  };
+
+  it('passes valid body', () => {
+    const { req, res, next, nextCalled } = createMocks(validBody);
+    validateGoogleEvent(req, res, next);
+    assert.ok(nextCalled());
+    assert.deepStrictEqual(req.validatedBody, validBody);
+  });
+
+  it('strips unknown fields (field injection prevention)', () => {
+    const { req, res, next, nextCalled } = createMocks({
+      ...validBody,
+      finalTime: '2026-04-10T10:00:00Z',
+      status: 'open',
+      creatorDid: 'did:plc:hacked',
+    });
+    validateGoogleEvent(req, res, next);
+    assert.ok(nextCalled());
+    assert.deepStrictEqual(req.validatedBody, validBody);
+    assert.equal(req.validatedBody.finalTime, undefined);
+    assert.equal(req.validatedBody.status, undefined);
+    assert.equal(req.validatedBody.creatorDid, undefined);
+  });
+
+  it('rejects missing googleEventId', () => {
+    const { req, res, next, nextCalled } = createMocks({ googleCalendarId: 'cal@example.com' });
+    validateGoogleEvent(req, res, next);
+    assert.ok(!nextCalled());
+    assert.equal(res._status, 400);
+    assert.ok(res._json.error.includes('googleEventId'));
+  });
+
+  it('rejects missing googleCalendarId', () => {
+    const { req, res, next, nextCalled } = createMocks({ googleEventId: 'abc' });
+    validateGoogleEvent(req, res, next);
+    assert.ok(!nextCalled());
+    assert.equal(res._status, 400);
+    assert.ok(res._json.error.includes('googleCalendarId'));
+  });
+
+  it('rejects empty strings', () => {
+    const { req, res, next, nextCalled } = createMocks({ googleEventId: '', googleCalendarId: '' });
+    validateGoogleEvent(req, res, next);
+    assert.ok(!nextCalled());
+    assert.equal(res._status, 400);
+  });
+
+  it('rejects non-string types', () => {
+    const { req, res, next, nextCalled } = createMocks({ googleEventId: 123, googleCalendarId: true });
+    validateGoogleEvent(req, res, next);
+    assert.ok(!nextCalled());
+    assert.equal(res._status, 400);
+  });
+
+  it('rejects oversize fields', () => {
+    const { req, res, next, nextCalled } = createMocks({
+      googleEventId: 'a'.repeat(257),
+      googleCalendarId: 'b'.repeat(257),
+    });
+    validateGoogleEvent(req, res, next);
+    assert.ok(!nextCalled());
+    assert.equal(res._status, 400);
+  });
+
+  it('rejects completely empty body', () => {
+    const { req, res, next, nextCalled } = createMocks({});
+    validateGoogleEvent(req, res, next);
     assert.ok(!nextCalled());
     assert.equal(res._status, 400);
   });
