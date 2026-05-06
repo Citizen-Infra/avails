@@ -1,11 +1,12 @@
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly';
+const SCOPES_READONLY = 'https://www.googleapis.com/auth/calendar.readonly';
+const SCOPES_EVENTS = 'https://www.googleapis.com/auth/calendar.events';
 
 export function isGoogleConfigured() {
   return !!GOOGLE_CLIENT_ID;
 }
 
-export function requestGoogleAccess() {
+export function requestGoogleAccess(scope = SCOPES_READONLY) {
   return new Promise((resolve, reject) => {
     if (!window.google?.accounts?.oauth2) {
       reject(new Error('Google Identity Services not loaded'));
@@ -13,7 +14,7 @@ export function requestGoogleAccess() {
     }
     const tokenClient = window.google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
-      scope: SCOPES,
+      scope,
       callback: (response) => {
         if (response.error) reject(new Error(response.error));
         else resolve(response.access_token);
@@ -22,6 +23,8 @@ export function requestGoogleAccess() {
     tokenClient.requestAccessToken();
   });
 }
+
+export const GOOGLE_SCOPES = { READONLY: SCOPES_READONLY, EVENTS: SCOPES_EVENTS };
 
 /**
  * Fetch events from Google Calendar using the Events list API.
@@ -109,4 +112,52 @@ export async function fetchBusyTimes(accessToken, dates, timezone) {
   }
 
   return { busySlots, slotEvents };
+}
+
+/**
+ * Fetch the user's calendar list and return only those they can write events to.
+ * Filters by accessRole === 'owner' | 'writer'. Excludes hidden/deleted entries.
+ * Returns: [{ id, summary, accessRole, primary }]
+ */
+export async function listWritableCalendars(accessToken) {
+  const res = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) {
+    throw new Error(`calendarList failed: ${res.status}`);
+  }
+  const data = await res.json();
+  return (data.items || [])
+    .filter(c => !c.deleted && !c.hidden)
+    .filter(c => c.accessRole === 'owner' || c.accessRole === 'writer')
+    .map(c => ({
+      id: c.id,
+      summary: c.summary || c.id,
+      accessRole: c.accessRole,
+      primary: !!c.primary,
+    }));
+}
+
+/**
+ * Insert a single event into a Google Calendar.
+ * eventBody must conform to https://developers.google.com/calendar/api/v3/reference/events#resource
+ * Returns the created event resource (so callers can use { htmlLink, id }).
+ */
+export async function insertEvent(accessToken, calendarId, eventBody) {
+  const res = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(eventBody),
+    }
+  );
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`insertEvent failed: ${res.status} ${text}`);
+  }
+  return res.json();
 }
