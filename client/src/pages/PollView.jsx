@@ -2,7 +2,14 @@ import Logo from '@/components/Logo'
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useParams } from 'react-router'
 import { getPoll, getSession, submitResponse, updateResponse, finalizePoll, unfinalizePoll, deleteResponse, publishToOpenMeet, getOpenMeetAvailability } from '@/lib/api'
-import { isGoogleConfigured, requestGoogleAccess, fetchBusyTimes } from '@/lib/googleCalendar'
+import {
+  isGoogleConfigured,
+  requestGoogleAccess,
+  fetchBusyTimes,
+  listWritableCalendars,
+  insertEvent,
+  GOOGLE_SCOPES,
+} from '@/lib/googleCalendar'
 import { convertPollTimesToViewer, convertSlotsToViewer, convertSlotsToCreator, getViewerTimezone, needsConversion } from '@/lib/timezone'
 import { Button } from '@/components/ui/button'
 import AvailGrid from '@/components/AvailGrid'
@@ -69,6 +76,13 @@ export default function PollView() {
   const [calendarSource, setCalendarSource] = useState(null) // 'openmeet' | 'google' | null
   const [connectingCalendar, setConnectingCalendar] = useState(false)
 
+  // New: calendar-write feature
+  const [googleToken, setGoogleToken] = useState(null)
+  const [writableCalendars, setWritableCalendars] = useState(null)  // null = not yet fetched, [] = none
+  const [chosenCalendarId, setChosenCalendarId] = useState('none')
+  const [googleEventLink, setGoogleEventLink] = useState(null)      // set on successful insert (used by Task 4)
+  const [calendarInsertError, setCalendarInsertError] = useState(null)
+
   // Convert OpenMeet events to busySlots + slotEvents format
   function processCalendarEvents(events) {
     const busy = new Set()
@@ -122,15 +136,32 @@ export default function PollView() {
   }
 
   // Fallback: Google Calendar
-  async function connectGoogleCalendar() {
+  async function connectGoogleCalendar({ forEvent = false } = {}) {
     setConnectingCalendar(true)
     try {
-      const token = await requestGoogleAccess()
+      const scope = forEvent ? GOOGLE_SCOPES.EVENTS : GOOGLE_SCOPES.READONLY
+      const token = await requestGoogleAccess(scope)
+      setGoogleToken(token)
       const result = await fetchBusyTimes(token, poll?.dates || [], poll?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone)
       setBusySlots(result.busySlots)
       setSlotEvents(result.slotEvents)
       setCalendarConnected(true)
       setCalendarSource('google')
+      // Fetch writable calendars for the picker
+      try {
+        const cals = await listWritableCalendars(token)
+        setWritableCalendars(cals)
+        // Restore last-used choice from localStorage if it's still in the list
+        const lastId = localStorage.getItem('avails:lastCalendarId')
+        if (lastId && lastId !== 'none' && cals.some(c => c.id === lastId)) {
+          setChosenCalendarId(lastId)
+        } else {
+          setChosenCalendarId('none')
+        }
+      } catch (err) {
+        console.warn('[avails] listWritableCalendars failed:', err)
+        setWritableCalendars([])
+      }
     } catch (err) {
       console.error('Google Calendar error:', err)
     } finally {
@@ -427,6 +458,10 @@ export default function PollView() {
     }
   }
 
+  const handleConnectForEvent = useCallback(() => {
+    return connectGoogleCalendar({ forEvent: true })
+  }, [poll])
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#faf9f6] flex items-center justify-center">
@@ -631,6 +666,11 @@ export default function PollView() {
                 confirmDisabled={schedulingSlots.length === 0}
                 confirmLoading={schedulingLoading}
                 error={schedulingError}
+                googleConnected={!!googleToken}
+                writableCalendars={writableCalendars}
+                chosenCalendarId={chosenCalendarId}
+                onChooseCalendar={setChosenCalendarId}
+                onConnectGoogle={handleConnectForEvent}
               />
             ) : (
               <AvailGrid
