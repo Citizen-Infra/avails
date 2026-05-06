@@ -458,10 +458,6 @@ export default function PollView() {
     }
   }
 
-  const handleConnectForEvent = useCallback(() => {
-    return connectGoogleCalendar({ forEvent: true })
-  }, [poll])
-
   if (loading) {
     return (
       <div className="min-h-screen bg-[#faf9f6] flex items-center justify-center">
@@ -542,7 +538,7 @@ export default function PollView() {
           onEditResponse={handleStartEdit}
           onDeleteResponse={handleDeleteResponse}
           showCalendarConnect={isOpen && !submitted && !calendarConnected && isGoogleConfigured()}
-          onConnectGoogleCalendar={connectGoogleCalendar}
+          onConnectGoogleCalendar={() => connectGoogleCalendar()}
           connectingCalendar={connectingCalendar}
         />
 
@@ -670,7 +666,7 @@ export default function PollView() {
                 writableCalendars={writableCalendars}
                 chosenCalendarId={chosenCalendarId}
                 onChooseCalendar={setChosenCalendarId}
-                onConnectGoogle={handleConnectForEvent}
+                onConnectGoogle={() => connectGoogleCalendar({ forEvent: true })}
               />
             ) : (
               <AvailGrid
