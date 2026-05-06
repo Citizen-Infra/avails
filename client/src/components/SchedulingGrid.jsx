@@ -65,6 +65,12 @@ export default function SchedulingGrid({
   confirmDisabled,
   confirmLoading,
   error,
+  // New: calendar picker
+  googleConnected,            // boolean — has the creator OAuth'd Google?
+  writableCalendars,          // array of { id, summary, primary } | null
+  chosenCalendarId,           // string | 'none'
+  onChooseCalendar,           // (id: string | 'none') => void
+  onConnectGoogle,            // () => void — opens OAuth with events scope
 }) {
   const times = useMemo(
     () => generateSlots(dates, timeRange, slotMinutes),
@@ -131,22 +137,50 @@ export default function SchedulingGrid({
   return (
     <div className="space-y-4">
       {/* Scheduling bar */}
-      <div className="rounded-lg bg-[#0d9488] text-white px-6 py-4 flex items-center justify-between">
+      <div className="rounded-lg bg-[#0d9488] text-white px-6 py-4 space-y-3 sm:space-y-0 sm:flex sm:items-center sm:justify-between sm:gap-4">
         <p className="text-base font-medium">Select a time block on the grid</p>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onCancel}
-            className="text-base px-4 py-2 rounded-lg bg-white/20 hover:bg-white/30 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={confirmDisabled}
-            className="text-base px-4 py-2 rounded-lg bg-white text-[#0d9488] font-medium hover:bg-white/90 transition-colors disabled:opacity-50"
-          >
-            {confirmLoading ? 'Scheduling...' : 'Schedule'}
-          </button>
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          {/* Add-to-calendar picker */}
+          {googleConnected && writableCalendars && writableCalendars.length > 0 ? (
+            <label className="flex items-center gap-2 text-sm">
+              <span className="text-white/90">Add to:</span>
+              <select
+                value={chosenCalendarId}
+                onChange={(e) => onChooseCalendar(e.target.value)}
+                className="rounded-md bg-white text-[#1a1a1a] px-2 py-1.5 text-sm border-0 focus:ring-2 focus:ring-white"
+              >
+                <option value="none">Don't add</option>
+                {writableCalendars.map((c) => (
+                  <option key={c.id} value={c.id}>{c.summary}{c.primary ? ' (primary)' : ''}</option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <button
+              type="button"
+              onClick={onConnectGoogle}
+              className="text-sm underline underline-offset-2 hover:text-white/80"
+            >
+              Connect Google Calendar to add event
+            </button>
+          )}
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onCancel}
+              className="text-base px-4 py-2 rounded-lg bg-white/20 hover:bg-white/30 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onConfirm}
+              disabled={confirmDisabled}
+              className="text-base px-4 py-2 rounded-lg bg-white text-[#0d9488] font-medium hover:bg-white/90 transition-colors disabled:opacity-50"
+            >
+              {confirmLoading ? 'Scheduling...' : 'Schedule'}
+            </button>
+          </div>
         </div>
       </div>
 
