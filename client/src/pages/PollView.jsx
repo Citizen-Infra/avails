@@ -388,24 +388,67 @@ export default function PollView() {
     }
   }
 
+  async function insertGoogleEvent({ finalTime, finalDuration }) {
+    const tz = poll?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
+    const startDt = new Date(finalTime)
+    const endDt = new Date(startDt.getTime() + finalDuration * 60 * 1000)
+    const pollUrl = `${window.location.origin}/p/${did}/${rkey}`
+
+    const eventBody = {
+      summary: poll.title,
+      description: [poll.description, `View poll: ${pollUrl}`].filter(Boolean).join('\n\n'),
+      start: { dateTime: startDt.toISOString(), timeZone: tz },
+      end: { dateTime: endDt.toISOString(), timeZone: tz },
+      source: { url: pollUrl, title: 'View poll' },
+    }
+
+    try {
+      const created = await insertEvent(googleToken, chosenCalendarId, eventBody)
+      setGoogleEventLink({
+        url: created.htmlLink,
+        calendarSummary: writableCalendars?.find(c => c.id === chosenCalendarId)?.summary || 'calendar',
+      })
+      localStorage.setItem('avails:lastCalendarId', chosenCalendarId)
+    } catch (err) {
+      console.error('[avails] insertEvent failed:', err)
+      setCalendarInsertError(err.message || 'Could not add to calendar')
+    }
+  }
+
   async function handleScheduleConfirm() {
     if (schedulingSlots.length === 0) return
     setSchedulingLoading(true)
     setSchedulingError(null)
+    setCalendarInsertError(null)
     try {
       const mins = poll.slotMinutes || poll.slotDuration || 30
       const finalTime = new Date(schedulingSlots[0]).toISOString()
       const finalDuration = schedulingSlots.length * mins
       const notifyEmails = [...new Set(responses.filter(r => r.email).map(r => r.email))]
+
+      // 1) PDS finalize + .ics emails. Source of truth.
       await finalizePoll(did, rkey, finalTime, finalDuration, notifyEmails)
       setSchedulingMode(false)
       setSchedulingSlots([])
+
+      // 2) Optional Google Calendar insert. Independent — never rolls back the schedule.
+      if (chosenCalendarId !== 'none' && googleToken) {
+        await insertGoogleEvent({ finalTime, finalDuration })
+      }
+
       fetchData()
     } catch (err) {
       setSchedulingError(err.message)
     } finally {
       setSchedulingLoading(false)
     }
+  }
+
+  async function retryCalendarInsert() {
+    if (!poll?.finalTime || !poll?.finalDuration) return
+    if (chosenCalendarId === 'none' || !googleToken) return
+    setCalendarInsertError(null)
+    await insertGoogleEvent({ finalTime: poll.finalTime, finalDuration: poll.finalDuration })
   }
 
   async function handleUnschedule() {
@@ -562,6 +605,26 @@ export default function PollView() {
               })}
               {poll.finalDuration && <span className="text-[#6b6560] text-lg ml-2">({poll.finalDuration} min)</span>}
             </p>
+
+            {googleEventLink && (
+              <p className="text-sm text-[#0d9488]">
+                Added to {googleEventLink.calendarSummary} —{' '}
+                <a href={googleEventLink.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+                  view event
+                </a>
+              </p>
+            )}
+            {calendarInsertError && (
+              <div className="text-sm text-red-700 flex items-center gap-2">
+                <span>Couldn't add to calendar — schedule still confirmed.</span>
+                <button
+                  onClick={retryCalendarInsert}
+                  className="underline underline-offset-2 hover:text-red-900"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
 
             <div className="flex items-center gap-3 pt-2 flex-wrap">
               {isCreator && !openmeetUrl && (
