@@ -26,6 +26,16 @@ type Main = {
    * Slug of the OpenMeet event created when the poll was published. Cleared on unschedule so the OpenMeet event can be deleted.
    */
   openmeetEventSlug?: string
+
+  /**
+   * ID of the Google Calendar event created when the poll was scheduled. Cleared on unschedule so the event can be auto-cancelled.
+   */
+  googleEventId?: string
+
+  /**
+   * ID of the Google Calendar the event was inserted into. Paired with googleEventId for cleanup on unschedule.
+   */
+  googleCalendarId?: string
   notifyAfter?: number
   notifyVia?: 'email' | 'telegram' | l.UnknownString
   notifyEmail?: string
@@ -56,6 +66,8 @@ const main = l.record<'tid', Main>(
     finalTime: l.optional(l.string()),
     finalDuration: l.optional(l.integer({ minimum: 15 })),
     openmeetEventSlug: l.optional(l.string()),
+    googleEventId: l.optional(l.string()),
+    googleCalendarId: l.optional(l.string()),
     notifyAfter: l.optional(l.integer({ minimum: 1 })),
     notifyVia: l.optional(l.string<{ knownValues: ['email', 'telegram'] }>()),
     notifyEmail: l.optional(l.string()),

@@ -26,6 +26,8 @@
           "finalTime": { "type": "string" },
           "finalDuration": { "type": "integer", "minimum": 15 },
           "openmeetEventSlug": { "type": "string", "description": "Slug of the OpenMeet event created when the poll was published. Cleared on unschedule so the OpenMeet event can be deleted." },
+          "googleEventId": { "type": "string", "description": "ID of the Google Calendar event created when the poll was scheduled. Cleared on unschedule so the event can be auto-cancelled." },
+          "googleCalendarId": { "type": "string", "description": "ID of the Google Calendar the event was inserted into. Paired with googleEventId for cleanup on unschedule." },
           "notifyAfter": { "type": "integer", "minimum": 1 },
           "notifyVia": { "type": "string", "knownValues": ["email", "telegram"] },
           "notifyEmail": { "type": "string" },
