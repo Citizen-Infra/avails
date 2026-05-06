@@ -1,7 +1,7 @@
 import Logo from '@/components/Logo'
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useParams } from 'react-router'
-import { getPoll, getSession, submitResponse, updateResponse, finalizePoll, unfinalizePoll, deleteResponse, publishToOpenMeet, getOpenMeetAvailability } from '@/lib/api'
+import { getPoll, getSession, submitResponse, updateResponse, finalizePoll, unfinalizePoll, deleteResponse, publishToOpenMeet, getOpenMeetAvailability, setGoogleCalendarEvent } from '@/lib/api'
 import {
   isGoogleConfigured,
   requestGoogleAccess,
@@ -411,6 +411,13 @@ export default function PollView() {
         calendarSummary: writableCalendars?.find(c => c.id === chosenCalendarId)?.summary || 'calendar',
       })
       localStorage.setItem('avails:lastCalendarId', chosenCalendarId)
+      // Persist event id + calendar id on the poll record so unschedule can auto-cancel.
+      // Best-effort — failure leaves the event untracked but in place.
+      try {
+        await setGoogleCalendarEvent(did, rkey, created.id, chosenCalendarId)
+      } catch (err) {
+        console.warn('[avails] setGoogleCalendarEvent failed (event created but not tracked):', err)
+      }
     } catch (err) {
       console.error('[avails] insertEvent failed:', err)
       setCalendarInsertError(err.message || 'Could not add to calendar')
