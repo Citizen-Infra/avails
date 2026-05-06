@@ -28,5 +28,6 @@ export async function getCommunities() { return apiFetch('/api/communities'); }
 export async function getMyPolls() { return apiFetch('/api/polls/my'); }
 export async function deletePoll(did, rkey) { return apiFetch(`/api/polls/${did}/${rkey}`, { method: 'DELETE' }); }
 export async function deleteResponse(did, rkey, responseRkey) { return apiFetch(`/api/polls/${did}/${rkey}/responses/${responseRkey}`, { method: 'DELETE' }); }
+export async function setGoogleCalendarEvent(did, rkey, googleEventId, googleCalendarId) { return apiFetch(`/api/polls/${did}/${rkey}/google-event`, { method: 'PUT', body: JSON.stringify({ googleEventId, googleCalendarId }) }); }
 export async function publishToOpenMeet(data) { return apiFetch('/api/openmeet/publish', { method: 'POST', body: JSON.stringify(data) }); }
 export async function getOpenMeetAvailability(startTime, endTime) { return apiFetch('/api/openmeet/availability', { method: 'POST', body: JSON.stringify({ startTime, endTime }) }); }

@@ -139,6 +139,23 @@ export async function listWritableCalendars(accessToken) {
 }
 
 /**
+ * Delete a single event from a Google Calendar. Used on unschedule to remove the auto-created event.
+ * Treats 404/410 as success (event already deleted by the user, or stale id).
+ */
+export async function deleteEvent(accessToken, calendarId, eventId) {
+  const res = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
+    {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }
+  );
+  if (res.ok || res.status === 404 || res.status === 410) return;
+  const text = await res.text().catch(() => '');
+  throw new Error(`deleteEvent failed: ${res.status} ${text}`);
+}
+
+/**
  * Insert a single event into a Google Calendar.
  * eventBody must conform to https://developers.google.com/calendar/api/v3/reference/events#resource
  * Returns the created event resource (so callers can use { htmlLink, id }).
