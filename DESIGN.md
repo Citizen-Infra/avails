@@ -84,7 +84,7 @@ Density is low and the grid is the protagonist. Chrome recedes; the availability
 - One accent — Gather Teal — used sparingly and meaningfully.
 - Flat by default; a single elevated hero (the scheduled-time card).
 - Mobile-first, because the highest-volume user is an anonymous responder on a phone.
-- Availability encoded with redundant non-color cues, not color alone.
+- Availability legible without color via interaction (tap-to-reveal who's free) plus aria-label counts, not green saturation alone.
 
 ## 2. Colors
 
@@ -163,7 +163,7 @@ The single exception is the **scheduled-time card**, which floats over the grid 
 - **Do** ground every screen on Paper Cream (`#faf9f6`). It is the system.
 - **Do** reserve Gather Teal (`#0d9488`) for availability, selection, and the primary action only. Scarcity is the point.
 - **Do** keep surfaces flat; convey depth with warm tints and hairline borders.
-- **Do** encode availability with a redundant non-color cue (count, label, pattern), not green saturation alone — colorblind responders must be able to read consensus. (WCAG 2.1 AA.)
+- **Do** keep the availability heatmap legible without color via **interaction**: tapping a cell (or a name) reveals who is actually available, plus per-cell `aria-label` counts and a hover tooltip. Don't rely on green saturation alone, and don't clutter every cell with a resting number. (WCAG 1.4.1 / 2.1 AA.)
 - **Do** design the phone first; the highest-volume user is an anonymous responder on mobile.
 - **Do** override shadcn's cold base neutrals with the warm scale.
 
