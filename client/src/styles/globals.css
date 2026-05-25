@@ -45,24 +45,29 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  /* Warm neutral scale — hue ~80 (paper), low chroma. Mirrors the bespoke hex
+     palette (Paper Cream #faf9f6, Oat #f5f3ef, Hairline #e8e5df, Warm Ink #1a1a1a,
+     Stone #6b6560) so shadcn surfaces inherit warmth instead of cold grey.
+     See DESIGN.md "The No Cold Grey Rule". */
+  --background: oklch(0.985 0.004 85);
+  --foreground: oklch(0.205 0.005 60);
+  --card: oklch(0.985 0.004 85);
+  --card-foreground: oklch(0.205 0.005 60);
+  --popover: oklch(0.99 0.004 85);
+  --popover-foreground: oklch(0.205 0.005 60);
+  --primary: oklch(0.205 0.005 60);
+  --primary-foreground: oklch(0.985 0.004 85);
+  --secondary: oklch(0.962 0.005 80);
+  --secondary-foreground: oklch(0.205 0.005 60);
+  --muted: oklch(0.962 0.005 80);
+  --muted-foreground: oklch(0.52 0.008 70);
+  --accent: oklch(0.95 0.006 80);
+  --accent-foreground: oklch(0.205 0.005 60);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --border: oklch(0.915 0.006 78);
+  --input: oklch(0.915 0.006 78);
+  /* Focus ring = Gather Teal (brand accent), aids the keyboard-a11y work in #86 */
+  --ring: oklch(0.62 0.1 185);
   --radius: 0.625rem;
 }
 

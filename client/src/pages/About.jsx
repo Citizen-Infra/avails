@@ -80,8 +80,9 @@ export default function About() {
             </div>
           </div>
 
-          {/* Pull quote */}
-          <div className="mt-12 border-l-4 border-[#0d9488] pl-8 py-2">
+          {/* Pull quote — top accent rule, not a side-stripe (DESIGN.md ban) */}
+          <div className="mt-12 py-2">
+            <div className="w-10 h-1 rounded-full bg-[#0d9488] mb-5" />
             <p className="text-2xl font-semibold text-[#1a1a1a] leading-snug tracking-tight">
               Data portability is not a feature.
               <br />

@@ -47,11 +47,12 @@ function computeHeatmap(responses, dates, times) {
   return map
 }
 
+// Match AvailGrid's heatmap exactly so the green doesn't shift when the creator
+// switches from response view to scheduling view (Consensus Green, alpha 0.2 → 0.9).
 function slotColor(count, total) {
   if (!count || !total) return null
-  const ratio = count / total
-  const lightness = 85 - ratio * 45
-  return `hsl(142, 60%, ${lightness}%)`
+  const alpha = 0.2 + 0.7 * (count / total)
+  return `rgba(34, 197, 94, ${alpha})`
 }
 
 export default function SchedulingGrid({
