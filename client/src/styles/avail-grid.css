@@ -192,3 +192,17 @@
 .avail-cell--active::after {
   z-index: -1;
 }
+
+/* Keyboard focus ring (WCAG 2.4.7) — visible when navigating cells by keyboard */
+.avail-cell:focus-visible {
+  outline: 2px solid #0d9488;
+  outline-offset: -2px;
+  z-index: 4;
+}
+
+/* Respect reduced-motion: drop the coaching pulse + scheduled shimmer */
+@media (prefers-reduced-motion: reduce) {
+  .avail-cell { transition: none; }
+  .avail-cell--empty:first-of-type { animation: none; }
+  .avail-scheduled-card::after { animation: none; }
+}

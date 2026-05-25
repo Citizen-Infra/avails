@@ -100,6 +100,7 @@ export default function AvailGrid({
   const [dragState, setDragState] = useState(null) // null | { pending: Set<string>, removing: boolean }
   const [activeSlot, setActiveSlot] = useState(null) // slot key tapped in read-only mode
   const activeSlotRef = useRef(null) // ref mirror to avoid stale closure in commitDrag
+  const [focusCell, setFocusCell] = useState({ row: 0, col: 0 }) // roving tabindex for keyboard nav
 
   // Clear activeSlot when entering edit mode
   useEffect(() => {
@@ -182,6 +183,7 @@ export default function AvailGrid({
 
   const handlePointerDown = useCallback(
     (e, row, col) => {
+      setFocusCell({ row, col }) // keep keyboard focus in sync with pointer
       const key = `${visibleDates[col]}T${times[row]}`
       if (readOnly) {
         e.preventDefault()
@@ -282,6 +284,49 @@ export default function AvailGrid({
     return `${count}/${totalRespondents} available — ${names.join(', ')}`
   }
 
+  // Keyboard navigation (WCAG 2.1.1) — roving tabindex over cells with arrow
+  // keys to move and Space/Enter to toggle. Clamp focus to current page bounds.
+  const fRow = Math.min(focusCell.row, Math.max(0, times.length - 1))
+  const fCol = Math.min(focusCell.col, Math.max(0, visibleDates.length - 1))
+
+  function focusCellAt(row, col) {
+    containerRef.current
+      ?.querySelector(`[data-row="${row}"][data-col="${col}"]`)
+      ?.focus()
+  }
+
+  function handleGridKeyDown(e) {
+    const maxRow = times.length - 1
+    const maxCol = visibleDates.length - 1
+    let r = fRow
+    let c = fCol
+    if (e.key === 'ArrowUp') r = Math.max(0, fRow - 1)
+    else if (e.key === 'ArrowDown') r = Math.min(maxRow, fRow + 1)
+    else if (e.key === 'ArrowLeft') c = Math.max(0, fCol - 1)
+    else if (e.key === 'ArrowRight') c = Math.min(maxCol, fCol + 1)
+    else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      const key = `${visibleDates[fCol]}T${times[fRow]}`
+      if (readOnly) {
+        const newActive = activeSlotRef.current === key ? null : key
+        activeSlotRef.current = newActive
+        setActiveSlot(newActive)
+        onHoverSlot?.(newActive)
+      } else {
+        const next = new Set(mySlots)
+        if (next.has(key)) next.delete(key)
+        else next.add(key)
+        onSlotsChange?.(next)
+      }
+      return
+    } else {
+      return
+    }
+    e.preventDefault()
+    setFocusCell({ row: r, col: c })
+    requestAnimationFrame(() => focusCellAt(r, c))
+  }
+
   return (
     <TooltipProvider delayDuration={300}>
       <div className="space-y-2">
@@ -315,6 +360,9 @@ export default function AvailGrid({
           onPointerLeave={() => { if (!downCell.current && !activeSlotRef.current) onHoverSlot?.(null) }}
         >
           <div
+            role="group"
+            aria-label="Availability grid. Use arrow keys to move between time slots and Space to toggle your availability."
+            onKeyDown={handleGridKeyDown}
             className="grid w-full rounded-lg border border-[#d8d4cf] overflow-hidden"
             style={{
               gridTemplateColumns: `clamp(3rem, 12vw, 5rem) repeat(${visibleDates.length}, 1fr)`,
@@ -376,11 +424,23 @@ export default function AvailGrid({
                 const prevEventName = prevKey ? slotEvents[prevKey] : null
                 const showEventName = eventName && eventName !== prevEventName
 
+                const fd = formatDate(date)
+                const cellLabel =
+                  `${fd.dayName} ${fd.monthDay} at ${time}` +
+                  (totalRespondents > 0 ? `, ${heatCount} of ${totalRespondents} available` : ', no responses yet') +
+                  (isBusy ? ', busy on your calendar' : '') +
+                  (isScheduled ? ', scheduled time' : '') +
+                  (!readOnly ? (isMine ? ', selected' : ', not selected') : '')
+
                 const cell = (
                   <div
                     key={key}
                     data-row={rowIdx}
                     data-col={colIdx}
+                    role="button"
+                    aria-label={cellLabel}
+                    aria-pressed={readOnly ? undefined : isMine}
+                    tabIndex={rowIdx === fRow && colIdx === fCol ? 0 : -1}
                     className={cn(
                       'avail-cell h-8 cursor-pointer',
                       time.endsWith(':00') && rowIdx > 0 && slotMinutes < 60 && 'avail-cell--hour',

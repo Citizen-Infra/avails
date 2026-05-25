@@ -88,6 +88,9 @@ export default function SchedulingGrid({
   const curCell = useRef(null)
   const [dragPending, setDragPending] = useState(null) // Set<string> | null
   const [selectedSlots, setSelectedSlots] = useState(new Set())
+  const [focusCell, setFocusCell] = useState({ row: 0, col: 0 }) // roving tabindex
+  const kbAnchor = useRef(null) // keyboard block-selection anchor
+  const gridRef = useRef(null)
 
   // Date pagination — mirror AvailGrid: show max 7 dates at a time with arrows.
   // Without this the grid renders every day in one row and overflows the viewport
@@ -119,6 +122,7 @@ export default function SchedulingGrid({
 
   const handlePointerDown = useCallback((e, row, col) => {
     e.preventDefault()
+    setFocusCell({ row, col }) // keep keyboard focus in sync with pointer
     downCell.current = { row, col }
     curCell.current = { row, col }
     const key = `${visibleDates[col]}T${times[row]}`
@@ -148,6 +152,54 @@ export default function SchedulingGrid({
     document.addEventListener('pointerup', commitDrag)
     return () => document.removeEventListener('pointerup', commitDrag)
   }, [commitDrag])
+
+  // Keyboard navigation (WCAG 2.1.1). Arrows move; Space/Enter anchors a single
+  // cell; Shift+Up/Down extends the time block within the anchor's column.
+  const fRow = Math.min(focusCell.row, Math.max(0, times.length - 1))
+  const fCol = Math.min(focusCell.col, Math.max(0, visibleDates.length - 1))
+
+  function focusCellAt(row, col) {
+    gridRef.current
+      ?.querySelector(`[data-row="${row}"][data-col="${col}"]`)
+      ?.focus()
+  }
+
+  function handleGridKeyDown(e) {
+    const maxRow = times.length - 1
+    const maxCol = visibleDates.length - 1
+    let r = fRow
+    let c = fCol
+    if (e.key === 'ArrowUp') r = Math.max(0, fRow - 1)
+    else if (e.key === 'ArrowDown') r = Math.min(maxRow, fRow + 1)
+    else if (e.key === 'ArrowLeft') c = Math.max(0, fCol - 1)
+    else if (e.key === 'ArrowRight') c = Math.min(maxCol, fCol + 1)
+    else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      const key = `${visibleDates[fCol]}T${times[fRow]}`
+      kbAnchor.current = { row: fRow, col: fCol }
+      setSelectedSlots(new Set([key]))
+      onSelect([key])
+      return
+    } else {
+      return
+    }
+    e.preventDefault()
+    // Shift + vertical extends the contiguous block from the anchor (same column)
+    if (e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+      if (!kbAnchor.current || kbAnchor.current.col !== fCol) {
+        kbAnchor.current = { row: fRow, col: fCol }
+      }
+      const col = kbAnchor.current.col
+      const lo = Math.min(kbAnchor.current.row, r)
+      const hi = Math.max(kbAnchor.current.row, r)
+      const sel = new Set()
+      for (let i = lo; i <= hi; i++) sel.add(`${visibleDates[col]}T${times[i]}`)
+      setSelectedSlots(sel)
+      onSelect(Array.from(sel).sort())
+    }
+    setFocusCell({ row: r, col: c })
+    requestAnimationFrame(() => focusCellAt(r, c))
+  }
 
   return (
     <div className="space-y-4">
@@ -230,6 +282,10 @@ export default function SchedulingGrid({
         style={{ touchAction: 'none', cursor: 'crosshair' }}
       >
         <div
+          ref={gridRef}
+          role="group"
+          aria-label="Time-block picker. Use arrow keys to move, Space to start a block, Shift with up or down to extend it."
+          onKeyDown={handleGridKeyDown}
           className="grid w-full"
           style={{
             gridTemplateColumns: `clamp(3rem, 12vw, 5rem) repeat(${visibleDates.length}, 1fr)`,
@@ -259,10 +315,21 @@ export default function SchedulingGrid({
                 const bgColor = heatCount > 0 ? slotColor(heatCount, totalRespondents) : undefined
                 const isPending = dragPending && dragPending.has(key)
                 const isSelected = selectedSlots.has(key)
+                const fd = formatDate(date)
+                const cellLabel =
+                  `${fd.dayName} ${fd.monthDay} at ${time}` +
+                  (heatCount > 0 ? `, ${heatCount} of ${totalRespondents} available` : '') +
+                  (isSelected ? ', selected for the meeting' : '')
 
                 return (
                   <div
                     key={key}
+                    data-row={rowIdx}
+                    data-col={colIdx}
+                    role="button"
+                    aria-label={cellLabel}
+                    aria-pressed={isSelected}
+                    tabIndex={rowIdx === fRow && colIdx === fCol ? 0 : -1}
                     className={cn(
                       'avail-cell h-8',
                       rowIdx === 0 && 'rounded-t',
