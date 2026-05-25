@@ -154,15 +154,16 @@ export default function Landing() {
               </a>
 
               <h1 className="text-4xl sm:text-6xl leading-[1.1] font-bold text-[#1a1a1a] tracking-tight">
-                Let your AI<br/>
-                find a time that<br/>
-                works for everyone
+                Find a time your<br/>
+                whole group can<br/>
+                actually meet
               </h1>
 
               <p className="text-xl text-[#6b6560] leading-relaxed max-w-lg">
-                Connect avails to Claude, Cursor, or any MCP-compatible tool.
-                Create polls, check availability, and schedule meetings — all
-                from your terminal. Built on ATProto so your data stays yours.
+                avails is a free, open scheduling poll for groups. Share a link,
+                everyone marks when they're free, and you pick the time that
+                works for the most people. No accounts to chase, and your data
+                stays yours.
               </p>
 
               <div className="flex items-center gap-4 pt-2">
@@ -170,12 +171,6 @@ export default function Landing() {
               </div>
 
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-8 pt-6 text-base text-[#6b6560]">
-                <div className="flex items-center gap-2.5">
-                  <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="#0d9488" strokeWidth="1.5">
-                    <path d="M5 3l-1 10M12 3l-1 10M3 6h11M2 10h11"/>
-                  </svg>
-                  AI assistant ready
-                </div>
                 <div className="flex items-center gap-2.5">
                   <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="#0d9488" strokeWidth="1.5">
                     <circle cx="8" cy="8" r="6"/>
@@ -187,14 +182,20 @@ export default function Landing() {
                   <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="#0d9488" strokeWidth="1.5">
                     <path d="M4 8h8M8 4v8M2 2h4M10 2h4M2 14h4M10 14h4"/>
                   </svg>
-                  ATProto interoperable
+                  Free & open source
                 </div>
                 <div className="flex items-center gap-2.5">
                   <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="#0d9488" strokeWidth="1.5">
                     <rect x="3" y="5" width="10" height="8" rx="1.5"/>
                     <path d="M5 5V3.5a3 3 0 016 0V5"/>
                   </svg>
-                  Can be self-hosted
+                  Your data stays yours
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="#0d9488" strokeWidth="1.5">
+                    <path d="M5 3l-1 10M12 3l-1 10M3 6h11M2 10h11"/>
+                  </svg>
+                  Works with Claude & MCP tools
                 </div>
               </div>
             </div>
