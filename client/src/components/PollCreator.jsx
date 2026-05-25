@@ -33,6 +33,7 @@ export default function PollCreator() {
   const [communities, setCommunities] = useState([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
+  const [showAdvanced, setShowAdvanced] = useState(false)
 
   useEffect(() => {
     getCommunities()
@@ -184,67 +185,86 @@ export default function PollCreator() {
 
         <div className="border-t border-[#e8e5df]" />
 
-        {/* Community */}
-        {communities.length > 0 && (
-          <div className="space-y-2">
-            <Label htmlFor="community" className="text-base font-medium text-[#1a1a1a]">Community <span className="text-[#a09a94] text-xs font-normal">(optional)</span></Label>
-            <Select value={communityId} onValueChange={setCommunityId}>
-              <SelectTrigger id="community" className="border-[#e8e5df] bg-white text-[#1a1a1a]">
-                <SelectValue placeholder="None" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">None</SelectItem>
-                {communities.map(c => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
+        {/* Advanced options — collapsed so the core path (title, dates, time) stays light */}
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowAdvanced(v => !v)}
+            aria-expanded={showAdvanced}
+            className="flex items-center gap-2 text-base font-medium text-[#6b6560] hover:text-[#1a1a1a] transition-colors"
+          >
+            <svg className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-90' : ''}`} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M6 4l4 4-4 4" />
+            </svg>
+            More options
+            <span className="text-sm font-normal text-[#a09a94]">notifications, community, privacy</span>
+          </button>
 
-        {/* Notify after N responses */}
-        <div className="space-y-2">
-          <Label className="text-base font-medium text-[#1a1a1a]">Notify me after <span className="text-[#a09a94] text-xs font-normal">(optional)</span></Label>
-          <div className="flex items-center gap-3">
-            <Input
-              type="number"
-              min="1"
-              placeholder="e.g. 5"
-              value={notifyAfter}
-              onChange={e => setNotifyAfter(e.target.value)}
-              className="w-24 border-[#e8e5df] bg-white text-[#1a1a1a] placeholder:text-[#a09a94] focus-visible:ring-[#0d9488]"
-            />
-            <span className="text-base text-[#8a8580]">responses</span>
-          </div>
+          {showAdvanced && (
+            <div className="space-y-6 pt-6">
+              {/* Community */}
+              {communities.length > 0 && (
+                <div className="space-y-2">
+                  <Label htmlFor="community" className="text-base font-medium text-[#1a1a1a]">Community <span className="text-[#a09a94] text-xs font-normal">(optional)</span></Label>
+                  <Select value={communityId} onValueChange={setCommunityId}>
+                    <SelectTrigger id="community" className="border-[#e8e5df] bg-white text-[#1a1a1a]">
+                      <SelectValue placeholder="None" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">None</SelectItem>
+                      {communities.map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Notify after N responses */}
+              <div className="space-y-2">
+                <Label className="text-base font-medium text-[#1a1a1a]">Notify me after <span className="text-[#a09a94] text-xs font-normal">(optional)</span></Label>
+                <div className="flex items-center gap-3">
+                  <Input
+                    type="number"
+                    min="1"
+                    placeholder="e.g. 5"
+                    value={notifyAfter}
+                    onChange={e => setNotifyAfter(e.target.value)}
+                    className="w-24 border-[#e8e5df] bg-white text-[#1a1a1a] placeholder:text-[#a09a94] focus-visible:ring-[#0d9488]"
+                  />
+                  <span className="text-base text-[#8a8580]">responses</span>
+                </div>
+              </div>
+
+              {/* Notification email */}
+              <div className="space-y-2">
+                <Label htmlFor="notify-email" className="text-base font-medium text-[#1a1a1a]">Notification email <span className="text-[#a09a94] text-xs font-normal">(optional)</span></Label>
+                <Input
+                  id="notify-email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={notifyEmail}
+                  onChange={e => setNotifyEmail(e.target.value)}
+                  className="border-[#e8e5df] bg-white text-[#1a1a1a] placeholder:text-[#a09a94] focus-visible:ring-[#0d9488]"
+                />
+              </div>
+
+              {/* Privacy option */}
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={hideResponsesUntilSubmit}
+                  onChange={e => setHideResponsesUntilSubmit(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-[#d8d4cf] text-[#0d9488] focus:ring-[#0d9488] focus:ring-offset-0 accent-[#0d9488] cursor-pointer"
+                />
+                <span className="flex-1">
+                  <span className="text-base font-medium text-[#1a1a1a] block">Hide other responses until people submit</span>
+                  <span className="text-sm text-[#8a8580] block mt-0.5">Respondents see an empty grid until they save their own availability. Prevents early picks from anchoring others.</span>
+                </span>
+              </label>
+            </div>
+          )}
         </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="notify-email" className="text-base font-medium text-[#1a1a1a]">Notification email <span className="text-[#a09a94] text-xs font-normal">(optional)</span></Label>
-          <Input
-            id="notify-email"
-            type="email"
-            placeholder="you@example.com"
-            value={notifyEmail}
-            onChange={e => setNotifyEmail(e.target.value)}
-            className="border-[#e8e5df] bg-white text-[#1a1a1a] placeholder:text-[#a09a94] focus-visible:ring-[#0d9488]"
-          />
-        </div>
-
-        <div className="border-t border-[#e8e5df]" />
-
-        {/* Privacy option */}
-        <label className="flex items-start gap-3 cursor-pointer group">
-          <input
-            type="checkbox"
-            checked={hideResponsesUntilSubmit}
-            onChange={e => setHideResponsesUntilSubmit(e.target.checked)}
-            className="mt-1 h-4 w-4 rounded border-[#d8d4cf] text-[#0d9488] focus:ring-[#0d9488] focus:ring-offset-0 accent-[#0d9488] cursor-pointer"
-          />
-          <span className="flex-1">
-            <span className="text-base font-medium text-[#1a1a1a] block">Hide other responses until people submit</span>
-            <span className="text-sm text-[#8a8580] block mt-0.5">Respondents see an empty grid until they save their own availability. Prevents early picks from anchoring others.</span>
-          </span>
-        </label>
 
         {/* Error */}
         {error && (
