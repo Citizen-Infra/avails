@@ -70,6 +70,8 @@ export default function PollView() {
   const [showDeleteResponse, setShowDeleteResponse] = useState(false)
   const [showUnschedule, setShowUnschedule] = useState(false)
   const [showGuestModal, setShowGuestModal] = useState(false)
+  const [justSubmitted, setJustSubmitted] = useState(false) // transient post-submit confirmation
+  const [calendarCleanupWarning, setCalendarCleanupWarning] = useState(null) // best-effort google-delete notice
   const [openmeetUrl, setOpenmeetUrl] = useState(null)
   const [publishingToOpenMeet, setPublishingToOpenMeet] = useState(false)
   const [openmeetError, setOpenmeetError] = useState(null)
@@ -287,6 +289,13 @@ export default function PollView() {
     return slots
   }, [poll?.finalTime, poll?.finalDuration, poll?.slotMinutes, poll?.slotDuration])
 
+  // Auto-dismiss the post-submit confirmation after a few seconds
+  useEffect(() => {
+    if (!justSubmitted) return
+    const t = setTimeout(() => setJustSubmitted(false), 4500)
+    return () => clearTimeout(t)
+  }, [justSubmitted])
+
   async function handleGuestSubmit(guestInfo) {
     setParticipant(guestInfo)
     setShowGuestModal(false)
@@ -326,6 +335,7 @@ export default function PollView() {
         } catch {}
       }
       setSubmitted(true)
+      setJustSubmitted(true)
       // Refresh responses
       const updated = await getPoll(did, rkey)
       setResponses(normalizeResponses(updated.responses))
@@ -514,7 +524,7 @@ export default function PollView() {
         await deleteEvent(token, googleCalendarId, googleEventId)
       } catch (err) {
         console.warn('[avails] deleteEvent on unschedule failed:', err)
-        alert("Schedule cancelled. Couldn't remove the event from Google Calendar. Please delete it manually.")
+        setCalendarCleanupWarning("Meeting unscheduled. We couldn't remove the event from Google Calendar automatically. Please delete it there manually.")
       }
     }
 
@@ -561,8 +571,22 @@ export default function PollView() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#faf9f6] flex items-center justify-center">
-        <p className="text-[#8a8580]">{error}</p>
+      <div className="min-h-screen bg-[#faf9f6] flex items-center justify-center px-4">
+        <div className="max-w-sm w-full rounded-xl border border-[#e8e5df] bg-[#faf9f6] p-8 text-center space-y-4">
+          <p className="text-lg font-medium text-[#1a1a1a]">Couldn't load this poll</p>
+          <p className="text-sm text-[#8a8580]">{error}</p>
+          <div className="flex items-center justify-center gap-3 pt-1">
+            <Button
+              onClick={() => { setError(null); setLoading(true); fetchData() }}
+              className="bg-[#0d9488] text-white hover:bg-[#0f766e] rounded-lg"
+            >
+              Try again
+            </Button>
+            <a href="/" className="text-sm text-[#6b6560] hover:text-[#1a1a1a] underline underline-offset-2">
+              Go home
+            </a>
+          </div>
+        </div>
       </div>
     )
   }
@@ -634,6 +658,32 @@ export default function PollView() {
           onConnectGoogleCalendar={() => connectGoogleCalendar()}
           connectingCalendar={connectingCalendar}
         />
+
+        {/* Transient post-submit confirmation for the responder */}
+        {justSubmitted && (
+          <div className="rounded-lg bg-[#f0fdf4] border border-[#bbf7d0] px-4 py-3 text-[#15803d] flex items-center gap-2.5">
+            <svg width="18" height="18" viewBox="0 0 16 16" fill="none" className="shrink-0">
+              <path d="M3 8.5L6.5 12L13 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span className="text-base font-medium">
+              You're in{participant?.name ? `, ${participant.name}` : ''}. The organizer will pick a time soon.
+            </span>
+          </div>
+        )}
+
+        {/* Best-effort calendar-cleanup notice (replaces a raw alert) */}
+        {calendarCleanupWarning && (
+          <div className="rounded-lg bg-[#fef9c3] border border-[#fde68a] px-4 py-3 text-[#854d0e] flex items-start justify-between gap-3">
+            <span className="text-sm">{calendarCleanupWarning}</span>
+            <button
+              type="button"
+              onClick={() => setCalendarCleanupWarning(null)}
+              className="text-sm font-medium text-[#854d0e]/70 hover:text-[#854d0e] shrink-0"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {/* Finalized result card */}
         {poll.finalTime && (
