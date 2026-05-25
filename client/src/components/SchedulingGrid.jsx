@@ -286,7 +286,7 @@ export default function SchedulingGrid({
           role="group"
           aria-label="Time-block picker. Use arrow keys to move, Space to start a block, Shift with up or down to extend it."
           onKeyDown={handleGridKeyDown}
-          className="grid w-full"
+          className="grid w-full rounded-lg border border-[#d8d4cf] overflow-hidden"
           style={{
             gridTemplateColumns: `clamp(3rem, 12vw, 5rem) repeat(${visibleDates.length}, 1fr)`,
           }}
@@ -296,9 +296,9 @@ export default function SchedulingGrid({
           {visibleDates.map((date) => {
             const { dayName, monthDay } = formatDate(date)
             return (
-              <div key={date} className="flex flex-col items-center pb-2 pt-1 text-center">
-                <span className="text-sm font-medium text-[#6b6560] uppercase tracking-wide">{dayName}</span>
-                <span className="text-sm text-[#1a1a1a] font-medium">{monthDay}</span>
+              <div key={date} className="flex flex-col items-center gap-0.5 pb-2 pt-1 text-center">
+                <span className="text-[11px] font-medium text-[#8a8580] uppercase tracking-[0.1em]">{dayName}</span>
+                <span className="text-base text-[#1a1a1a] font-semibold tabular-nums leading-none">{monthDay}</span>
               </div>
             )
           })}
@@ -306,8 +306,13 @@ export default function SchedulingGrid({
           {/* Rows */}
           {times.map((time, rowIdx) => (
             <>
-              <div key={`label-${time}`} className="pr-2 flex items-center justify-end">
-                <span className="text-sm text-[#6b6560] tabular-nums leading-none">{time}</span>
+              <div key={`label-${time}`} className="pr-2 flex items-start justify-end -mt-[7px]">
+                <span className={cn(
+                  'text-xs tabular-nums leading-none',
+                  time.endsWith(':00') ? 'text-[#1a1a1a] font-medium' : 'text-[#a09a94]'
+                )}>
+                  {time}
+                </span>
               </div>
               {visibleDates.map((date, colIdx) => {
                 const key = `${date}T${time}`
@@ -332,9 +337,10 @@ export default function SchedulingGrid({
                     tabIndex={rowIdx === fRow && colIdx === fCol ? 0 : -1}
                     className={cn(
                       'avail-cell h-8',
+                      time.endsWith(':00') && rowIdx > 0 && slotMinutes < 60 && 'avail-cell--hour',
                       rowIdx === 0 && 'rounded-t',
                       rowIdx === times.length - 1 && 'rounded-b',
-                      !bgColor && !isPending && !isSelected && 'bg-muted/30',
+                      !bgColor && !isPending && !isSelected && 'avail-cell--empty',
                       isPending && 'avail-cell--pending-schedule',
                       isSelected && !isPending && 'avail-cell--scheduled',
                     )}
