@@ -470,13 +470,6 @@ export default function AvailGrid({
                     onPointerDown={(e) => handlePointerDown(e, rowIdx, colIdx)}
                     onPointerEnter={(e) => handlePointerEnter(e, rowIdx, colIdx)}
                   >
-                    {/* Redundant non-color cue (WCAG 1.4.1): show the respondent
-                        count so consensus is legible without relying on green. */}
-                    {heatCount > 0 && !focusedName && (
-                      <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[10px] font-medium leading-none text-[#1a1a1a]/55 tabular-nums">
-                        {heatCount}
-                      </span>
-                    )}
                     {showEventName && (
                       <span className="absolute left-1 right-1 top-0.5 bottom-0.5 flex items-start rounded bg-rose-400/90 px-1.5 py-0.5 text-[11px] leading-tight text-white font-medium truncate pointer-events-none z-[1] shadow-sm">
                         {eventName}

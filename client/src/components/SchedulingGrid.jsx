@@ -349,14 +349,7 @@ export default function SchedulingGrid({
                     }}
                     onPointerDown={(e) => handlePointerDown(e, rowIdx, colIdx)}
                     onPointerEnter={(e) => handlePointerEnter(e, rowIdx, colIdx)}
-                  >
-                    {/* Redundant non-color cue (WCAG 1.4.1) — respondent count */}
-                    {heatCount > 0 && (
-                      <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[10px] font-medium leading-none text-[#1a1a1a]/55 tabular-nums">
-                        {heatCount}
-                      </span>
-                    )}
-                  </div>
+                  />
                 )
               })}
             </>
