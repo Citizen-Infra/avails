@@ -20,6 +20,8 @@ import PollHeader from '@/components/PollHeader'
 import ResponsePanel from '@/components/ResponsePanel'
 import EditPollDialog from '@/components/EditPollDialog'
 import DeletePollDialog from '@/components/DeletePollDialog'
+import DeleteResponseDialog from '@/components/DeleteResponseDialog'
+import UnscheduleDialog from '@/components/UnscheduleDialog'
 import GuestModal from '@/components/GuestModal'
 
 const EMPTY_SET = new Set()
@@ -65,6 +67,8 @@ export default function PollView() {
   const [schedulingError, setSchedulingError] = useState(null)
   const [showEditPoll, setShowEditPoll] = useState(false)
   const [showDeletePoll, setShowDeletePoll] = useState(false)
+  const [showDeleteResponse, setShowDeleteResponse] = useState(false)
+  const [showUnschedule, setShowUnschedule] = useState(false)
   const [showGuestModal, setShowGuestModal] = useState(false)
   const [openmeetUrl, setOpenmeetUrl] = useState(null)
   const [publishingToOpenMeet, setPublishingToOpenMeet] = useState(false)
@@ -373,21 +377,22 @@ export default function PollView() {
     setSubmitted(false)
   }
 
-  async function handleDeleteResponse() {
+  function handleDeleteResponse() {
     if (!responseRkey) return
-    if (!confirm('Delete your availability?')) return
-    try {
-      await deleteResponse(did, rkey, responseRkey)
-      setResponseRkey(null)
-      setMySlots(new Set())
-      setSubmitted(false)
-      setParticipant(null)
-      localStorage.removeItem(`avails:response:${window.location.pathname}`)
-      const updated = await getPoll(did, rkey)
-      setResponses(normalizeResponses(updated.responses))
-    } catch (err) {
-      setSubmitError(err.message)
-    }
+    setShowDeleteResponse(true)
+  }
+
+  // Actual deletion — runs from the dialog's confirm. Throwing surfaces the
+  // error inline in the dialog rather than leaving it silent.
+  async function confirmDeleteResponse() {
+    await deleteResponse(did, rkey, responseRkey)
+    setResponseRkey(null)
+    setMySlots(new Set())
+    setSubmitted(false)
+    setParticipant(null)
+    localStorage.removeItem(`avails:response:${window.location.pathname}`)
+    const updated = await getPoll(did, rkey)
+    setResponses(normalizeResponses(updated.responses))
   }
 
   async function insertGoogleEvent({ finalTime, finalDuration, tokenOverride }) {
@@ -479,31 +484,21 @@ export default function PollView() {
     }
   }
 
-  async function handleUnschedule() {
-    const published = !!poll?.openmeetEventSlug || !!openmeetUrl
-    const hasGoogleEvent = !!poll?.googleEventId && !!poll?.googleCalendarId
-    const parts = [
-      'Unschedule this meeting?',
-      '',
-      'Participants with emails will get a calendar-cancel message so the event disappears from their calendars.',
-    ]
-    if (published) parts.push('The OpenMeet event will also be deleted.')
-    if (hasGoogleEvent) parts.push('The Google Calendar event will also be removed.')
-    parts.push('', 'The poll will reopen and you can pick a different time.')
-    if (!confirm(parts.join('\n'))) return
+  function handleUnschedule() {
+    setShowUnschedule(true)
+  }
 
+  // Actual unschedule — runs from the dialog's confirm. unfinalizePoll throwing
+  // surfaces inline in the dialog; the Google deletion below stays best-effort
+  // (must never roll back the unschedule — see CLAUDE.md).
+  async function confirmUnschedule() {
     // Capture before unfinalize strips them from the record
     const googleEventId = poll?.googleEventId
     const googleCalendarId = poll?.googleCalendarId
 
-    try {
-      await unfinalizePoll(did, rkey)
-      setOpenmeetUrl(null)
-      setOpenmeetError(null)
-    } catch (err) {
-      alert(`Could not unschedule: ${err.message}`)
-      return
-    }
+    await unfinalizePoll(did, rkey)
+    setOpenmeetUrl(null)
+    setOpenmeetError(null)
 
     // Best-effort: remove the Google Calendar event. Failure here doesn't roll back the unschedule.
     if (googleEventId && googleCalendarId) {
@@ -519,7 +514,7 @@ export default function PollView() {
         await deleteEvent(token, googleCalendarId, googleEventId)
       } catch (err) {
         console.warn('[avails] deleteEvent on unschedule failed:', err)
-        alert("Schedule cancelled. Couldn't remove the event from Google Calendar — please delete it manually.")
+        alert("Schedule cancelled. Couldn't remove the event from Google Calendar. Please delete it manually.")
       }
     }
 
@@ -854,6 +849,20 @@ export default function PollView() {
         onOpenChange={setShowDeletePoll}
         did={did}
         rkey={rkey}
+      />
+
+      <DeleteResponseDialog
+        open={showDeleteResponse}
+        onOpenChange={setShowDeleteResponse}
+        onConfirm={confirmDeleteResponse}
+      />
+
+      <UnscheduleDialog
+        open={showUnschedule}
+        onOpenChange={setShowUnschedule}
+        onConfirm={confirmUnschedule}
+        published={!!poll?.openmeetEventSlug || !!openmeetUrl}
+        hasGoogleEvent={!!poll?.googleEventId && !!poll?.googleCalendarId}
       />
 
       <GuestModal
