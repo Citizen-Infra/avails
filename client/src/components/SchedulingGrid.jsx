@@ -88,6 +88,20 @@ export default function SchedulingGrid({
   const [dragPending, setDragPending] = useState(null) // Set<string> | null
   const [selectedSlots, setSelectedSlots] = useState(new Set())
 
+  // Date pagination — mirror AvailGrid: show max 7 dates at a time with arrows.
+  // Without this the grid renders every day in one row and overflows the viewport
+  // on mobile (issue #82). Selection persists across pages because slot keys are
+  // absolute (date+time), not page-relative.
+  const MAX_VISIBLE = 7
+  const [page, setPage] = useState(0)
+  const totalPages = Math.ceil(dates.length / MAX_VISIBLE)
+  const visibleDates = useMemo(
+    () => dates.slice(page * MAX_VISIBLE, page * MAX_VISIBLE + MAX_VISIBLE),
+    [dates, page]
+  )
+  const hasLeft = page > 0
+  const hasRight = page < totalPages - 1
+
   const computePendingKeys = useCallback((down, cur) => {
     // Constrain to same column (single day)
     const col = down.col
@@ -95,20 +109,20 @@ export default function SchedulingGrid({
     const maxRow = Math.max(down.row, cur.row)
     const keys = new Set()
     for (let r = minRow; r <= maxRow; r++) {
-      if (r < times.length && col < dates.length) {
-        keys.add(`${dates[col]}T${times[r]}`)
+      if (r < times.length && col < visibleDates.length) {
+        keys.add(`${visibleDates[col]}T${times[r]}`)
       }
     }
     return keys
-  }, [dates, times])
+  }, [visibleDates, times])
 
   const handlePointerDown = useCallback((e, row, col) => {
     e.preventDefault()
     downCell.current = { row, col }
     curCell.current = { row, col }
-    const key = `${dates[col]}T${times[row]}`
+    const key = `${visibleDates[col]}T${times[row]}`
     setDragPending(new Set([key]))
-  }, [dates, times])
+  }, [visibleDates, times])
 
   const handlePointerEnter = useCallback((e, row, col) => {
     if (!downCell.current) return
@@ -186,6 +200,29 @@ export default function SchedulingGrid({
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
+      {/* Pagination arrows + month-range header — mirrors AvailGrid */}
+      {dates.length > MAX_VISIBLE && (
+        <div className="flex items-center justify-between px-1">
+          <button
+            onClick={() => setPage((p) => p - 1)}
+            disabled={!hasLeft}
+            className={cn('p-1.5 rounded-lg transition-colors', hasLeft ? 'text-[#1a1a1a] hover:bg-[#f0eeea]' : 'text-[#d8d4cf] cursor-default')}
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 4l-6 6 6 6" /></svg>
+          </button>
+          <span className="text-sm font-medium text-[#6b6560]">
+            {formatDate(visibleDates[0]).monthDay} — {formatDate(visibleDates[visibleDates.length - 1]).monthDay}
+          </span>
+          <button
+            onClick={() => setPage((p) => p + 1)}
+            disabled={!hasRight}
+            className={cn('p-1.5 rounded-lg transition-colors', hasRight ? 'text-[#1a1a1a] hover:bg-[#f0eeea]' : 'text-[#d8d4cf] cursor-default')}
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 4l6 6-6 6" /></svg>
+          </button>
+        </div>
+      )}
+
       {/* Grid */}
       <div
         className="select-none overflow-x-auto"
@@ -194,13 +231,12 @@ export default function SchedulingGrid({
         <div
           className="grid w-full"
           style={{
-            gridTemplateColumns: `clamp(3rem, 12vw, 5rem) repeat(${dates.length}, minmax(clamp(3rem, 15vw, 8rem), 1fr))`,
-            minWidth: `${3 + dates.length * 3.5}rem`,
+            gridTemplateColumns: `clamp(3rem, 12vw, 5rem) repeat(${visibleDates.length}, 1fr)`,
           }}
         >
           {/* Header */}
           <div />
-          {dates.map((date) => {
+          {visibleDates.map((date) => {
             const { dayName, monthDay } = formatDate(date)
             return (
               <div key={date} className="flex flex-col items-center pb-2 pt-1 text-center">
@@ -216,7 +252,7 @@ export default function SchedulingGrid({
               <div key={`label-${time}`} className="pr-2 flex items-center justify-end">
                 <span className="text-sm text-[#6b6560] tabular-nums leading-none">{time}</span>
               </div>
-              {dates.map((date, colIdx) => {
+              {visibleDates.map((date, colIdx) => {
                 const key = `${date}T${time}`
                 const heatCount = heatmap[key] || 0
                 const bgColor = heatCount > 0 ? slotColor(heatCount, totalRespondents) : undefined
