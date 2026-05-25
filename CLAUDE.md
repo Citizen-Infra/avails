@@ -30,6 +30,8 @@ Tests use Node's built-in test runner (`node:test` + `node:assert`). Integration
 - `test/validate.test.js` — unit tests for all validation middleware (31 tests)
 - `test/responses.test.js` — integration tests for response routes with mocked PDS/session layer (10 tests)
 
+The **client has no test runner** — `cd client && npm run build` is the only client-side gate.
+
 ## Hard Constraints
 
 - **Every write endpoint MUST have validation middleware.** A missing middleware on the PUT response route caused silent data corruption (2026-04-07). Routes use `req.validatedBody` (not `req.body`).
@@ -37,15 +39,18 @@ Tests use Node's built-in test runner (`node:test` + `node:assert`). Integration
 - **Anonymous responses require creator's session.** If the creator's session expires or is lost, participants can't submit.
 - **Never pass inline `new Set()` / `{}` as React prop defaults.** Use module-level constants. AvailGrid is sensitive to unstable references — causes render loops.
 - **Never place hooks after early returns.** React error #310 ("Rendered more hooks than during the previous render").
+- **`AvailGrid` and `SchedulingGrid` duplicate the grid** (layout, pagination, drag-select, and keyboard/ARIA) — they render the same data and must stay in sync; a change to one almost always belongs in both. Both are keyboard-operable (roving `tabIndex` + arrow/Space) and viewport-aware; preserve that. The availability heatmap's redundant non-color cue is interaction-based (tap-to-reveal + aria-label count), not an in-cell number — see DESIGN.md.
 - **All `setResponses` calls MUST go through `normalizeResponses()`.** PDS data can be corrupted — the normalizer ensures `slots: []` and `name: 'Unknown'`.
 - **Date formatting must use local time.** Never `toISOString().slice(0, 10)` — it shifts dates for UTC+ timezones. Use `formatDateLocal()` helper.
 - **Old polls use different field names.** `earliestTime`/`latestTime`/`slotDuration` vs `timeRange`/`slotMinutes`. PollView has fallback handling.
 - **Never distribute polls to Telegram without explicit user confirmation.**
 - **Google Calendar insert/cancel failures must never roll back finalize/unfinalize.** PDS state is source of truth; the Google event is a courtesy artifact. Encoded via inner try/catches in `insertGoogleEvent` and `handleUnschedule` — don't "improve" them by letting errors propagate.
 
-## Skills
+## Skills & Design Context
 
 Always use `frontend-design` skill for visual/UI tasks. Always query shadcn MCP before hand-rolling component CSS. When dispatching subagents for UI work, explicitly instruct them to use shadcn MCP tools.
+
+`PRODUCT.md` and `DESIGN.md` (repo root) hold the strategic brief (register=product, users=community/civic organizers, brand, anti-references, WCAG 2.1 AA) and the visual system (North Star "The Village Notice Board", Paper Cream `#faf9f6` ground, single Gather Teal `#0d9488` accent, Geist, flat-with-one-hero elevation). The `impeccable` commands read these — consult them before any UI change so it stays on-brand.
 
 ## Deployment
 
