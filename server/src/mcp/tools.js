@@ -41,6 +41,20 @@ function pollUrl(did, rkey) {
   return `${base}/p/${did}/${rkey}`;
 }
 
+const SCENIUS_GROUPS_API = 'https://scenius-digest.vercel.app/api/groups';
+
+// scenius-digest gates group_id + output_channel (Telegram chat IDs) behind a
+// read-only Bearer token. We need those IDs to post polls via the Avails bot,
+// so send SCENIUS_CONFIG_SECRET when present. See scenius-digest#13.
+async function fetchCommunityGroups() {
+  const secret = process.env.SCENIUS_CONFIG_SECRET;
+  const headers = secret ? { Authorization: `Bearer ${secret}` } : {};
+  const res = await fetch(SCENIUS_GROUPS_API, { headers });
+  if (!res.ok) throw new Error(`Failed to fetch community config: ${res.status}`);
+  const data = await res.json();
+  return data.groups || data;
+}
+
 // ---------------------------------------------------------------------------
 // Tool definitions
 // ---------------------------------------------------------------------------
@@ -556,11 +570,8 @@ async function sharePoll({ did, rkey, community, topic, message }, authContext) 
   const pollData = await pollRes.json();
   const poll = pollData.value;
 
-  // Fetch community config from scenius-digest API
-  const groupsRes = await fetch('https://scenius-digest.vercel.app/api/groups');
-  if (!groupsRes.ok) throw new Error(`Failed to fetch community config: ${groupsRes.status}`);
-  const groupsData = await groupsRes.json();
-  const groups = groupsData.groups || groupsData;
+  // Fetch community config from scenius-digest API (authenticated: includes chat IDs)
+  const groups = await fetchCommunityGroups();
 
   const communityConfig = groups[community];
   if (!communityConfig) {
@@ -750,10 +761,7 @@ async function publishToOpenmeet({ did, rkey }, authContext) {
 }
 
 async function listCommunities() {
-  const groupsRes = await fetch('https://scenius-digest.vercel.app/api/groups');
-  if (!groupsRes.ok) throw new Error(`Failed to fetch communities: ${groupsRes.status}`);
-  const groupsData = await groupsRes.json();
-  const groups = groupsData.groups || groupsData;
+  const groups = await fetchCommunityGroups();
 
   const communities = Object.entries(groups).map(([key, cfg]) => ({
     key,
