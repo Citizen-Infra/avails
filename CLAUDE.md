@@ -72,6 +72,8 @@ Railway (single service, Nixpacks builder). Custom domain: avails.zhgnv.com.
 - `DATA_DIR` — Railway volume mount path (`/data`)
 - `VITE_GOOGLE_CLIENT_ID` — optional, for Google Calendar integration: busy-time overlay, event create on schedule, event cancel on unschedule, writable-calendar picker (baked into client build)
 - `OPENMEET_TENANT_ID` — OpenMeet instance tenant (default: `lsdfaopkljdfs`)
+- `CA_MEMBERSHIP_URL` — community-admin base URL; `share_poll` gates on membership via `GET /api/memberships` (S4). A trailing slash is stripped in code.
+- `CA_CONFIG_SECRET` — Bearer secret for that lookup; must equal community-admin's `CA_CONFIG_SECRET`. If unset, `share_poll` fails closed (denies).
 
 ## Task Tracking
 
