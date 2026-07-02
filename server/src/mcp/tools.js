@@ -42,18 +42,21 @@ function pollUrl(did, rkey) {
   return `${base}/p/${did}/${rkey}`;
 }
 
-const SCENIUS_GROUPS_API = 'https://scenius-digest.vercel.app/api/groups';
-
-// scenius-digest gates group_id + output_channel (Telegram chat IDs) behind a
-// read-only Bearer token. We need those IDs to post polls via the Avails bot,
-// so send SCENIUS_CONFIG_SECRET when present. See scenius-digest#13.
+// community-admin is the source of truth for community config (IdP S2) — it
+// emits active communities with a Telegram group_id + output_channel + topics.
+// We read it directly from /api/config (Bearer CA_CONFIG_SECRET), reusing the
+// same community-admin base as the S4 membership gate. scenius-digest is no
+// longer in this path (it was a temporary middleman, unrelated to scheduling).
 async function fetchCommunityGroups() {
-  const secret = process.env.SCENIUS_CONFIG_SECRET;
-  const headers = secret ? { Authorization: `Bearer ${secret}` } : {};
-  const res = await fetch(SCENIUS_GROUPS_API, { headers });
+  const base = process.env.CA_MEMBERSHIP_URL?.replace(/\/$/, '');
+  const secret = process.env.CA_CONFIG_SECRET;
+  if (!base || !secret) {
+    throw new Error('Community config is not configured (CA_MEMBERSHIP_URL / CA_CONFIG_SECRET).');
+  }
+  const res = await fetch(`${base}/api/config`, { headers: { Authorization: `Bearer ${secret}` } });
   if (!res.ok) throw new Error(`Failed to fetch community config: ${res.status}`);
   const data = await res.json();
-  return data.groups || data;
+  return data.communities || {};
 }
 
 // ---------------------------------------------------------------------------
