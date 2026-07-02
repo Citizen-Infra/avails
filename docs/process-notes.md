@@ -10,3 +10,9 @@
 - **Decisions:** Service-to-service lookup (avails already verified the DID via its own OAuth; no CA session to mint a user token from). Gate placed BEFORE resolvePds/config/Telegram so non-members leak nothing. Fail-closed. Trailing-slash guard on `CA_MEMBERSHIP_URL`.
 - **State:** Gate live + enforcing at avails.zhgnv.com.
 - **Next:** ⚠️ PRE-EXISTING (not S4): scenius-digest `/api/groups` returns `{"groups": {}}` (community-admin `/api/config` HAS the data) → `fetchCommunityGroups()` is empty → `share_poll` (and `list_communities`) fail "Unknown community" for everyone. Fix scenius-digest, or repoint `fetchCommunityGroups` at community-admin `/api/config` directly (community-admin is now the source of truth, S2).
+
+## 2026-07-02 — Repoint community config to community-admin /api/config (fixes the scenius-digest {} bug)
+- **Done:** Replaced `fetchCommunityGroups()` (was hitting scenius-digest `/api/groups`, which returned `{"groups": {}}`) to read community-admin `/api/config` directly (reusing `CA_MEMBERSHIP_URL` + `CA_CONFIG_SECRET`, extracting `data.communities`). +regression test `test/mcp-list-communities.test.js` (49 tests). Deployed. Verified in prod: `list_communities` now returns cibc + scenius with topics + channels. `share_poll` unblocked end-to-end (gate + config both live); actual Telegram post still requires explicit user confirmation.
+- **Decisions:** community-admin is the config source of truth (S2); scenius-digest was a temporary middleman unrelated to scheduling — dropped from avails' path. `SCENIUS_CONFIG_SECRET` is now unused by avails (left set on Railway, harmless).
+- **State:** Live at avails.zhgnv.com; community config loads from community-admin.
+- **Next:** none for this thread.
