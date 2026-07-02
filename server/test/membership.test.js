@@ -2,7 +2,6 @@ import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { assertMembership } from '../src/lib/membership.js';
 
-const originalFetch = globalThis.fetch;
 let fetchImpl;
 globalThis.fetch = (...args) => fetchImpl(...args);
 
