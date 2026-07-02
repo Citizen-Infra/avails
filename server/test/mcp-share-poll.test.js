@@ -4,7 +4,6 @@ import assert from 'node:assert/strict';
 process.env.CA_MEMBERSHIP_URL = 'https://ca.test';
 process.env.CA_CONFIG_SECRET = 'svc-secret';
 
-const originalFetch = globalThis.fetch;
 let fetchImpl;
 globalThis.fetch = (...a) => fetchImpl(...a);
 
