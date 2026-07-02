@@ -4,6 +4,7 @@ import { sendEmail } from '../lib/email.js';
 import { getOpenMeetToken } from '../routes/openmeet.js';
 import { computeBestSlots } from './overlap.js';
 import { sendTelegramMessage } from './telegram.js';
+import { assertMembership } from '../lib/membership.js';
 
 const POLL_COLLECTION = 'chat.avails.scheduling.poll';
 const RESPONSE_COLLECTION = 'chat.avails.scheduling.response';
@@ -560,6 +561,12 @@ async function schedule({ did, rkey, finalTime, finalDuration }, authContext) {
 
 async function sharePoll({ did, rkey, community, topic, message }, authContext) {
   if (!authContext) throw new Error('AUTH_REQUIRED');
+
+  // S4: only a verified member of the target community may broadcast to its
+  // channel. Fails closed. authContext.did was cryptographically verified by
+  // avails' own ATProto OAuth. Runs before any PDS/config/Telegram work so a
+  // non-member learns nothing about the poll or the community.
+  await assertMembership(authContext.did, community);
 
   // Fetch poll details from PDS
   const pds = await resolvePds(did);
