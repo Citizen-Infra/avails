@@ -3,3 +3,6 @@ dist/
 .env
 *.log
 src/lexicons/
+
+# subagent-driven-development scratch
+.superpowers/
