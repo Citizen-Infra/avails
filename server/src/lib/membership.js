@@ -5,7 +5,8 @@
 // See community-admin/docs/plans/2026-06-29-s4-idp-design.md.
 
 export async function assertMembership(did, community) {
-  const base = process.env.CA_MEMBERSHIP_URL;
+  // Strip a trailing slash so a mis-set env var doesn't produce `//api/...` (404 → denies every member).
+  const base = process.env.CA_MEMBERSHIP_URL?.replace(/\/$/, '');
   const secret = process.env.CA_CONFIG_SECRET;
   if (!base || !secret) {
     throw new Error('Membership check is not configured (CA_MEMBERSHIP_URL / CA_CONFIG_SECRET).');
@@ -22,6 +23,9 @@ export async function assertMembership(did, community) {
     throw new Error(`Could not verify your membership of "${community}" right now. Please try again.`);
   }
 
+  // `community` is a slug (e.g. "cibc") and must equal community-admin's
+  // `community_id` (a lowercased slug). Both are lowercase for current
+  // communities; keep them aligned so a member is never silently denied.
   const memberships = Array.isArray(data?.memberships) ? data.memberships : [];
   if (!memberships.some((m) => m.community_id === community)) {
     throw new Error(`You're not a member of "${community}". Ask a community admin to add your Bluesky handle in community-admin.`);
