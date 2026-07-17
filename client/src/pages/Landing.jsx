@@ -79,6 +79,9 @@ export default function Landing() {
             <span className="text-xl font-bold tracking-tight text-[#1a1a1a]">avails</span>
           </a>
           <div className="flex items-center gap-3 sm:gap-6 min-w-0">
+            {session?.did && (
+              <a href="/availability" className="hidden sm:block text-base text-[#6b6560] hover:text-[#1a1a1a] transition-colors">Availability</a>
+            )}
             <a href="/about" className="hidden sm:block text-base text-[#6b6560] hover:text-[#1a1a1a] transition-colors">About</a>
             <AuthButton />
           </div>
@@ -95,7 +98,12 @@ export default function Landing() {
           <div className="py-10 space-y-12">
             {/* My Polls */}
             <div>
-              <h2 className="text-xl font-semibold text-[#1a1a1a] tracking-tight mb-4">My polls</h2>
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <h2 className="text-xl font-semibold text-[#1a1a1a] tracking-tight">My polls</h2>
+                <a href="/availability" className="text-sm font-medium text-[#0d9488] hover:text-[#0f766e] transition-colors">
+                  Set standing availability →
+                </a>
+              </div>
               {pollsLoading ? (
                 <div className="flex items-center gap-2 text-base text-[#a09a94] py-2">
                   <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[#a09a94] border-t-transparent" />

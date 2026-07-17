@@ -5,6 +5,7 @@ import PollView from './pages/PollView'
 import About from './pages/About'
 import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
+import StandingAvailability from './pages/StandingAvailability'
 
 function NotFound() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="/about" element={<About />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
+        <Route path="/availability" element={<ErrorBoundary><StandingAvailability /></ErrorBoundary>} />
         <Route path="/p/:did/:rkey" element={<ErrorBoundary><PollView /></ErrorBoundary>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
