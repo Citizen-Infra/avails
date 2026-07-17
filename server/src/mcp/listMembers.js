@@ -14,11 +14,22 @@ const LIST_COLLECTION = 'app.bsky.graph.list';
 const BSKY_APPVIEW = 'https://public.api.bsky.app';
 
 // ---------------------------------------------------------------------------
-// Helpers (mirrors patterns from tools.js)
+// Helpers (mirrors patterns from tools.js / routes/availability.js)
 // ---------------------------------------------------------------------------
 
+// Fetch with timeout — a hanging member PDS (a plausible ATProto federation
+// failure, distinct from an outright error) must not block the whole group
+// resolution. Mirrors the helper in routes/availability.js:10-14. A timeout
+// rejects like any other fetch failure, so it flows through the existing
+// per-member Promise.allSettled skip path below.
+function fetchWithTimeout(url, options = {}, timeoutMs = 10000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(id));
+}
+
 async function resolvePds(did) {
-  const res = await fetch(`https://plc.directory/${encodeURIComponent(did)}`);
+  const res = await fetchWithTimeout(`https://plc.directory/${encodeURIComponent(did)}`);
   if (!res.ok) throw new Error(`Failed to resolve DID ${did}: ${res.status}`);
   const doc = await res.json();
   const svc = doc.service?.find(
@@ -47,7 +58,7 @@ async function fetchListMemberDids(listUri) {
   do {
     const params = new URLSearchParams({ list: listUri, limit: '100' });
     if (cursor) params.set('cursor', cursor);
-    const res = await fetch(`${BSKY_APPVIEW}/xrpc/app.bsky.graph.getList?${params.toString()}`);
+    const res = await fetchWithTimeout(`${BSKY_APPVIEW}/xrpc/app.bsky.graph.getList?${params.toString()}`);
     if (!res.ok) {
       throw new Error(`Failed to fetch list ${listUri}: ${res.status}`);
     }
@@ -66,7 +77,7 @@ async function fetchListMemberDids(listUri) {
 async function resolveMemberRecord(did, listUri) {
   const pds = await resolvePds(did);
 
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `${pds}/xrpc/com.atproto.repo.listRecords?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(AVAILABILITY_COLLECTION)}&limit=100`
   );
   if (!res.ok) {

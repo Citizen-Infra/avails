@@ -245,4 +245,45 @@ describe('resolveListAvailability', () => {
     assert.equal(result.length, 1);
     assert.equal(result[0].did, 'did:plc:ok');
   });
+
+  it('(g) a member whose fetch times out (AbortError) is skipped, not fatal to the whole call', async () => {
+    // No real timers here — fetchWithTimeout wires an AbortController's signal
+    // into the fetch call and aborts after 10s in production; this mock just
+    // simulates what a hung member PDS looks like once that fires: fetch
+    // rejects with an AbortError instead of ever resolving.
+    let sawSignalOnHungCall = false;
+    fetchImpl = async (url, options) => {
+      const u = String(url);
+      if (u.includes('app.bsky.graph.getList')) {
+        return {
+          ok: true,
+          json: async () => ({
+            items: [
+              { subject: { did: 'did:plc:slow' } },
+              { subject: { did: 'did:plc:fast' } },
+            ],
+          }),
+        };
+      }
+      if (u.startsWith('https://plc.directory/')) {
+        const did = decodeURIComponent(u.replace('https://plc.directory/', ''));
+        if (did === 'did:plc:slow') {
+          sawSignalOnHungCall = Boolean(options?.signal);
+          const err = new Error('The operation was aborted');
+          err.name = 'AbortError';
+          throw err;
+        }
+        return { ok: true, json: async () => pdsDoc('https://pds.fast.example') };
+      }
+      if (u.includes('com.atproto.repo.listRecords')) {
+        return { ok: true, json: async () => ({ records: [availabilityRecord('did:plc:fast')] }) };
+      }
+      throw new Error(`Unexpected fetch: ${u}`);
+    };
+
+    const result = await resolveListAvailability(LIST_URI);
+    assert.equal(result.length, 1);
+    assert.equal(result[0].did, 'did:plc:fast');
+    assert.equal(sawSignalOnHungCall, true, 'fetchWithTimeout should pass an AbortController signal through');
+  });
 });
