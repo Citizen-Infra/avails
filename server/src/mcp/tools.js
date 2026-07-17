@@ -523,7 +523,7 @@ async function schedule({ did, rkey, finalTime, finalDuration }, authContext) {
 
     const url = pollUrl(did, rkey);
     const participants = responses.filter((r) => r.name).map((r) => r.name);
-    const icsContent = generateIcs(updatedRecord, url, participants);
+    const icsContent = generateIcs({ poll: updatedRecord, pollUrl: url, did, rkey, participants });
     const icsBase64 = Buffer.from(icsContent).toString('base64');
 
     const emailAddresses = responses
