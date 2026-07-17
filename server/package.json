@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
-    "test": "node --test test/validate.test.js test/availabilityValidate.test.js test/membership.test.js test/mcp-share-poll.test.js test/mcp-list-communities.test.js test/listMembers.test.js && node --experimental-test-module-mocks --test test/responses.test.js test/availability.route.test.js"
+    "test": "node --test test/validate.test.js test/availabilityValidate.test.js test/membership.test.js test/mcp-share-poll.test.js test/mcp-list-communities.test.js test/listMembers.test.js test/availabilityOverlap.test.js && node --experimental-test-module-mocks --test test/responses.test.js test/availability.route.test.js"
   },
   "license": "AGPL-3.0",
   "dependencies": {
@@ -19,6 +19,7 @@
     "express": "^4.18.2",
     "express-rate-limit": "^8.2.1",
     "ical-generator": "^8.0.0",
+    "luxon": "^3.7.2",
     "resend": "^6.9.2"
   }
 }
