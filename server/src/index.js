@@ -80,6 +80,19 @@ const availabilityCreateLimiter = rateLimit({
   message: { error: 'Too many availability records created. Try again later.' },
 });
 
+// The MCP tools are unauthenticated by design (they read public PDS records),
+// but schedule_call fans out to plc.directory plus every member's PDS — a
+// 22-member list is ~44 third-party requests for one call. That makes /mcp the
+// largest amplification surface here, so it gets the same treatment as every
+// other public entry point. 60/hr matches responseLimiter, the most permissive
+// existing tier: generous for real agent use (a session is 10-20 calls) while
+// capping fan-out at roughly 1.3k third-party requests/hr from any one IP.
+const mcpLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 60,
+  message: { error: 'Too many MCP requests. Try again later.' },
+});
+
 // Auth routes (login, callback, session, logout, client-metadata, jwks)
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth', authRoutes);
@@ -108,8 +121,10 @@ app.use('/', mcpOauthRoutes);
 // MCP OAuth routes (register, authorize, callback, token)
 app.use('/mcp', mcpOauthRoutes);
 
-// MCP JSON-RPC endpoint
-app.post('/mcp', handleMcp);
+// MCP JSON-RPC endpoint. Rate-limited here rather than on the whole /mcp
+// prefix so the multi-step OAuth flow mounted above doesn't spend the tool
+// budget. DELETE is session teardown, not a fan-out surface, so it's exempt.
+app.post('/mcp', mcpLimiter, handleMcp);
 app.delete('/mcp', handleMcpDelete);
 
 // Admin: clear all sessions (requires SESSION_SECRET as query param)
