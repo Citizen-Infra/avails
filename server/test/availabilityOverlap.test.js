@@ -32,12 +32,17 @@ describe('bestCallSlots', () => {
 
     const result = bestCallSlots({ members, window: TUE, durationMinutes: 60 });
 
-    assert.equal(result.length, 2); // 14:00 and 15:00 starts
+    // Grid-anchored enumeration (Finding 1 fix) surfaces every 30-min
+    // position where a 60-min call fits within the 2-hour window -- 14:00,
+    // 14:30, and 15:00 -- not just the window's own hour-aligned starts.
+    assert.equal(result.length, 3);
     assert.equal(result[0].slot, '2026-07-21T14:00');
     assert.equal(result[0].count, 2);
     assert.deepEqual([...result[0].participants].sort(), ['did:plc:alice', 'did:plc:bob']);
-    assert.equal(result[1].slot, '2026-07-21T15:00');
+    assert.equal(result[1].slot, '2026-07-21T14:30');
     assert.equal(result[1].count, 2);
+    assert.equal(result[2].slot, '2026-07-21T15:00');
+    assert.equal(result[2].count, 2);
   });
 
   it('(b) cross-tz: Berlin 14:00-16:00 and a NY window covering the same absolute instant overlap', () => {
@@ -50,7 +55,9 @@ describe('bestCallSlots', () => {
 
     const result = bestCallSlots({ members, window: TUE, durationMinutes: 60 });
 
-    assert.equal(result.length, 2);
+    // Both windows are 2 hours -- grid-anchored enumeration finds 3 shared
+    // 30-min-spaced starts (12:00/12:30/13:00 UTC), not just 2.
+    assert.equal(result.length, 3);
     const bySlot = Object.fromEntries(result.map((r) => [r.slot, r]));
     assert.ok(bySlot['2026-07-21T12:00'], 'expected shared UTC key 12:00');
     assert.equal(bySlot['2026-07-21T12:00'].count, 2);
@@ -58,6 +65,8 @@ describe('bestCallSlots', () => {
       [...bySlot['2026-07-21T12:00'].participants].sort(),
       ['did:plc:berliner', 'did:plc:newyorker']
     );
+    assert.ok(bySlot['2026-07-21T12:30'], 'expected shared UTC key 12:30');
+    assert.equal(bySlot['2026-07-21T12:30'].count, 2);
     assert.ok(bySlot['2026-07-21T13:00'], 'expected shared UTC key 13:00');
     assert.equal(bySlot['2026-07-21T13:00'].count, 2);
   });
@@ -90,7 +99,7 @@ describe('bestCallSlots', () => {
     assert.deepEqual(result, []);
   });
 
-  it('(d) duration-aligned starts: 14:00-18:00 with 60-min duration -> 14/15/16/17, not 17:30', () => {
+  it('(d) grid-aligned starts: 14:00-18:00 with 60-min duration -> every 30-min position that fits, not one that overruns the window', () => {
     const members = [
       member('did:plc:alice', { startTime: '14:00', endTime: '18:00', timezone: 'UTC' }),
       member('did:plc:bob', { startTime: '14:00', endTime: '18:00', timezone: 'UTC' }),
@@ -99,13 +108,22 @@ describe('bestCallSlots', () => {
     const result = bestCallSlots({ members, window: TUE, durationMinutes: 60 });
 
     const slots = result.map((r) => r.slot).sort();
+    // Grid-anchored enumeration (Finding 1 fix) surfaces every 30-min start
+    // within the 4-hour window where a 60-min call still fits -- 7 starts,
+    // not just the window's own hour-aligned starts (14/15/16/17).
     assert.deepEqual(slots, [
       '2026-07-21T14:00',
+      '2026-07-21T14:30',
       '2026-07-21T15:00',
+      '2026-07-21T15:30',
       '2026-07-21T16:00',
+      '2026-07-21T16:30',
       '2026-07-21T17:00',
     ]);
-    assert.ok(!slots.includes('2026-07-21T17:30'), 'must not emit a non-aligned 17:30 start');
+    assert.ok(
+      !slots.includes('2026-07-21T17:30'),
+      'must not emit a start that would run past the window end (17:30 + 60min = 18:30 > 18:00)'
+    );
   });
 
   it('reads availability fields from record.value, not record directly', () => {
@@ -123,6 +141,45 @@ describe('bestCallSlots', () => {
 
     const result = bestCallSlots({ members: [bareRecord], window: TUE, durationMinutes: 60 });
     assert.deepEqual(result, []);
+  });
+
+  it('(e) same-tz OFFSET windows: A 14:00-16:00 and B 14:30-16:30 (both Europe/Berlin) share canonical UTC starts', () => {
+    // The bug this guards: expandMemberSlots used to step durationMinutes
+    // from EACH member's own window start, so A's candidates (14:00,15:00)
+    // and B's (14:30,15:30) never shared a key even though a 60-min call
+    // plainly fits both at 14:30 or 15:00. Anchoring every member to the
+    // same canonical UTC 30-min grid fixes it.
+    const members = [
+      member('did:plc:alice', { startTime: '14:00', endTime: '16:00', timezone: 'Europe/Berlin' }),
+      member('did:plc:bob', { startTime: '14:30', endTime: '16:30', timezone: 'Europe/Berlin' }),
+    ];
+
+    const result = bestCallSlots({ members, window: TUE, durationMinutes: 60 });
+
+    const overlapping = result.filter((r) => r.count === 2);
+    assert.ok(overlapping.length >= 1, 'expected at least one shared canonical UTC start');
+    for (const r of overlapping) {
+      assert.deepEqual([...r.participants].sort(), ['did:plc:alice', 'did:plc:bob']);
+    }
+  });
+
+  it('(f) half-hour-offset tz: Asia/Kolkata (+5:30) member overlaps an Etc/UTC member free at the same absolute instants', () => {
+    // Kolkata is UTC+5:30 -- a member free 19:30-21:30 IST is free at the
+    // exact same absolute instants as a UTC member free 14:00-16:00 (14:00
+    // UTC = 19:30 IST). Half-hour-offset zones are exactly the case the
+    // review flagged as compounding the offset-window bug.
+    const members = [
+      member('did:plc:kolkata', { startTime: '19:30', endTime: '21:30', timezone: 'Asia/Kolkata' }),
+      member('did:plc:utc', { startTime: '14:00', endTime: '16:00', timezone: 'Etc/UTC' }),
+    ];
+
+    const result = bestCallSlots({ members, window: TUE, durationMinutes: 60 });
+
+    const overlapping = result.filter((r) => r.count === 2);
+    assert.ok(overlapping.length >= 1, 'expected at least one shared canonical UTC start');
+    for (const r of overlapping) {
+      assert.deepEqual([...r.participants].sort(), ['did:plc:kolkata', 'did:plc:utc']);
+    }
   });
 
   it('a multi-day window only expands dates whose weekday matches pattern.day', () => {

@@ -56,6 +56,15 @@ function toUtcSlotKey(dt) {
   return `${y}-${m}-${d}T${h}:${min}`;
 }
 
+// Canonical UTC grid all members' candidate starts are snapped to. Matches
+// the client WeeklyPatternGrid's SLOT_MINUTES — the finest start granularity
+// the UI allows a member to draw a window boundary at. Stepping every member
+// through the SAME absolute grid (rather than each member stepping
+// durationMinutes from their own window's start) is what makes offset
+// windows and half-hour-offset timezones register overlap — see the
+// expandMemberSlots comment below.
+const GRID_MINUTES = 30;
+
 // Expands one member's pattern.weekly into duration-aligned UTC slot keys
 // across the requested window.
 function expandMemberSlots(member, window, durationMinutes) {
@@ -78,26 +87,43 @@ function expandMemberSlots(member, window, durationMinutes) {
       if (typeof w.startTime !== 'string' || typeof w.endTime !== 'string') continue;
       const [startH, startM] = w.startTime.split(':').map(Number);
       const [endH, endM] = w.endTime.split(':').map(Number);
-      const startOfDay = startH * 60 + startM;
-      const endOfDay = endH * 60 + endM;
 
-      for (let t = startOfDay; t + durationMinutes <= endOfDay; t += durationMinutes) {
-        const hour = Math.floor(t / 60);
-        const minute = t % 60;
-        const dt = DateTime.fromObject(
-          { year, month, day, hour, minute },
-          { zone: timezone }
-        );
-        // Defensive: skip only genuinely-invalid constructed times (e.g. a
-        // malformed date). NOTE: this does NOT catch DST spring-forward gaps —
-        // Luxon resolves a non-existent wall-clock (e.g. 02:30 on a US
-        // spring-forward date) to isValid:true using the pre-transition offset,
-        // so a slot starting inside the ~1h gap gets a UTC key off by an hour.
-        // Accepted Phase-1 limitation: narrow (only on the transition date, in
-        // a DST zone, for a window straddling the gap), and same-zone overlap
-        // detection stays sound. A real fix (offset comparison) is a fast-follow.
-        if (!dt.isValid) continue;
-        slots.push(toUtcSlotKey(dt));
+      const startUtc = DateTime.fromObject(
+        { year, month, day, hour: startH, minute: startM },
+        { zone: timezone }
+      ).toUTC();
+      const endUtc = DateTime.fromObject(
+        { year, month, day, hour: endH, minute: endM },
+        { zone: timezone }
+      ).toUTC();
+      // Defensive: skip only genuinely-invalid constructed times (e.g. a
+      // malformed date). NOTE: this does NOT catch DST spring-forward gaps —
+      // Luxon resolves a non-existent wall-clock (e.g. 02:30 on a US
+      // spring-forward date) to isValid:true using the pre-transition offset,
+      // so a window boundary starting inside the ~1h gap converts to a UTC
+      // instant off by an hour. Accepted Phase-1 limitation: narrow (only on
+      // the transition date, in a DST zone, for a window straddling the
+      // gap), and same-zone overlap detection stays sound. A real fix
+      // (offset comparison) is a fast-follow.
+      if (!startUtc.isValid || !endUtc.isValid) continue;
+      const endUtcMs = endUtc.toMillis();
+      const durationMs = durationMinutes * 60000;
+
+      // Candidate starts are anchored to the CANONICAL UTC grid (:00/:30),
+      // not to this window's own start time. Two members genuinely free
+      // together but with offset window boundaries (e.g. A 14:00-16:00 vs
+      // B 14:30-16:30) must land on the SAME absolute starts to register
+      // overlap in computeBestSlots' exact-string match — stepping each
+      // member from their own window start produces disjoint key sets even
+      // when a call obviously fits both. Round the window start UP to the
+      // next grid boundary first — a +5:45 zone (Asia/Kathmandu) can land
+      // startUtc at :15, which isn't a schedulable grid position.
+      const remainder = startUtc.minute % GRID_MINUTES;
+      let first = remainder === 0 ? startUtc : startUtc.plus({ minutes: GRID_MINUTES - remainder });
+      first = first.set({ second: 0, millisecond: 0 });
+
+      for (let c = first; c.toMillis() + durationMs <= endUtcMs; c = c.plus({ minutes: GRID_MINUTES })) {
+        slots.push(toUtcSlotKey(c));
       }
     }
   }

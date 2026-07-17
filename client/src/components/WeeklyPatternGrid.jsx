@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo, useEffect } from 'react'
+import { Fragment, useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import '../styles/avail-grid.css'
 
@@ -282,8 +282,8 @@ export default function WeeklyPatternGrid({ value, onChange }) {
 
             {/* Rows */}
             {times.map((time, rowIdx) => (
-              <>
-                <div key={`label-${time}`} className="pr-2 flex items-start justify-end -mt-[7px]">
+              <Fragment key={time}>
+                <div className="pr-2 flex items-start justify-end -mt-[7px]">
                   <span
                     className={cn(
                       'text-xs tabular-nums leading-none',
@@ -323,7 +323,7 @@ export default function WeeklyPatternGrid({ value, onChange }) {
                     />
                   )
                 })}
-              </>
+              </Fragment>
             ))}
           </div>
         </div>

@@ -21,6 +21,19 @@ const MIN_CALL_COVERAGE = 2;
 // Helpers (mirrors patterns from routes/polls.js)
 // ---------------------------------------------------------------------------
 
+// Minimal HTML-escape for caller-controlled strings (e.g. poll/call titles)
+// interpolated into email HTML bodies. Mirrors the escapeHtml in lib/og.js
+// (not exported from there, so duplicated locally rather than reaching into
+// an unrelated module for a 6-line helper).
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 async function resolvePds(did) {
   const res = await fetch(`https://plc.directory/${encodeURIComponent(did)}`);
   if (!res.ok) throw new Error(`Failed to resolve DID ${did}: ${res.status}`);
@@ -969,12 +982,13 @@ async function scheduleCall({ scope, durationMinutes, window, title }) {
     .filter((m) => m?.record?.value?.email);
 
   if (emailTargets.length > 0) {
+    const safeTitle = escapeHtml(title);
     await Promise.allSettled(
       emailTargets.map((m) =>
         sendEmail({
           to: m.record.value.email,
           subject: `${title} — call scheduled`,
-          html: `<p><strong>${title}</strong> has been scheduled.</p><p><strong>When:</strong> ${new Date(finalTime).toUTCString()} (${durationMinutes} min)</p><p>A calendar invite is attached.</p>`,
+          html: `<p><strong>${safeTitle}</strong> has been scheduled.</p><p><strong>When:</strong> ${new Date(finalTime).toUTCString()} (${durationMinutes} min)</p><p>A calendar invite is attached.</p>`,
           attachments: [{ filename: 'invite.ics', content: icsBase64 }],
         })
       )
