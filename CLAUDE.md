@@ -21,14 +21,14 @@ npx @atproto/lex build --lexicons ./lexicons --out ./server/src/lexicons --index
 
 ```bash
 # Tests (Node built-in test runner, no extra dependencies)
-cd server && npm test                     # All tests (validation + route integration)
+cd server && npm test                     # Whole server suite
 ```
 
-Server syntax check: `node --check server/src/index.js`
+Server syntax check (what CI runs): `find server/src -name '*.js' -not -path '*/lexicons/*' -exec node --check {} +`
 
-Tests use Node's built-in test runner (`node:test` + `node:assert`). Integration tests require `--experimental-test-module-mocks` for module mocking. Two test files:
-- `test/validate.test.js` — unit tests for all validation middleware (31 tests)
-- `test/responses.test.js` — integration tests for response routes with mocked PDS/session layer (10 tests)
+Tests use Node's built-in test runner (`node:test` + `node:assert`). The `test` script globs `test/*.test.js`, so **a new test file is gated automatically — never register one by hand.** `--experimental-test-module-mocks` is passed to the whole suite (inert for files that don't call `mock.module`), and Node runs each file in its own process, so per-file `globalThis.fetch` stubs don't leak between them.
+
+**CI runs the full suite and asserts at least one test passed.** `node --test` exits 0 reporting `pass 0` when its glob matches nothing, so a pattern that quietly stops expanding would otherwise leave CI green having run nothing — the guard in `ci.yml` is what makes that fail loudly.
 
 The **client has no test runner** — `cd client && npm run build` is the only client-side gate.
 

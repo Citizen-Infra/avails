@@ -18,16 +18,19 @@ jobs:
         run: cd client && npm install
       - name: Build client
         run: cd client && npm run build
-      - name: Check server syntax
+      - name: Install server dependencies
+        run: cd server && npm ci
+      - name: Server tests
+        working-directory: server
+        shell: bash
         run: |
-          node --check server/src/index.js
-          node --check server/src/routes/auth.js
-          node --check server/src/routes/polls.js
-          node --check server/src/routes/responses.js
-          node --check server/src/routes/communities.js
-          node --check server/src/lib/sessionStore.js
-          node --check server/src/lib/pollIndex.js
-          node --check server/src/lib/email.js
-          node --check server/src/lib/ical.js
-          node --check server/src/lib/persistence.js
-          node --check server/src/middleware/auth.js
+          set -o pipefail
+          npm test 2>&1 | tee /tmp/server-tests.log
+          # `node --test` exits 0 reporting "pass 0" when its pattern matches no
+          # files — so a glob that stops expanding (different Node version, moved
+          # directory, renamed files) would leave this step green having run
+          # nothing at all. Fail loudly instead.
+          grep -qE 'pass [1-9]' /tmp/server-tests.log \
+            || { echo "::error::No tests ran — check the test glob in server/package.json"; exit 1; }
+      - name: Check server syntax
+        run: find server/src -name '*.js' -not -path '*/lexicons/*' -exec node --check {} +
