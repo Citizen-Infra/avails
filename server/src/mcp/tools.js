@@ -5,13 +5,34 @@ import { getOpenMeetToken } from '../routes/openmeet.js';
 import { computeBestSlots } from './overlap.js';
 import { sendTelegramMessage } from './telegram.js';
 import { assertMembership } from '../lib/membership.js';
+import { resolveListAvailability } from './listMembers.js';
+import { bestCallSlots } from './availabilityOverlap.js';
 
 const POLL_COLLECTION = 'chat.avails.scheduling.poll';
 const RESPONSE_COLLECTION = 'chat.avails.scheduling.response';
 
+// Coverage floor for schedule_call's no-poll auto-booking (#103 Phase 1):
+// below this many members with standing-availability records, or below
+// this many free at the chosen top slot, booking is skipped in favour of
+// signalling a create_poll fallback instead.
+const MIN_CALL_COVERAGE = 2;
+
 // ---------------------------------------------------------------------------
 // Helpers (mirrors patterns from routes/polls.js)
 // ---------------------------------------------------------------------------
+
+// Minimal HTML-escape for caller-controlled strings (e.g. poll/call titles)
+// interpolated into email HTML bodies. Mirrors the escapeHtml in lib/og.js
+// (not exported from there, so duplicated locally rather than reaching into
+// an unrelated module for a 6-line helper).
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
 
 async function resolvePds(did) {
   const res = await fetch(`https://plc.directory/${encodeURIComponent(did)}`);
@@ -299,6 +320,52 @@ const TOOL_DEFINITIONS = [
     inputSchema: {
       type: 'object',
       properties: {},
+    },
+  },
+  {
+    name: 'schedule_call',
+    description:
+      'Book a call directly from a group\'s standing availability — no poll. Resolves the members\' standing-availability records for the given scope, finds the best overlapping slot in the requested window, and books it if coverage is sufficient (at least 2 members with records, and at least 2 free at the chosen slot). Members whose record has trust:auto are auto-booked; trust:confirm members are returned separately and are NOT silently committed. If coverage is too thin, returns a fallback signal instead of booking — it does not create a poll itself. Only atproto-list scopes are supported (ca-community scopes are Phase 3 and are rejected).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        scope: {
+          description:
+            'Scope to resolve standing availability from. Either an at://<did>/app.bsky.graph.list/<rkey> list URI string (Phase 1 shorthand), or an explicit { type, value } object. type "ca-community" is Phase 3 and will be rejected.',
+          oneOf: [
+            {
+              type: 'string',
+              description: 'A list URI: at://<did>/app.bsky.graph.list/<rkey>',
+            },
+            {
+              type: 'object',
+              properties: {
+                type: { type: 'string', enum: ['atproto-list', 'ca-community'] },
+                value: { type: 'string' },
+              },
+              required: ['type', 'value'],
+            },
+          ],
+        },
+        durationMinutes: {
+          type: 'number',
+          description: 'Call duration in minutes (e.g. 30, 60)',
+        },
+        window: {
+          type: 'object',
+          properties: {
+            start: { type: 'string', description: 'Window start date (YYYY-MM-DD)' },
+            end: { type: 'string', description: 'Window end date (YYYY-MM-DD)' },
+          },
+          required: ['start', 'end'],
+          description: 'Inclusive date window to search for a call slot.',
+        },
+        title: {
+          type: 'string',
+          description: 'Call title, used for the calendar invite and confirmation emails.',
+        },
+      },
+      required: ['scope', 'durationMinutes', 'window', 'title'],
     },
   },
 ];
@@ -783,6 +850,166 @@ async function listCommunities() {
   return JSON.stringify(communities, null, 2);
 }
 
+// Accepts either a bare list-URI string or an explicit { type, value } scope
+// object (mirrors the availability record's own #scope shape — see
+// lexicons/chat/avails/scheduling/availability.json). Does not itself
+// validate that `value` is a well-formed at:// URI — resolveListAvailability
+// does that for the atproto-list path.
+function normalizeScope(scope) {
+  if (typeof scope === 'string') {
+    return { type: 'atproto-list', value: scope };
+  }
+  if (scope && typeof scope === 'object' && typeof scope.value === 'string') {
+    return { type: scope.type || 'atproto-list', value: scope.value };
+  }
+  throw new Error(
+    'scope is required: either an at://<did>/app.bsky.graph.list/<rkey> URI string, or { type, value }'
+  );
+}
+
+// Minimal at:// URI parse, duplicated locally rather than imported from
+// listMembers.js — matches the existing pattern in this codebase of small
+// per-file helpers (see listMembers.js's own header comment) since there is
+// no shared helper module yet. Only used after resolveListAvailability has
+// already validated the URI, so no error handling needed here.
+function parseAtUri(uri) {
+  const [did, , rkey] = uri.slice('at://'.length).split('/');
+  return { did, rkey };
+}
+
+// schedule_call (#103, Task 8, Phase 1): books a call straight from a
+// group's standing availability — no poll. Reading availability records is
+// public (no auth), so this tool does not require authContext.
+async function scheduleCall({ scope, durationMinutes, window, title }) {
+  const normalizedScope = normalizeScope(scope);
+
+  if (normalizedScope.type === 'ca-community') {
+    throw new Error(
+      'ca-community scope is not supported in Phase 1. Use an atproto-list scope (a list URI) instead — ca-community scoping is Phase 3.'
+    );
+  }
+  if (normalizedScope.type !== 'atproto-list') {
+    throw new Error(`Unsupported scope type "${normalizedScope.type}". Phase 1 only supports "atproto-list".`);
+  }
+  if (!Number.isInteger(durationMinutes) || durationMinutes <= 0) {
+    throw new Error('durationMinutes must be a positive integer');
+  }
+  if (!window || !window.start || !window.end) {
+    throw new Error('window ({start, end}) is required');
+  }
+  if (!title) {
+    throw new Error('title is required');
+  }
+
+  const members = await resolveListAvailability(normalizedScope.value);
+  const withRecords = members.length;
+
+  // Coverage floor #1: not enough members have published availability at
+  // all — skip the (pointless) overlap computation and signal the fallback
+  // directly.
+  if (withRecords < MIN_CALL_COVERAGE) {
+    return JSON.stringify({
+      booked: false,
+      fallback: 'create_poll',
+      reason: `Only ${withRecords} member${withRecords === 1 ? '' : 's'} of the group ${withRecords === 1 ? 'has' : 'have'} standing availability on record (need at least ${MIN_CALL_COVERAGE}).`,
+    });
+  }
+
+  const slots = bestCallSlots({ members, window, durationMinutes });
+
+  // Coverage floor #2: no overlapping slot exists at all in the window.
+  if (slots.length === 0) {
+    return JSON.stringify({
+      booked: false,
+      fallback: 'create_poll',
+      reason: `No overlapping availability found between ${window.start} and ${window.end} for a ${durationMinutes}-minute call.`,
+    });
+  }
+
+  const top = slots[0];
+
+  // Coverage floor #3: best overlap still isn't enough people.
+  if (top.count < MIN_CALL_COVERAGE) {
+    return JSON.stringify({
+      booked: false,
+      fallback: 'create_poll',
+      reason: `Best overlap is only ${top.count} member${top.count === 1 ? '' : 's'} free (at ${top.slot}); need at least ${MIN_CALL_COVERAGE}.`,
+    });
+  }
+
+  // Trust split at the chosen slot: support (does it clear the floor?) and
+  // trust (who gets auto-booked vs asked) are independent — the slot books
+  // regardless of the mix, per #103. Any trust value other than exactly
+  // 'auto' (including unrecognized/missing) is treated as needing
+  // confirmation — never silently committed.
+  const byDid = new Map(members.map((m) => [m.did, m]));
+  const autoBooked = [];
+  const needsConfirm = [];
+  for (const did of top.participants) {
+    const trust = byDid.get(did)?.record?.value?.trust;
+    if (trust === 'auto') {
+      autoBooked.push(did);
+    } else {
+      needsConfirm.push(did);
+    }
+  }
+
+  // Build a synthetic poll-shaped record for generateIcs. There is no poll
+  // record in this flow (that's the point), so did/rkey for the ICS UID are
+  // derived from the list owner + chosen slot instead — stable and unique
+  // per (list, slot), not tied to any created record.
+  const { did: listOwnerDid, rkey: listRkey } = parseAtUri(normalizedScope.value);
+  const icsRkey = `call-${listRkey}-${top.slot.replace(/[^0-9]/g, '')}`;
+  const finalTime = `${top.slot}:00Z`;
+  const url = process.env.CLIENT_URL || 'http://localhost:5173';
+
+  const icsContent = generateIcs({
+    poll: { title, finalTime, finalDuration: durationMinutes },
+    pollUrl: url,
+    did: listOwnerDid,
+    rkey: icsRkey,
+    participants: [...autoBooked, ...needsConfirm],
+    method: 'REQUEST',
+  });
+  const icsBase64 = Buffer.from(icsContent).toString('base64');
+
+  // Best-effort email: standing-availability records don't carry an email
+  // field in the lexicon today, so this will usually send to nobody — but
+  // if a record does carry one, notify it, and never fail the booking on
+  // an email error.
+  const emailTargets = top.participants
+    .map((did) => byDid.get(did))
+    .filter((m) => m?.record?.value?.email);
+
+  if (emailTargets.length > 0) {
+    const safeTitle = escapeHtml(title);
+    await Promise.allSettled(
+      emailTargets.map((m) =>
+        sendEmail({
+          to: m.record.value.email,
+          subject: `${title} — call scheduled`,
+          html: `<p><strong>${safeTitle}</strong> has been scheduled.</p><p><strong>When:</strong> ${new Date(finalTime).toUTCString()} (${durationMinutes} min)</p><p>A calendar invite is attached.</p>`,
+          attachments: [{ filename: 'invite.ics', content: icsBase64 }],
+        })
+      )
+    );
+  }
+
+  return JSON.stringify({
+    booked: true,
+    slot: top.slot,
+    durationMinutes,
+    title,
+    participants: top.participants,
+    autoBooked,
+    needsConfirm,
+    coverage: {
+      withRecords,
+      membersFree: top.count,
+    },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -811,6 +1038,8 @@ export async function callTool(name, args, authContext) {
       return publishToOpenmeet(args, authContext);
     case 'list_communities':
       return listCommunities();
+    case 'schedule_call':
+      return scheduleCall(args);
     default:
       throw new Error(`Unknown tool: ${name}`);
   }

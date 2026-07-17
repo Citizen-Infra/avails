@@ -1,0 +1,85 @@
+{
+  "lexicon": 1,
+  "id": "chat.avails.scheduling.availability",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "description": "A participant's standing availability for a specific group's calls. Self-hosted in the participant's own PDS.",
+      "record": {
+        "type": "object",
+        "required": ["scope", "pattern", "timezone", "trust", "createdAt"],
+        "properties": {
+          "scope": {
+            "type": "ref",
+            "ref": "#scope",
+            "description": "The single group this offer is for."
+          },
+          "pattern": { "type": "ref", "ref": "#pattern" },
+          "timezone": {
+            "type": "string",
+            "description": "IANA timezone, e.g. America/New_York. Windows are interpreted in this zone."
+          },
+          "trust": {
+            "type": "string",
+            "knownValues": ["confirm", "auto"],
+            "description": "confirm = ask me before booking; auto = an agent may book into my windows without confirming each time."
+          },
+          "validUntil": {
+            "type": "string",
+            "format": "datetime",
+            "description": "Expiry. Short by default so the pattern decays."
+          },
+          "createdAt": { "type": "string", "format": "datetime" },
+          "updatedAt": { "type": "string", "format": "datetime" }
+        }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "required": ["type", "value"],
+      "properties": {
+        "type": { "type": "string", "knownValues": ["atproto-list", "ca-community"] },
+        "value": {
+          "type": "string",
+          "description": "For atproto-list: an at:// URI of an app.bsky.graph.list. For ca-community (Phase 3): the community-admin community id."
+        }
+      }
+    },
+    "pattern": {
+      "type": "object",
+      "required": ["weekly"],
+      "properties": {
+        "weekly": {
+          "type": "array",
+          "description": "Recurring weekly windows.",
+          "items": { "type": "ref", "ref": "#window" }
+        },
+        "dateRanges": {
+          "type": "array",
+          "description": "Reserved for explicit one-off date ranges (Phase 1.1). Stored, not yet surfaced.",
+          "items": { "type": "ref", "ref": "#dateRange" }
+        }
+      }
+    },
+    "window": {
+      "type": "object",
+      "required": ["day", "startTime", "endTime"],
+      "properties": {
+        "day": { "type": "integer", "minimum": 0, "maximum": 6, "description": "0=Sunday … 6=Saturday (JS getDay convention)." },
+        "startTime": { "type": "string", "description": "HH:MM 24h, in the record's timezone." },
+        "endTime": { "type": "string", "description": "HH:MM 24h, in the record's timezone." }
+      }
+    },
+    "dateRange": {
+      "type": "object",
+      "required": ["start", "end"],
+      "properties": {
+        "start": { "type": "string", "description": "YYYY-MM-DD" },
+        "end": { "type": "string", "description": "YYYY-MM-DD" },
+        "startTime": { "type": "string" },
+        "endTime": { "type": "string" }
+      }
+    }
+  }
+}

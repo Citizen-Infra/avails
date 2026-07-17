@@ -96,13 +96,13 @@ Copy `server/.env.example` and fill in:
 ```
 PORT=3000
 CLIENT_URL=http://localhost:5173
-ATPROTO_CLIENT_ID=https://<your-domain>/api/auth/client-metadata-v3.json
+ATPROTO_CLIENT_ID=https://<your-domain>/api/auth/client-metadata-v4.json
 ATPROTO_REDIRECT_URI=https://<your-domain>/api/auth/callback
 SESSION_SECRET=<random string>
 RESEND_API_KEY=<from resend.com>
 ```
 
-`ATPROTO_CLIENT_ID` is the public URL where your server serves its OAuth client metadata — bsky fetches it during sign-in, so it must be reachable over HTTPS from the public internet. The path is versioned (`v3`) so you can rotate the client_id when you change the requested scopes — bsky caches grants per `client_id` URL and won't re-prompt users on scope changes within the same `client_id`. Bump the version to force fresh consent.
+`ATPROTO_CLIENT_ID` is the public URL where your server serves its OAuth client metadata — bsky fetches it during sign-in, so it must be reachable over HTTPS from the public internet. The path is versioned (`v4`) so you can rotate the client_id when you change the requested scopes — bsky caches grants per `client_id` URL and won't re-prompt users on scope changes within the same `client_id`. Bump the version to force fresh consent.
 
 ### Google Calendar integration (optional)
 

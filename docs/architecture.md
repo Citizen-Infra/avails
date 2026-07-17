@@ -12,6 +12,7 @@ Read this file when working on avails internals. Not loaded every session — re
 There is no database. ATProto PDS is the data store:
 - **Polls**: `chat.avails.scheduling.poll` records in creator's PDS
 - **Responses**: `chat.avails.scheduling.response` records in creator's PDS (anonymous responses written using creator's stored OAuth session)
+- **Standing availability**: `chat.avails.scheduling.availability` records in the **participant's own PDS** — the one record type that isn't creator-hosted. See [Standing availability](#standing-availability) below.
 - **Poll index**: Map (`lib/pollIndex.js`) for community-based discovery. Persisted to Railway volume via `persistence.js` (auto-save every 30s, restored on startup).
 - **Sessions**: persisted to Railway volume as JSON (`/data/oauth-sessions.json`, `/data/app-sessions.json`). Restored on startup AFTER server starts listening (critical — session restore fetches client-metadata from itself).
 
@@ -70,6 +71,47 @@ Calendar priority chain: OpenMeet (auto for signed-in users) → Google Calendar
 
 **OpenMeet tenant ID**: The public instance uses `lsdfaopkljdfs` (not `1`). Set via `OPENMEET_TENANT_ID` env var, defaults to this value.
 
+## Standing availability
+
+Phase 1 (Bluesky-list scope only) of the "publish availability once, let an agent book from it" feature. A participant tells avails when they're generally free for a specific group's calls — once — and `schedule_call` books a call from everyone's records. No poll, no per-invite grid-painting.
+
+### Record: `chat.avails.scheduling.availability`
+
+A deliberate break from `chat.avails.scheduling.response`: this record lives in the **participant's own PDS** (`repo = participant DID`), not the creator's. The participant owns it and can revoke it directly — nobody else can write into it.
+
+Fields:
+- `scope: { type: 'atproto-list' | 'ca-community', value }` — the single group this offer is for. Phase 1 only writes/accepts `atproto-list` (`value` = an `at://…/app.bsky.graph.list/…` URI). `ca-community` (a community-admin community id, for private communities) is Phase 3 — rejected today by both the validator and `schedule_call`.
+- `pattern: { weekly: [{ day: 0-6, startTime: 'HH:MM', endTime: 'HH:MM' }], dateRanges?: [] }` — `day` follows JS `getDay()` (0 = Sunday). `dateRanges` is reserved: accepted and stored by the lexicon, not yet surfaced in the UI or the overlap solver.
+- `timezone` — IANA zone; weekly windows are interpreted in it.
+- `trust: 'confirm' | 'auto'` — `confirm` (default) means an agent must ask before booking into this person's windows; `auto` means it may book without asking.
+- `validUntil` — expiry, default 8 weeks from publish, so a stale pattern-of-life record decays instead of lingering permanently on the firehose (list-scope records are public and un-retractable once published).
+- `createdAt` / `updatedAt`.
+
+One record per `scope.value` — publishing again for the same list replaces the prior record (list existing records, then `putRecord`/`createRecord`) rather than creating a duplicate.
+
+### REST: `/api/availability` (`server/src/routes/availability.js`)
+
+- `POST /` — create-or-replace the caller's record for a scope. Auth required; writes to the caller's own PDS via `req.oauthSession`. Validated by `server/src/lib/availabilityValidate.js` (field whitelist, `HH:MM` regex + start<end, day 0-6, `trust` enum, ISO `validUntil`) — the route reads `req.validatedBody`, never `req.body`, per the project's write-endpoint convention.
+- `GET /mine` — list the caller's own records (public PDS read).
+- `DELETE /:rkey` — delete one of the caller's own records. No `:did` param: the collection always lives in the caller's own PDS, so there's no cross-user delete surface to guard.
+
+Client page: `/availability` route → `client/src/pages/StandingAvailability.jsx` (scope picker that resolves a Bluesky list via `app.bsky.graph.getList` before enabling publish, `WeeklyPatternGrid.jsx` for painting recurring windows, timezone/trust/validUntil controls, publish/edit/delete). `WeeklyPatternGrid` mirrors `SchedulingGrid`'s single-column drag + roving-tabIndex keyboard model (not `AvailGrid`'s multi-column rectangle select) but, unlike `SchedulingGrid`, must hold several non-contiguous windows per day — a committed drag/keypress toggles cells rather than replacing one active block.
+
+### Discovery + booking (MCP-only, no REST surface)
+
+- **`server/src/mcp/listMembers.js`** — `resolveListAvailability(listUri)`: pages `app.bsky.graph.getList` on the public AppView for member DIDs, then for each member resolves their PDS and lists their availability records, keeping the latest one scoped to *this* list whose `validUntil` hasn't passed. All PDS calls are timeout-guarded (`fetchWithTimeout`, 10s) and per-member failures are non-fatal (`Promise.allSettled` — a hung or erroring member's PDS skips that member instead of failing the whole resolution).
+- **`server/src/mcp/availabilityOverlap.js`** — `bestCallSlots({ members, window, durationMinutes })`: expands each member's `pattern.weekly` into duration-aligned candidate slots across the requested date window, converting every candidate to a common **UTC grid** (Luxon `DateTime.fromObject` in the member's own timezone, then `.toUTC()`) before handing the flattened per-member slot lists to the existing `computeBestSlots` (`overlap.js`). Necessary because `computeBestSlots` only matches slot-key strings and has no timezone awareness of its own — two members "free at 14:00" in different zones are free at different absolute instants unless converted first. New server dependency: **luxon** (DST-safe timezone math).
+- **`schedule_call` MCP tool** (`server/src/mcp/tools.js`) — no-auth-required booking flow: resolve `scope` → `resolveListAvailability` → `bestCallSlots` → coverage check → trust split → book. Coverage floor (`MIN_CALL_COVERAGE = 2`): fewer than 2 members with a record, or a top slot with fewer than 2 people free, returns `{ booked: false, fallback: 'create_poll', reason }` instead of booking — it signals the fallback, it does not create the poll itself. On a bookable slot, members with `trust: 'auto'` are auto-booked; everyone else (including any unrecognized or missing trust value) lands in `needsConfirm`, never silently committed. Reuses `generateIcs` (called correctly here, object-form — see Known Phase-1 limitations below for a related pre-existing bug) and best-effort `sendEmail` to any member record carrying an email (rare — email isn't a lexicon field). **No poll record is created anywhere on the success path** — that's the Phase-1 done criterion.
+
+Phase 1 is list-scope only. `ca-community` scoping (private community-admin communities, which aren't public PDS-discoverable the way a Bluesky list is) is Phase 3 and is rejected at both the validator and `schedule_call` layers today.
+
+### Known Phase-1 limitations
+
+- **DST spring-forward gap** — `availabilityOverlap.js`'s slot expander builds each candidate with Luxon `DateTime.fromObject` in the member's timezone. Luxon resolves a non-existent wall-clock time inside a spring-forward gap (e.g. 02:30 on a US DST-transition date) to `isValid: true` using the pre-transition offset, so a slot starting inside that ~1h gap gets a UTC key off by an hour. Narrow in practice (only the transition date, in a DST-observing zone, for a window straddling the gap) and same-zone overlap detection stays sound regardless. A real fix (explicit UTC-offset comparison) is a fast-follow, not done in Phase 1.
+- **One-record-per-scope isn't atomic** — `POST /api/availability` lists the caller's existing records for the scope, then writes the replacement. Under concurrent POSTs for the same scope this list-then-write is a race; a rare duplicate record can result.
+- **"Valid until" display uses the browser's local timezone** — the published-record list in `StandingAvailability.jsx` formats `validUntil` with `toLocaleDateString()`, but the write path anchors it at UTC midnight (`${date}T00:00:00Z`). A user in a UTC-negative offset (most of the Americas) can see a date one day earlier than the record's actual intent.
+- **Pre-existing, unrelated bug surfaced while building this feature — the MCP `schedule` tool's finalize path calls `generateIcs` positionally.** `generateIcs` (`server/src/lib/ical.js`) takes a single destructured options object: `{ poll, pollUrl, did, rkey, participants, method }`. `schedule_call`'s booking path and both REST finalize routes (`routes/polls.js`) call it correctly with that object. But the older MCP `schedule` tool's finalize path (`server/src/mcp/tools.js` ~line 580: `generateIcs(updatedRecord, url, participants)`) passes it positionally — `updatedRecord` becomes the sole argument, so `poll` destructures to `undefined` and the call throws (`Cannot read properties of undefined (reading 'finalTime')`) the moment anyone finalizes a poll via the MCP `schedule` tool. Not introduced by this epic and not fixed by it — needs its own fix.
+
 ## Client architecture
 
 ### Pages
@@ -108,12 +150,17 @@ Embedded `POST /mcp` JSON-RPC endpoint with ATProto OAuth (Smoke Signal pattern)
 | `schedule` | Yes | Set time, close poll, send invites |
 | `share_poll` | Yes | Post to Telegram channel or group topic |
 | `publish_to_openmeet` | Yes | Create OpenMeet event from finalized poll |
+| `schedule_call` | No (optional) | Book a call from members' standing availability — no poll. Resolves a Bluesky-list scope → members' records → best UTC overlap; coverage fallback to a poll + trust split. |
 
 ### OAuth
 
-Standard OAuth 2.0 discovery (RFC 9728 + 8414) with PKCE S256 — Claude Code handles auth automatically. Granular ATProto scopes: `repo:chat.avails.scheduling.poll`, `repo:chat.avails.scheduling.response`, `rpc:net.openmeet.auth?aud=*`.
+Standard OAuth 2.0 discovery (RFC 9728 + 8414) with PKCE S256 — Claude Code handles auth automatically. Granular ATProto scopes: `repo:chat.avails.scheduling.poll`, `repo:chat.avails.scheduling.response`, `repo:chat.avails.scheduling.availability`, `rpc:net.openmeet.auth?aud=*`.
 
 MCP OAuth flow piggybacks on the web UI's ATProto OAuth — `/api/auth/callback` detects MCP flows via `tryMcpCallback()` (exported from `mcp/oauth.js`) and redirects to the MCP client instead of the homepage.
+
+The client-metadata route is versioned — `repo:chat.avails.scheduling.availability` bumped it from `/api/auth/client-metadata-v3.json` to `-v4.json` — because ATProto caches OAuth grants per `client_id` and never re-prompts an existing user for an upgraded scope set (#49); rotating the URL is the only way to force fresh consent.
+
+**DEPLOY-ORDERING caveat:** Railway auto-deploys on push, so flip the `ATPROTO_CLIENT_ID` env var to the new versioned URL **in the same push** as the code that serves it. Splitting them across two deploys breaks sign-in in the gap either direction — env pointing at a `-v4.json` route the old code doesn't serve yet, or new code that's dropped the `-v3.json` route while env still points there. Once both are live, run `POST /api/admin/clear-sessions?key=SESSION_SECRET` so existing users' cached (pre-availability-scope) grants are cleared and they re-consent on next sign-in (#49).
 
 ### Admin endpoint
 
@@ -140,7 +187,7 @@ MCP OAuth flow piggybacks on the web UI's ATProto OAuth — `/api/auth/callback`
 - **OAuth scope upgrade doesn't re-prompt** (#49) — ATProto OAuth caches grants; adding new scopes (like the OpenMeet RPC scope) doesn't trigger re-consent. Use admin clear-sessions endpoint + wait for bsky.social propagation (up to 15 min).
 - **No OG metadata** (#46) — poll links show no preview in Telegram/Slack/social media.
 - **ATProto DID URLs** (#45) — poll URLs contain long DIDs; slug-based URLs planned.
-- **No persistent availability** (#47) — users re-enter the same availability for every poll covering the same dates.
+- ~~**No persistent availability** (#47)~~ — RESOLVED by the standing-availability feature (`chat.avails.scheduling.availability`, Phase 1, list-scope only — see [Standing availability](#standing-availability)). Participants publish availability once per group; `schedule_call` books from it directly. `ca-community` scope (private community-admin communities) is Phase 3 and still open.
 - **Self-service community connection** (#44) — users can't connect their own Telegram groups; blocked by community-admin.
 
 ## Related Projects

@@ -31,3 +31,6 @@ export async function deleteResponse(did, rkey, responseRkey) { return apiFetch(
 export async function setGoogleCalendarEvent(did, rkey, googleEventId, googleCalendarId) { return apiFetch(`/api/polls/${did}/${rkey}/google-event`, { method: 'PUT', body: JSON.stringify({ googleEventId, googleCalendarId }) }); }
 export async function publishToOpenMeet(data) { return apiFetch('/api/openmeet/publish', { method: 'POST', body: JSON.stringify(data) }); }
 export async function getOpenMeetAvailability(startTime, endTime) { return apiFetch('/api/openmeet/availability', { method: 'POST', body: JSON.stringify({ startTime, endTime }) }); }
+export async function createAvailability(data) { return apiFetch('/api/availability', { method: 'POST', body: JSON.stringify(data) }); }
+export async function getMyAvailability() { return apiFetch('/api/availability/mine'); }
+export async function deleteAvailability(rkey) { return apiFetch(`/api/availability/${rkey}`, { method: 'DELETE' }); }

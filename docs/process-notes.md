@@ -16,3 +16,9 @@
 - **Decisions:** community-admin is the config source of truth (S2); scenius-digest was a temporary middleman unrelated to scheduling — dropped from avails' path. `SCENIUS_CONFIG_SECRET` is now unused by avails (left set on Railway, harmless).
 - **State:** Live at avails.zhgnv.com; community config loads from community-admin.
 - **Next:** none for this thread.
+
+## 2026-07-17 — Standing availability Phase 1 (subagent-driven)
+- **Done:** Built the standing-availability epic Phase 1 (Bluesky-list scope): new `chat.avails.scheduling.availability` lexicon (participant-owned PDS), `/api/availability` CRUD, the `/availability` UI (`WeeklyPatternGrid`), OAuth scope + client_id v4, `resolveListAvailability` + `bestCallSlots` (canonical-UTC-grid overlap) + the `schedule_call` MCP tool (no poll; coverage fallback + trust split). 91/91 server tests + client build green. Built subagent-driven (fresh impl + reviewer per task, Opus whole-branch review). **PR #104.**
+- **Decisions:** GATE 1 frozen (Artem-confirmed): mint our own NSID; `scope`={type,value}; list-scope publishes **public** to PDS/firehose; `trust` default `confirm`; `validUntil` 8w. `luxon` added as a server dep for DST-safe tz math.
+- **State:** PR #104 open (base `main`), NOT merged. Deploy is NOT drop-in — flip Railway `ATPROTO_CLIENT_ID` to the v4 URL **and** deploy together, then `clear-sessions`.
+- **Next:** merge + coordinated deploy → run the Task 10 real-protocol smoke (publish ~3 test-DID records on a real Bluesky list, `schedule_call`, verify no poll). Then Phases 2–4 (#4–#6). Fast-follows tracked in #106; pre-existing `generateIcs` bug in #105.
