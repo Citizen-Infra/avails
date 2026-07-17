@@ -88,8 +88,14 @@ function expandMemberSlots(member, window, durationMinutes) {
           { year, month, day, hour, minute },
           { zone: timezone }
         );
-        // Skip wall-clock times that don't exist for this zone/date (DST
-        // spring-forward gap) rather than emitting a garbage key.
+        // Defensive: skip only genuinely-invalid constructed times (e.g. a
+        // malformed date). NOTE: this does NOT catch DST spring-forward gaps —
+        // Luxon resolves a non-existent wall-clock (e.g. 02:30 on a US
+        // spring-forward date) to isValid:true using the pre-transition offset,
+        // so a slot starting inside the ~1h gap gets a UTC key off by an hour.
+        // Accepted Phase-1 limitation: narrow (only on the transition date, in
+        // a DST zone, for a window straddling the gap), and same-zone overlap
+        // detection stays sound. A real fix (offset comparison) is a fast-follow.
         if (!dt.isValid) continue;
         slots.push(toUtcSlotKey(dt));
       }
