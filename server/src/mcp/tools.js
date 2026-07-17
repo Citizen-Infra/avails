@@ -855,12 +855,25 @@ async function listCommunities() {
 // lexicons/chat/avails/scheduling/availability.json). Does not itself
 // validate that `value` is a well-formed at:// URI — resolveListAvailability
 // does that for the atproto-list path.
+const SCOPE_TYPES = ['atproto-list', 'ca-community'];
+
 function normalizeScope(scope) {
+  // A bare string is unambiguous shorthand — there is only one kind of URI a
+  // caller can pass — so it still defaults.
   if (typeof scope === 'string') {
     return { type: 'atproto-list', value: scope };
   }
   if (scope && typeof scope === 'object' && typeof scope.value === 'string') {
-    return { type: scope.type || 'atproto-list', value: scope.value };
+    // An object that names no type is a caller bug, not shorthand: defaulting
+    // it silently sent a mistyped ca-community scope down the list path, where
+    // it failed later with an unrelated error about the URI shape.
+    if (scope.type === undefined) {
+      throw new Error(`scope.type is required when scope is an object: one of ${SCOPE_TYPES.join(', ')}`);
+    }
+    if (!SCOPE_TYPES.includes(scope.type)) {
+      throw new Error(`Unknown scope.type "${scope.type}": expected one of ${SCOPE_TYPES.join(', ')}`);
+    }
+    return { type: scope.type, value: scope.value };
   }
   throw new Error(
     'scope is required: either an at://<did>/app.bsky.graph.list/<rkey> URI string, or { type, value }'

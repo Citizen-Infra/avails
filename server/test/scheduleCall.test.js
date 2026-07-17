@@ -197,6 +197,60 @@ describe('schedule_call', () => {
     assert.deepEqual(fetchCalls, []);
   });
 
+  it('(f) an object scope with no type is rejected — the tool schema declares type required', async () => {
+    resetHooks();
+    // TOOL_DEFINITIONS says required: ['type','value'] for the object form, so
+    // defaulting a missing type silently contradicted the published contract:
+    // a mistyped ca-community scope went down the list path and failed later
+    // with an unrelated error about the URI shape.
+    await assert.rejects(
+      () => callTool('schedule_call', {
+        scope: { value: LIST_URI },
+        durationMinutes: 60,
+        window: WINDOW,
+        title: 'Weekly sync',
+      }, null),
+      /scope\.type is required/
+    );
+    assert.deepEqual(fetchCalls, []);
+  });
+
+  it('(g) an unknown scope.type is rejected rather than silently treated as a list', async () => {
+    resetHooks();
+    await assert.rejects(
+      () => callTool('schedule_call', {
+        scope: { type: 'atproto-lst', value: LIST_URI }, // typo
+        durationMinutes: 60,
+        window: WINDOW,
+        title: 'Weekly sync',
+      }, null),
+      /Unknown scope\.type "atproto-lst"/
+    );
+    assert.deepEqual(fetchCalls, []);
+  });
+
+  it('(h) a bare list-URI string is still accepted as Phase 1 shorthand', async () => {
+    resetHooks();
+    // Guards the other side of (f): a string is unambiguous — there is only one
+    // kind of URI a caller can pass — so it must keep defaulting to a list.
+    resolveListAvailabilityImpl = async (listUri) => {
+      assert.equal(listUri, LIST_URI);
+      return [member('did:plc:alice', 'auto'), member('did:plc:bob', 'auto')];
+    };
+    bestCallSlotsImpl = () => [
+      { slot: '2026-07-21T14:00', participants: ['did:plc:alice', 'did:plc:bob'], count: 2 },
+    ];
+
+    const result = JSON.parse(await callTool('schedule_call', {
+      scope: LIST_URI,
+      durationMinutes: 60,
+      window: WINDOW,
+      title: 'Weekly sync',
+    }, null));
+
+    assert.equal(result.booked, true);
+  });
+
   it('(e) a ca-community scope is rejected with a clear Phase 1 error, before touching resolveListAvailability', async () => {
     resetHooks();
     // resolveListAvailabilityImpl left as the "should not be called" throw.

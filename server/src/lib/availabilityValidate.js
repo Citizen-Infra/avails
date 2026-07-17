@@ -9,10 +9,40 @@ function validWindow(w) {
     HHMM.test(w.startTime || '') && HHMM.test(w.endTime || '') && w.startTime < w.endTime;
 }
 
+const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+const ISO_DATETIME_TZ =
+  /^(\d{4})-(\d{2})-(\d{2})T([01]\d|2[0-3]):[0-5]\d(:[0-5]\d(\.\d+)?)?(Z|[+-]([01]\d|2[0-3]):[0-5]\d)$/;
+
+// Last calendar day of month `m` (1-12) in year `y`. Date.UTC(y, m, 0) rolls
+// back to the final day of the preceding month, which gets leap years right.
+function daysInMonth(y, m) {
+  return new Date(Date.UTC(y, m, 0)).getUTCDate();
+}
+
+// validUntil must be ISO *and* unambiguous about which instant it names.
+//
+// `new Date()` alone is far too permissive for a field named ISO: it accepts
+// '12/31/2026', 'Dec 31 2026' and even a bare '2026'. Worse, two cases are
+// actively wrong rather than merely sloppy:
+//
+//   - A datetime with no offset ('2026-12-31T00:00:00') is parsed in the
+//     host's local zone, so the same request stores a different instant
+//     depending on which machine served it. Date-only is fine — the spec
+//     reads it as UTC.
+//   - Date silently rolls impossible dates over: '2026-02-31' becomes
+//     2026-03-03, so a typo would set an expiry three days past anything the
+//     caller asked for. The calendar date is therefore checked arithmetically
+//     rather than trusted to the parse.
 function isValidISODateTime(str) {
   if (typeof str !== 'string') return false;
-  const d = new Date(str);
-  return !Number.isNaN(d.getTime());
+  const m = ISO_DATE.exec(str) || ISO_DATETIME_TZ.exec(str);
+  if (!m) return false;
+  const year = Number(m[1]);
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  if (month < 1 || month > 12) return false;
+  if (day < 1 || day > daysInMonth(year, month)) return false;
+  return !Number.isNaN(new Date(str).getTime());
 }
 
 export function validateAvailability(body) {
@@ -36,7 +66,11 @@ export function validateAvailability(body) {
     }
     if (!TRUST.has(trust)) return { valid: false, error: 'trust must be confirm|auto' };
     if (validUntil !== undefined && !isValidISODateTime(validUntil)) {
-      return { valid: false, error: 'validUntil must be a valid ISO datetime string' };
+      return {
+        valid: false,
+        error:
+          'validUntil must be an ISO date (2026-12-31) or an offset-qualified ISO datetime (2026-12-31T00:00:00Z)',
+      };
     }
     const value = {
       scope: { type: scope.type, value: scope.value },
