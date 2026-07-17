@@ -160,7 +160,25 @@ MCP OAuth flow piggybacks on the web UI's ATProto OAuth — `/api/auth/callback`
 
 The client-metadata route is versioned — `repo:chat.avails.scheduling.availability` bumped it from `/api/auth/client-metadata-v3.json` to `-v4.json` — because ATProto caches OAuth grants per `client_id` and never re-prompts an existing user for an upgraded scope set (#49); rotating the URL is the only way to force fresh consent.
 
-**DEPLOY-ORDERING caveat:** Railway auto-deploys on push, so flip the `ATPROTO_CLIENT_ID` env var to the new versioned URL **in the same push** as the code that serves it. Splitting them across two deploys breaks sign-in in the gap either direction — env pointing at a `-v4.json` route the old code doesn't serve yet, or new code that's dropped the `-v3.json` route while env still points there. Once both are live, run `POST /api/admin/clear-sessions?key=SESSION_SECRET` so existing users' cached (pre-availability-scope) grants are cleared and they re-consent on next sign-in (#49).
+**DEPLOY-ORDERING caveat:** Railway redeploys on a push **and** on an env-var change, so a naive rotation deploys twice and breaks sign-in in the gap — either direction. Env pointing at a `-v4.json` route the old code doesn't serve yet, or new code that's dropped `-v3.json` while env still points there: both are a real outage for the length of a build, not a blip. Note the env var can't literally travel "in the same push" — it isn't in the repo.
+
+**Use `skip_deploys`.** Stage the env var *without* triggering a redeploy, then let the merge's build be the only deploy. A running container keeps the env it started with, so production stays on self-consistent old-code + old-env until the new container comes up with new-code + new-env **together**. There's no gap because there's no intermediate deploy.
+
+```
+1. Stage the env — explicitly no redeploy:
+     MCP: set_variables({ATPROTO_CLIENT_ID: "https://<host>/api/auth/client-metadata-vN.json"}, skip_deploys: true)
+     CLI: railway variables --set ATPROTO_CLIENT_ID=<...>-vN.json --skip-deploys
+2. Confirm nothing deployed — list_deployments, newest entry must be unchanged.
+   (If skip_deploys silently didn't hold, prod is now old-code + new-env = sign-in down. Check, don't assume.)
+3. Merge the PR that renames the route. That build is the only deploy.
+4. Verify: the -vN.json route 200s AND its client_id field equals the env var exactly
+   (ATProto requires client_id == the URL it's served from).
+5. POST /api/admin/clear-sessions?key=SESSION_SECRET
+```
+
+Verified on the v3→v4 rotation (2026-07-17): **zero sign-in downtime**. Step 5 clears existing users' cached pre-upgrade grants so they re-consent on next sign-in (#49) — the rotation only forces re-consent for *new* sign-ins, while stored server-side sessions keep old grants that lack the new scope.
+
+Expect a `Failed to restore OAuth session … invalid_client_metadata` warning on roughly every other boot afterwards — that's the unrelated startup race (#117), harmless since `requireAuth` lazy-restores, but easy to misread as the rotation having failed.
 
 ### Admin endpoint
 
