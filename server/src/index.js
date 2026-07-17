@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url';
 import authRoutes, { getClient, oauthSessionStore } from './routes/auth.js';
 import pollRoutes from './routes/polls.js';
 import responseRoutes from './routes/responses.js';
+import availabilityRoutes from './routes/availability.js';
 import communityRoutes from './routes/communities.js';
 import openmeetRoutes from './routes/openmeet.js';
 import { startPersistence, markDirty, saveNow } from './lib/persistence.js';
@@ -72,6 +73,12 @@ const responseLimiter = rateLimit({
   message: { error: 'Too many responses. Try again later.' },
 });
 
+const availabilityCreateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 30,
+  message: { error: 'Too many availability records created. Try again later.' },
+});
+
 // Auth routes (login, callback, session, logout, client-metadata, jwks)
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth', authRoutes);
@@ -83,6 +90,10 @@ app.use('/api/polls', pollRoutes);
 // Response submission (nested: /api/polls/:did/:rkey/responses)
 app.post('/api/polls/:did/:rkey/responses', responseLimiter);
 app.use('/api/polls', responseRoutes);
+
+// Standing-availability CRUD (writes to the caller's own PDS)
+app.post('/api/availability', availabilityCreateLimiter);
+app.use('/api/availability', availabilityRoutes);
 
 // Communities proxy
 app.use('/api/communities', communityRoutes);

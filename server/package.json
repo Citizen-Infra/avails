@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
-    "test": "node --test test/validate.test.js test/availabilityValidate.test.js test/membership.test.js test/mcp-share-poll.test.js test/mcp-list-communities.test.js && node --experimental-test-module-mocks --test test/responses.test.js"
+    "test": "node --test test/validate.test.js test/availabilityValidate.test.js test/membership.test.js test/mcp-share-poll.test.js test/mcp-list-communities.test.js && node --experimental-test-module-mocks --test test/responses.test.js test/availability.route.test.js"
   },
   "license": "AGPL-3.0",
   "dependencies": {
