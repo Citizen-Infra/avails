@@ -13,6 +13,7 @@ import communityRoutes from './routes/communities.js';
 import openmeetRoutes from './routes/openmeet.js';
 import { startPersistence, markDirty, saveNow } from './lib/persistence.js';
 import { restoreOAuthSessions, sessions } from './lib/sessionStore.js';
+import { spaFallback } from './middleware/spaFallback.js';
 import mcpOauthRoutes from './mcp/oauth.js';
 import { handleMcp, handleMcpDelete } from './mcp/handler.js';
 import { pollOgHandler } from './lib/og.js';
@@ -142,12 +143,8 @@ app.get('/p/:did/:rkey', pollOgHandler(clientDist));
 
 app.use(express.static(clientDist));
 
-// SPA fallback
-app.get('*', (req, res) => {
-  if (!req.path.startsWith('/api')) {
-    res.sendFile(path.join(clientDist, 'index.html'));
-  }
-});
+// SPA fallback — serves the client shell, 404s unmatched /api paths (#109)
+app.get('*', spaFallback(clientDist));
 
 // JSON error handler — all API errors return structured JSON
 app.use((err, req, res, next) => {
