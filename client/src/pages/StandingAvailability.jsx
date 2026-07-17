@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import AuthButton from '@/components/AuthButton'
 import Logo from '@/components/Logo'
 import WeeklyPatternGrid, { DAY_ORDER, DAY_LABELS } from '@/components/WeeklyPatternGrid'
@@ -40,11 +40,21 @@ function defaultValidUntil() {
   return formatDateLocal(d)
 }
 
-// ISO datetime -> yyyy-mm-dd for a <input type="date">, in LOCAL time
-// (never toISOString().slice(0,10) — see project Hard Constraints).
-function isoToLocalDateInput(iso) {
+// ISO datetime -> yyyy-mm-dd for the "Valid until" <input type="date">.
+// Deliberately UTC, not local: the write path anchors validUntil at UTC
+// midnight (`${form.validUntil}T00:00:00Z`, see handlePublish), so the read
+// path must extract the date with the same UTC getters to round-trip
+// cleanly. Using local getters here (like formatDateLocal, which is correct
+// for genuinely local-calendar dates elsewhere in the app) would read back
+// one day earlier for every UTC-negative timezone and re-save shifted on
+// every edit — a cumulative drift bug, not a one-time cosmetic one.
+function isoToDateInputValue(iso) {
   if (!iso) return ''
-  return formatDateLocal(new Date(iso))
+  const d = new Date(iso)
+  const year = d.getUTCFullYear()
+  const month = String(d.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(d.getUTCDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 function groupWeeklyByDay(weekly) {
@@ -72,6 +82,12 @@ function shortenAtUri(uri) {
 function emptyFormState() {
   return {
     editingRkey: null,
+    // The scope.value the record had when Edit was clicked. Needed because
+    // the server upserts by matching scope.value — if the user re-scopes to
+    // a different list while editing, the create call below never touches
+    // this original record, so it must be deleted explicitly (see #2 in the
+    // fix-pass notes).
+    editingOriginalScope: null,
     scopeInput: '',
     resolvedScope: null, // { uri, name } | null
     weekly: [],
@@ -97,6 +113,7 @@ export default function StandingAvailability() {
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState(null)
+  const [cleanupWarning, setCleanupWarning] = useState(null)
 
   useEffect(() => {
     getSession()
@@ -121,9 +138,19 @@ export default function StandingAvailability() {
     if (session?.did) loadRecords()
   }, [session?.did])
 
-  function updateForm(patch) {
+  // Stable identity (setForm itself is guaranteed stable by React) so that
+  // callbacks built on top of updateForm — like handleWeeklyChange below —
+  // can themselves stay stable across renders. WeeklyPatternGrid's commitDrag
+  // lists onChange as a dep and tears down/re-adds a document pointerup
+  // listener whenever it changes, so an unstable onChange here would churn
+  // that listener on every keystroke elsewhere in the form.
+  const updateForm = useCallback((patch) => {
     setForm((f) => ({ ...f, ...patch }))
-  }
+  }, [])
+
+  const handleWeeklyChange = useCallback((weekly) => {
+    updateForm({ weekly })
+  }, [updateForm])
 
   function handleScopeInputChange(e) {
     const val = e.target.value
@@ -152,15 +179,23 @@ export default function StandingAvailability() {
   function handleEdit(record) {
     setForm({
       editingRkey: record.rkey,
+      editingOriginalScope: record.scope.value,
       scopeInput: record.scope.value,
+      // Pre-filled directly from the published record without re-running
+      // resolveList() — it was already validated at publish time, and if the
+      // user changes the URL here, handleScopeInputChange clears this and
+      // Check List gates Publish again as normal. Not re-verifying on every
+      // edit-open avoids a network round trip for the common "just tweak the
+      // grid" case.
       resolvedScope: { uri: record.scope.value, name: null },
       weekly: record.pattern.weekly,
       timezone: record.timezone,
       trust: record.trust,
-      validUntil: isoToLocalDateInput(record.validUntil),
+      validUntil: isoToDateInputValue(record.validUntil),
     })
     setPublishError(null)
     setResolveError(null)
+    setCleanupWarning(null)
     document.getElementById('standing-availability-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
@@ -173,6 +208,7 @@ export default function StandingAvailability() {
   async function handlePublish(e) {
     e.preventDefault()
     setPublishError(null)
+    setCleanupWarning(null)
 
     if (!form.resolvedScope) {
       setPublishError('Check the list before publishing.')
@@ -199,6 +235,34 @@ export default function StandingAvailability() {
           : undefined,
       }
       await createAvailability(payload)
+
+      // The server upserts by matching scope.value against the CALLER's
+      // existing records. If we're editing and the scope was changed to a
+      // DIFFERENT list, the call above creates a brand-new record and never
+      // touches the original — it would otherwise stay live and public
+      // under its old scope forever. Clean it up explicitly.
+      //
+      // Best-effort and non-fatal: the new record is already published, so a
+      // cleanup failure here must not read as "publish failed" (same spirit
+      // as Google Calendar insert/cancel never rolling back finalize — see
+      // project CLAUDE.md). Surface it as a separate warning instead; the
+      // stale record will also just show up in the reloaded list below,
+      // where it can be deleted by hand.
+      if (
+        form.editingRkey &&
+        form.editingOriginalScope &&
+        form.editingOriginalScope !== form.resolvedScope.uri
+      ) {
+        try {
+          await deleteAvailability(form.editingRkey)
+        } catch (cleanupErr) {
+          setCleanupWarning(
+            `Published to the new list, but couldn't remove the old public record for ${form.editingOriginalScope}. ` +
+            `${cleanupErr.message || 'Delete it from the list below.'}`
+          )
+        }
+      }
+
       setForm(emptyFormState())
       await loadRecords()
     } catch (err) {
@@ -266,6 +330,10 @@ export default function StandingAvailability() {
                 Tell a group the times you're usually free, once, instead of answering a new poll every time.
               </p>
             </div>
+
+            {cleanupWarning && (
+              <p className="text-sm text-red-600">{cleanupWarning}</p>
+            )}
 
             {/* Published records */}
             {recordsLoading ? (
@@ -401,7 +469,7 @@ export default function StandingAvailability() {
                   <Label className="text-base font-medium text-[#1a1a1a]">
                     Weekly pattern <span className="text-red-500">*</span>
                   </Label>
-                  <WeeklyPatternGrid value={form.weekly} onChange={(weekly) => updateForm({ weekly })} />
+                  <WeeklyPatternGrid value={form.weekly} onChange={handleWeeklyChange} />
                 </div>
 
                 <div className="border-t border-[#e8e5df]" />
@@ -454,14 +522,14 @@ export default function StandingAvailability() {
                     className="gap-3"
                   >
                     <label className="flex items-start gap-3 cursor-pointer">
-                      <RadioGroupItem value="confirm" id="trust-confirm" className="mt-1 border-[#d8d4cf] data-checked:bg-[#0d9488] data-checked:border-[#0d9488]" />
+                      <RadioGroupItem value="confirm" id="trust-confirm" className="mt-1 border-[#d8d4cf] data-[state=checked]:bg-[#0d9488] data-[state=checked]:border-[#0d9488]" />
                       <span className="flex-1">
                         <span className="text-base font-medium text-[#1a1a1a] block">Ask me to confirm</span>
                         <span className="text-sm text-[#8a8580] block mt-0.5">You'll be asked to confirm before anything is booked into these windows.</span>
                       </span>
                     </label>
                     <label className="flex items-start gap-3 cursor-pointer">
-                      <RadioGroupItem value="auto" id="trust-auto" className="mt-1 border-[#d8d4cf] data-checked:bg-[#0d9488] data-checked:border-[#0d9488]" />
+                      <RadioGroupItem value="auto" id="trust-auto" className="mt-1 border-[#d8d4cf] data-[state=checked]:bg-[#0d9488] data-[state=checked]:border-[#0d9488]" />
                       <span className="flex-1">
                         <span className="text-base font-medium text-[#1a1a1a] block">Book automatically</span>
                         <span className="text-sm text-[#8a8580] block mt-0.5">Anything requested inside these windows can be booked without asking you first.</span>
