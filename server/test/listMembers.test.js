@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 let fetchImpl;
 globalThis.fetch = (...args) => fetchImpl(...args);
 
-const { resolveListAvailability } = await import('../src/mcp/listMembers.js');
+const { resolveListAvailability, resolveAvailabilityForDids, parseListUri } =
+  await import('../src/mcp/listMembers.js');
 
 const LIST_URI = 'at://did:plc:creator/app.bsky.graph.list/abc123';
 
@@ -400,5 +401,60 @@ describe('resolveListAvailability', () => {
     assert.equal(result.length, 1);
     assert.equal(result[0].did, 'did:plc:fast');
     assert.equal(sawSignalOnHungCall, true, 'fetchWithTimeout should pass an AbortController signal through');
+  });
+});
+
+describe('resolveAvailabilityForDids (#103 voter-scoped path)', () => {
+  it('resolves only the given DIDs, filtered to records scoped to the list', async () => {
+    fetchImpl = async (url) => {
+      const u = String(url);
+      if (u.startsWith('https://plc.directory/')) {
+        const did = decodeURIComponent(u.replace('https://plc.directory/', ''));
+        return { ok: true, json: async () => pdsDoc(`https://pds.${did.split(':').pop()}.example`) };
+      }
+      if (u.includes('com.atproto.repo.listRecords')) {
+        const repo = new URL(u).searchParams.get('repo');
+        if (repo === 'did:plc:alice') {
+          return { ok: true, json: async () => ({ records: [availabilityRecord('did:plc:alice', {
+            validUntil: new Date(Date.now() + 86400000).toISOString(),
+          })] }) };
+        }
+        return { ok: true, json: async () => ({ records: [] }) }; // bob: no record
+      }
+      throw new Error(`Unexpected fetch: ${u}`);
+    };
+
+    const result = await resolveAvailabilityForDids(['did:plc:alice', 'did:plc:bob'], LIST_URI);
+    assert.equal(result.length, 1);
+    assert.equal(result[0].did, 'did:plc:alice');
+  });
+
+  it('dedupes repeated DIDs and never calls getList', async () => {
+    let getListCalled = false;
+    fetchImpl = async (url) => {
+      const u = String(url);
+      if (u.includes('app.bsky.graph.getList')) { getListCalled = true; return { ok: true, json: async () => ({ items: [] }) }; }
+      if (u.startsWith('https://plc.directory/')) return { ok: true, json: async () => pdsDoc('https://pds.alice.example') };
+      if (u.includes('com.atproto.repo.listRecords')) {
+        return { ok: true, json: async () => ({ records: [availabilityRecord('did:plc:alice', {
+          validUntil: new Date(Date.now() + 86400000).toISOString() })] }) };
+      }
+      throw new Error(`Unexpected fetch: ${u}`);
+    };
+    const result = await resolveAvailabilityForDids(['did:plc:alice', 'did:plc:alice'], LIST_URI);
+    assert.equal(result.length, 1);
+    assert.equal(getListCalled, false, 'voter path must not enumerate the list');
+  });
+
+  it('throws on a malformed list URI rather than silently resolving nothing', async () => {
+    fetchImpl = async () => { throw new Error('should not fetch for a malformed URI'); };
+    await assert.rejects(
+      () => resolveAvailabilityForDids(['did:plc:alice'], 'not-a-list-uri'),
+      /Invalid list URI|Not an app\.bsky\.graph\.list/
+    );
+  });
+
+  it('parseListUri is exported and returns the authority DID', () => {
+    assert.equal(parseListUri(LIST_URI), 'did:plc:creator');
   });
 });

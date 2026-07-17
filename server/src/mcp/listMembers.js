@@ -42,7 +42,7 @@ async function resolvePds(did) {
 // authority DID, which is the list's owner — a record can only live in its
 // own creator's repo, so this holds without trusting any API response shape.
 // Throws otherwise.
-function parseListUri(listUri) {
+export function parseListUri(listUri) {
   if (typeof listUri !== 'string' || !listUri.startsWith('at://')) {
     throw new Error(`Invalid list URI: ${listUri}`);
   }
@@ -112,28 +112,25 @@ async function resolveMemberRecord(did, listUri) {
 // Public API
 // ---------------------------------------------------------------------------
 
-// Resolves a Bluesky list to the standing-availability records its members
-// have published for that list. Per-member failures (PDS resolution or
-// listRecords) are non-fatal — that member is skipped, not the whole call.
-export async function resolveListAvailability(listUri) {
-  const ownerDid = parseListUri(listUri);
-
-  // getList never returns a list's owner among its items, and Bluesky's UI
-  // refuses to let an owner add themselves — so without this the person
-  // curating a group's list can never be scheduled through it (#110).
-  // Including them unconditionally is safe because opt-in is expressed by the
-  // record's scope, not by list membership: an owner who published no record
-  // for this list is filtered out by resolveMemberRecord and contributes
-  // nothing, so admins curating a roster they aren't part of are unaffected.
-  const dids = [...new Set([ownerDid, ...(await fetchListMemberDids(listUri))])];
+// Resolves the standing-availability records a given set of DIDs have published
+// for a specific list scope. Per-DID failures (PDS resolution / listRecords) are
+// non-fatal — that DID is skipped, not the whole call. DIDs are deduped. The
+// list URI is validated up front so a malformed scope throws loudly rather than
+// resolving to an empty set (which would masquerade as thin coverage).
+//
+// Shared by resolveListAvailability (the whole list) and schedule_call's
+// voter-scoped path (an explicit subset who opted into a proposal) — #103/#119.
+export async function resolveAvailabilityForDids(dids, listUri) {
+  parseListUri(listUri); // throws on a malformed at:// list URI
+  const unique = [...new Set(dids)];
 
   const outcomes = await Promise.allSettled(
-    dids.map((did) => resolveMemberRecord(did, listUri))
+    unique.map((did) => resolveMemberRecord(did, listUri))
   );
 
   const results = [];
   outcomes.forEach((outcome, i) => {
-    const did = dids[i];
+    const did = unique[i];
     if (outcome.status === 'fulfilled') {
       if (outcome.value) results.push({ did, record: outcome.value });
     } else {
@@ -142,4 +139,16 @@ export async function resolveListAvailability(listUri) {
   });
 
   return results;
+}
+
+// Resolves a Bluesky list to the standing-availability records its members have
+// published for that list. Includes the list OWNER, whom getList omits from
+// items and whom Bluesky's UI won't let self-add — so without this the curator
+// of a group's list could never be scheduled through it (#110). Safe because
+// opt-in is the record's scope, not list membership: an owner who published no
+// record for this list is filtered out and contributes nothing.
+export async function resolveListAvailability(listUri) {
+  const ownerDid = parseListUri(listUri);
+  const dids = [ownerDid, ...(await fetchListMemberDids(listUri))];
+  return resolveAvailabilityForDids(dids, listUri);
 }
