@@ -3,4 +3,4 @@
  */
 
 export * from './response.defs.js'
-export * as $defs from './response.defs.js'
+export { main as default } from './response.defs.js'

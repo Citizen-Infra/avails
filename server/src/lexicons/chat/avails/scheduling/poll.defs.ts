@@ -51,46 +51,61 @@ type Main = {
 export type { Main }
 
 /** A scheduling poll with date/time options */
-const main = l.record<'tid', Main>(
+const main = /*#__PURE__*/ l.record<'tid', Main>(
   'tid',
   $nsid,
-  l.object({
-    title: l.string({ maxLength: 200 }),
-    description: l.optional(l.string({ maxLength: 1000 })),
-    dates: l.array(l.string(), { minLength: 1, maxLength: 31 }),
-    timeRange: l.ref<TimeRange>((() => timeRange) as any),
-    slotMinutes: l.integer({ minimum: 15, maximum: 120 }),
-    timezone: l.string({ maxLength: 100 }),
-    community: l.optional(l.string({ maxLength: 100 })),
-    status: l.string<{ knownValues: ['open', 'closed'] }>(),
-    finalTime: l.optional(l.string()),
-    finalDuration: l.optional(l.integer({ minimum: 15 })),
-    openmeetEventSlug: l.optional(l.string()),
-    googleEventId: l.optional(l.string()),
-    googleCalendarId: l.optional(l.string()),
-    notifyAfter: l.optional(l.integer({ minimum: 1 })),
-    notifyVia: l.optional(l.string<{ knownValues: ['email', 'telegram'] }>()),
-    notifyEmail: l.optional(l.string()),
-    notifyTelegram: l.optional(l.string()),
-    hideResponsesUntilSubmit: l.optional(l.boolean()),
-    createdAt: l.string({ format: 'datetime' }),
+  /*#__PURE__*/ l.object({
+    title: /*#__PURE__*/ l.string({ maxLength: 200 }),
+    description: /*#__PURE__*/ l.optional(
+      /*#__PURE__*/ l.string({ maxLength: 1000 }),
+    ),
+    dates: /*#__PURE__*/ l.array(/*#__PURE__*/ l.string(), {
+      minLength: 1,
+      maxLength: 31,
+    }),
+    timeRange: /*#__PURE__*/ l.ref<TimeRange>((() => timeRange) as any),
+    slotMinutes: /*#__PURE__*/ l.integer({ minimum: 15, maximum: 120 }),
+    timezone: /*#__PURE__*/ l.string({ maxLength: 100 }),
+    community: /*#__PURE__*/ l.optional(
+      /*#__PURE__*/ l.string({ maxLength: 100 }),
+    ),
+    status: /*#__PURE__*/ l.string<{ knownValues: ['open', 'closed'] }>(),
+    finalTime: /*#__PURE__*/ l.optional(/*#__PURE__*/ l.string()),
+    finalDuration: /*#__PURE__*/ l.optional(
+      /*#__PURE__*/ l.integer({ minimum: 15 }),
+    ),
+    openmeetEventSlug: /*#__PURE__*/ l.optional(/*#__PURE__*/ l.string()),
+    googleEventId: /*#__PURE__*/ l.optional(/*#__PURE__*/ l.string()),
+    googleCalendarId: /*#__PURE__*/ l.optional(/*#__PURE__*/ l.string()),
+    notifyAfter: /*#__PURE__*/ l.optional(
+      /*#__PURE__*/ l.integer({ minimum: 1 }),
+    ),
+    notifyVia: /*#__PURE__*/ l.optional(
+      /*#__PURE__*/ l.string<{ knownValues: ['email', 'telegram'] }>(),
+    ),
+    notifyEmail: /*#__PURE__*/ l.optional(/*#__PURE__*/ l.string()),
+    notifyTelegram: /*#__PURE__*/ l.optional(/*#__PURE__*/ l.string()),
+    hideResponsesUntilSubmit: /*#__PURE__*/ l.optional(
+      /*#__PURE__*/ l.boolean(),
+    ),
+    createdAt: /*#__PURE__*/ l.string({ format: 'datetime' }),
   }),
 )
 
 export { main }
 
-export const $isTypeOf = /*#__PURE__*/ main.isTypeOf.bind(main),
-  $build = /*#__PURE__*/ main.build.bind(main),
-  $type = /*#__PURE__*/ main.$type
-export const $assert = /*#__PURE__*/ main.assert.bind(main),
-  $check = /*#__PURE__*/ main.check.bind(main),
-  $cast = /*#__PURE__*/ main.cast.bind(main),
-  $ifMatches = /*#__PURE__*/ main.ifMatches.bind(main),
-  $matches = /*#__PURE__*/ main.matches.bind(main),
-  $parse = /*#__PURE__*/ main.parse.bind(main),
-  $safeParse = /*#__PURE__*/ main.safeParse.bind(main),
-  $validate = /*#__PURE__*/ main.validate.bind(main),
-  $safeValidate = /*#__PURE__*/ main.safeValidate.bind(main)
+export const $type = $nsid
+export const $isTypeOf = /*#__PURE__*/ main.isTypeOf.bind(main)
+export const $build = /*#__PURE__*/ main.build.bind(main)
+export const $assert = /*#__PURE__*/ main.assert.bind(main)
+export const $check = /*#__PURE__*/ main.check.bind(main)
+export const $cast = /*#__PURE__*/ main.cast.bind(main)
+export const $ifMatches = /*#__PURE__*/ main.ifMatches.bind(main)
+export const $matches = /*#__PURE__*/ main.matches.bind(main)
+export const $parse = /*#__PURE__*/ main.parse.bind(main)
+export const $safeParse = /*#__PURE__*/ main.safeParse.bind(main)
+export const $validate = /*#__PURE__*/ main.validate.bind(main)
+export const $safeValidate = /*#__PURE__*/ main.safeValidate.bind(main)
 
 type TimeRange = {
   $type?: 'chat.avails.scheduling.poll#timeRange'
@@ -108,10 +123,13 @@ type TimeRange = {
 
 export type { TimeRange }
 
-const timeRange = l.typedObject<TimeRange>(
+const timeRange = /*#__PURE__*/ l.typedObject<TimeRange>(
   $nsid,
   'timeRange',
-  l.object({ start: l.string(), end: l.string() }),
+  /*#__PURE__*/ l.object({
+    start: /*#__PURE__*/ l.string(),
+    end: /*#__PURE__*/ l.string(),
+  }),
 )
 
 export { timeRange }
