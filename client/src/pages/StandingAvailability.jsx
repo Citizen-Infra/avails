@@ -57,6 +57,21 @@ function isoToDateInputValue(iso) {
   return `${year}-${month}-${day}`
 }
 
+// Human-readable "until <date>" label for a published record. UTC for the same
+// reason isoToDateInputValue is (see above): validUntil is anchored at UTC
+// midnight, so formatting it in browser-local time renders the previous day for
+// every UTC-negative timezone — the record would read "until Sep 10" to a US
+// user when it expires on Sep 11. Locale-aware, calendar-date pinned to UTC.
+function formatValidUntil(iso) {
+  if (!iso) return ''
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC',
+  })
+}
+
 function groupWeeklyByDay(weekly) {
   const byDay = new Map()
   for (const w of weekly) {
@@ -203,6 +218,10 @@ export default function StandingAvailability() {
     setForm(emptyFormState())
     setPublishError(null)
     setResolveError(null)
+    // Cancelling abandons the edit that produced the warning, so it must go too
+    // — otherwise a stale "couldn't clean up the old record" line hangs around
+    // over an unrelated form.
+    setCleanupWarning(null)
   }
 
   async function handlePublish(e) {
@@ -365,7 +384,7 @@ export default function StandingAvailability() {
                             <p className="text-sm text-[#8a8580]">
                               {record.timezone} &middot; {record.trust === 'auto' ? 'Auto-book' : 'Confirm before booking'}
                               {record.validUntil && (
-                                <> &middot; until {new Date(record.validUntil).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</>
+                                <> &middot; until {formatValidUntil(record.validUntil)}</>
                               )}
                             </p>
                           </div>

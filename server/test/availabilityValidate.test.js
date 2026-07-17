@@ -135,3 +135,64 @@ test('rejects timezone exceeding 64 chars', () => {
   assert.equal(r.valid, false);
   assert.match(r.error, /64/);
 });
+
+// --- #106 fast-follows: edge cases the PR #104 reviews flagged as untested ---
+
+function baseBody(extra = {}) {
+  return {
+    scope: { type: 'atproto-list', value: 'at://did:plc:x/app.bsky.graph.list/abc' },
+    pattern: { weekly: [{ day: 2, startTime: '14:00', endTime: '18:00' }] },
+    timezone: 'Europe/Berlin',
+    trust: 'confirm',
+    ...extra,
+  };
+}
+
+test('rejects a window whose startTime equals its endTime', () => {
+  const r = validateAvailability(baseBody({
+    pattern: { weekly: [{ day: 2, startTime: '14:00', endTime: '14:00' }] },
+  }));
+  assert.equal(r.valid, false);
+});
+
+test('rejects a non-string validUntil', () => {
+  for (const bad of [123, {}, [], true, null]) {
+    const r = validateAvailability(baseBody({ validUntil: bad }));
+    assert.equal(r.valid, false, `expected ${JSON.stringify(bad)} to be rejected`);
+  }
+});
+
+test('accepts a date-only validUntil — unambiguously UTC per the JS spec', () => {
+  assert.equal(validateAvailability(baseBody({ validUntil: '2026-12-31' })).valid, true);
+});
+
+test('accepts offset-qualified ISO datetimes', () => {
+  for (const good of ['2026-12-31T00:00:00Z', '2026-09-11T00:00:00.000Z', '2026-12-31T01:00:00+05:30']) {
+    assert.equal(validateAvailability(baseBody({ validUntil: good })).valid, true, `expected ${good} accepted`);
+  }
+});
+
+test('rejects a datetime with no offset — it would mean a different instant per host', () => {
+  // new Date('2026-12-31T00:00:00') is parsed in the SERVER's local zone, so
+  // the stored instant would depend on which machine handled the request.
+  assert.equal(validateAvailability(baseBody({ validUntil: '2026-12-31T00:00:00' })).valid, false);
+});
+
+test('rejects non-ISO formats that Date happens to parse', () => {
+  // The function is named isValidISODateTime and its error says "ISO", but it
+  // accepted anything Date could parse — including a bare year.
+  for (const bad of ['12/31/2026', 'Dec 31 2026', '2026', '2026-13-01', '2026-12-32']) {
+    assert.equal(validateAvailability(baseBody({ validUntil: bad })).valid, false, `expected ${bad} rejected`);
+  }
+});
+
+test('rejects an impossible calendar date instead of silently rolling it over', () => {
+  // new Date('2026-02-31') yields 2026-03-03 — a user typing Feb 31 would get
+  // an expiry three days later than anything they asked for.
+  assert.equal(validateAvailability(baseBody({ validUntil: '2026-02-31' })).valid, false);
+});
+
+test('handles leap years when validating the calendar date', () => {
+  assert.equal(validateAvailability(baseBody({ validUntil: '2028-02-29' })).valid, true, '2028 is a leap year');
+  assert.equal(validateAvailability(baseBody({ validUntil: '2026-02-29' })).valid, false, '2026 is not');
+});
