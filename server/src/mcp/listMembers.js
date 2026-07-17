@@ -38,8 +38,11 @@ async function resolvePds(did) {
   return svc?.serviceEndpoint || 'https://bsky.social';
 }
 
-// Validates `at://<did>/app.bsky.graph.list/<rkey>` shape. Throws otherwise.
-function assertListUri(listUri) {
+// Validates `at://<did>/app.bsky.graph.list/<rkey>` shape and returns the
+// authority DID, which is the list's owner — a record can only live in its
+// own creator's repo, so this holds without trusting any API response shape.
+// Throws otherwise.
+function parseListUri(listUri) {
   if (typeof listUri !== 'string' || !listUri.startsWith('at://')) {
     throw new Error(`Invalid list URI: ${listUri}`);
   }
@@ -48,6 +51,7 @@ function assertListUri(listUri) {
   if (!did || collection !== LIST_COLLECTION || !rkey) {
     throw new Error(`Not an ${LIST_COLLECTION} URI: ${listUri}`);
   }
+  return did;
 }
 
 // Pages app.bsky.graph.getList on the public AppView until the cursor is
@@ -112,17 +116,24 @@ async function resolveMemberRecord(did, listUri) {
 // have published for that list. Per-member failures (PDS resolution or
 // listRecords) are non-fatal — that member is skipped, not the whole call.
 export async function resolveListAvailability(listUri) {
-  assertListUri(listUri);
+  const ownerDid = parseListUri(listUri);
 
-  const memberDids = await fetchListMemberDids(listUri);
+  // getList never returns a list's owner among its items, and Bluesky's UI
+  // refuses to let an owner add themselves — so without this the person
+  // curating a group's list can never be scheduled through it (#110).
+  // Including them unconditionally is safe because opt-in is expressed by the
+  // record's scope, not by list membership: an owner who published no record
+  // for this list is filtered out by resolveMemberRecord and contributes
+  // nothing, so admins curating a roster they aren't part of are unaffected.
+  const dids = [...new Set([ownerDid, ...(await fetchListMemberDids(listUri))])];
 
   const outcomes = await Promise.allSettled(
-    memberDids.map((did) => resolveMemberRecord(did, listUri))
+    dids.map((did) => resolveMemberRecord(did, listUri))
   );
 
   const results = [];
   outcomes.forEach((outcome, i) => {
-    const did = memberDids[i];
+    const did = dids[i];
     if (outcome.status === 'fulfilled') {
       if (outcome.value) results.push({ did, record: outcome.value });
     } else {
