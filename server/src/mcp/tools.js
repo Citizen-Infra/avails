@@ -5,7 +5,7 @@ import { getOpenMeetToken } from '../routes/openmeet.js';
 import { computeBestSlots } from './overlap.js';
 import { sendTelegramMessage } from './telegram.js';
 import { assertMembership } from '../lib/membership.js';
-import { resolveListAvailability } from './listMembers.js';
+import { resolveListAvailability, resolveAvailabilityForDids } from './listMembers.js';
 import { bestCallSlots } from './availabilityOverlap.js';
 
 const POLL_COLLECTION = 'chat.avails.scheduling.poll';
@@ -325,7 +325,7 @@ const TOOL_DEFINITIONS = [
   {
     name: 'schedule_call',
     description:
-      'Book a call directly from a group\'s standing availability — no poll. Resolves the members\' standing-availability records for the given scope, finds the best overlapping slot in the requested window, and books it if coverage is sufficient (at least 2 members with records, and at least 2 free at the chosen slot). Members whose record has trust:auto are auto-booked; trust:confirm members are returned separately and are NOT silently committed. If coverage is too thin, returns a fallback signal instead of booking — it does not create a poll itself. Only atproto-list scopes are supported (ca-community scopes are Phase 3 and are rejected).',
+      'Book a call directly from a group\'s standing availability — no poll. Resolves the members\' standing-availability records for the given scope, finds the best overlapping slot in the requested window, and books it if coverage is sufficient (at least 2 members with records, and at least 2 free at the chosen slot). Members whose record has trust:auto are auto-booked; trust:confirm members are returned separately and are NOT silently committed. If coverage is too thin, returns a fallback signal instead of booking — it does not create a poll itself. Only atproto-list scopes are supported (ca-community scopes are Phase 3 and are rejected). Pass voterDids to book for a specific subset (the people who voted/liked) rather than the whole list.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -363,6 +363,11 @@ const TOOL_DEFINITIONS = [
         title: {
           type: 'string',
           description: 'Call title, used for the calendar invite and confirmation emails.',
+        },
+        voterDids: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Optional. When present, book only for these DIDs (the people who opted into this specific proposal — e.g. the likers of a Bluesky post), instead of the whole list. Their records are still matched to `scope`; a DID that published no availability for this list is a coverage miss. Omit to schedule for the entire list.',
         },
       },
       required: ['scope', 'durationMinutes', 'window', 'title'],
@@ -893,7 +898,7 @@ function parseAtUri(uri) {
 // schedule_call (#103, Task 8, Phase 1): books a call straight from a
 // group's standing availability — no poll. Reading availability records is
 // public (no auth), so this tool does not require authContext.
-async function scheduleCall({ scope, durationMinutes, window, title }) {
+async function scheduleCall({ scope, durationMinutes, window, title, voterDids }) {
   const normalizedScope = normalizeScope(scope);
 
   if (normalizedScope.type === 'ca-community') {
@@ -914,7 +919,24 @@ async function scheduleCall({ scope, durationMinutes, window, title }) {
     throw new Error('title is required');
   }
 
-  const members = await resolveListAvailability(normalizedScope.value);
+  // Optional voter-scoped booking (#103/#119): when the caller supplies an
+  // explicit set of DIDs (the people who opted into a proposal), book for that
+  // subset instead of the whole list. avails does not interpret HOW they voted
+  // (a Bluesky like, an MC vote, a Telegram reaction) — it receives DIDs. Their
+  // records are still matched to `scope`, so a voter who published nothing for
+  // this list is a coverage miss, exactly as an absent list member would be.
+  if (voterDids !== undefined) {
+    if (!Array.isArray(voterDids) || !voterDids.every((d) => typeof d === 'string' && d.startsWith('did:'))) {
+      throw new Error('voterDids must be an array of DID strings');
+    }
+    if (voterDids.length === 0) {
+      throw new Error('voterDids, when provided, must be non-empty');
+    }
+  }
+
+  const members = voterDids
+    ? await resolveAvailabilityForDids(voterDids, normalizedScope.value)
+    : await resolveListAvailability(normalizedScope.value);
   const withRecords = members.length;
 
   // Coverage floor #1: not enough members have published availability at
@@ -1019,6 +1041,10 @@ async function scheduleCall({ scope, durationMinutes, window, title }) {
     coverage: {
       withRecords,
       membersFree: top.count,
+      // When voter-scoped, let the caller see how many of the people who voted
+      // actually had a usable record — so CA can message "3 of 5 voters haven't
+      // published availability" rather than guessing.
+      ...(voterDids ? { voters: voterDids.length, votersWithoutRecords: voterDids.length - withRecords } : {}),
     },
   });
 }

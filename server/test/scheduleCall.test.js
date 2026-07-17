@@ -35,12 +35,14 @@ function member(did, trust, { timezone = 'UTC' } = {}) {
 // behaviour without re-registering mock.module (which must run before the
 // module-under-test is imported, i.e. once, at the top of the file).
 let resolveListAvailabilityImpl;
+let resolveAvailabilityForDidsImpl;
 let bestCallSlotsImpl;
 let sendEmailCalls;
 
 mock.module('../src/mcp/listMembers.js', {
   namedExports: {
     resolveListAvailability: (...args) => resolveListAvailabilityImpl(...args),
+    resolveAvailabilityForDids: (...args) => resolveAvailabilityForDidsImpl(...args),
   },
 });
 
@@ -77,6 +79,9 @@ function resetHooks() {
   fetchCalls = [];
   resolveListAvailabilityImpl = async () => {
     throw new Error('resolveListAvailability should not be called in this test');
+  };
+  resolveAvailabilityForDidsImpl = async () => {
+    throw new Error('resolveAvailabilityForDids should not be called in this test');
   };
   bestCallSlotsImpl = () => {
     throw new Error('bestCallSlots should not be called in this test');
@@ -265,5 +270,73 @@ describe('schedule_call', () => {
       /Phase 1/
     );
     assert.deepEqual(fetchCalls, []);
+  });
+
+  it('(i) voterDids present -> books for exactly those DIDs via resolveAvailabilityForDids, not the whole list', async () => {
+    resetHooks();
+    let listCalled = false;
+    resolveListAvailabilityImpl = async () => { listCalled = true; return []; };
+    resolveAvailabilityForDidsImpl = async (dids, listUri) => {
+      assert.equal(listUri, LIST_URI);
+      assert.deepEqual([...dids].sort(), ['did:plc:alice', 'did:plc:bob']);
+      return [member('did:plc:alice', 'auto'), member('did:plc:bob', 'auto')];
+    };
+    bestCallSlotsImpl = () => [
+      { slot: '2026-07-21T14:00', participants: ['did:plc:alice', 'did:plc:bob'], count: 2 },
+    ];
+
+    const result = JSON.parse(await callTool('schedule_call', {
+      scope: { type: 'atproto-list', value: LIST_URI },
+      durationMinutes: 60, window: WINDOW, title: 'Voted call',
+      voterDids: ['did:plc:alice', 'did:plc:bob'],
+    }, null));
+
+    assert.equal(result.booked, true);
+    assert.equal(listCalled, false, 'whole-list resolution must NOT run when voterDids is given');
+    assert.equal(result.coverage.withRecords, 2);
+    assert.equal(result.coverage.voters, 2);
+    assert.equal(result.coverage.votersWithoutRecords, 0);
+  });
+
+  it('(j) a voter with no record is a coverage miss -> falls back, does not widen the set', async () => {
+    resetHooks();
+    resolveAvailabilityForDidsImpl = async () => [member('did:plc:alice', 'auto')]; // only 1 of 2 has a record
+    const result = JSON.parse(await callTool('schedule_call', {
+      scope: { type: 'atproto-list', value: LIST_URI },
+      durationMinutes: 60, window: WINDOW, title: 'Voted call',
+      voterDids: ['did:plc:alice', 'did:plc:ghost'],
+    }, null));
+    assert.equal(result.booked, false);
+    assert.equal(result.fallback, 'create_poll');
+  });
+
+  it('(k) voterDids present but empty is a caller error, not a silent poll fallback', async () => {
+    resetHooks();
+    await assert.rejects(
+      () => callTool('schedule_call', {
+        scope: { type: 'atproto-list', value: LIST_URI },
+        durationMinutes: 60, window: WINDOW, title: 'x', voterDids: [],
+      }, null),
+      /voterDids.*non-empty|non-empty.*voterDids/i
+    );
+    assert.deepEqual(fetchCalls, []);
+  });
+
+  it('(l) a non-array (or non-DID) voterDids is rejected', async () => {
+    resetHooks();
+    await assert.rejects(
+      () => callTool('schedule_call', {
+        scope: { type: 'atproto-list', value: LIST_URI },
+        durationMinutes: 60, window: WINDOW, title: 'x', voterDids: 'did:plc:alice',
+      }, null),
+      /voterDids must be an array/i
+    );
+    await assert.rejects(
+      () => callTool('schedule_call', {
+        scope: { type: 'atproto-list', value: LIST_URI },
+        durationMinutes: 60, window: WINDOW, title: 'x', voterDids: ['not-a-did'],
+      }, null),
+      /voterDids must be an array/i
+    );
   });
 });
