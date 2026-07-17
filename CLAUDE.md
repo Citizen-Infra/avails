@@ -61,7 +61,7 @@ Railway (single service, Nixpacks builder). Custom domain: avails.zhgnv.com.
 - `Procfile`: `web: cd server && node src/index.js`
 
 ### Environment variables
-- `ATPROTO_CLIENT_ID` — URL to client-metadata.json endpoint
+- `ATPROTO_CLIENT_ID` — URL to client-metadata.json endpoint (currently `/api/auth/client-metadata-v4.json` — bumped for the standing-availability scope; bump the version + deploy the serving code together, Railway auto-deploys on push, see [architecture.md OAuth](docs/architecture.md#oauth) for the deploy-ordering caveat)
 - `ATPROTO_REDIRECT_URI` — OAuth callback URL
 - `ATPROTO_PRIVATE_KEY` — base64-encoded ES256 JWK (Railway mangles raw JSON)
 - `SESSION_SECRET` — cookie signing
@@ -82,4 +82,4 @@ Railway (single service, Nixpacks builder). Custom domain: avails.zhgnv.com.
 
 ## Reference
 
-Read when working on internals: [Architecture & gotchas](docs/architecture.md) — data model, OAuth flow, components, MCP endpoint, OpenMeet integration, known debts.
+Read when working on internals: [Architecture & gotchas](docs/architecture.md) — data model, OAuth flow, components, MCP endpoint (nine tools, including `schedule_call` — books a call from standing availability, no poll), standing availability, OpenMeet integration, known debts.
