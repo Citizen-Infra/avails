@@ -31,9 +31,15 @@ mock.module('../src/lib/sessionStore.js', {
 
 // Track XRPC calls made through the mocked OAuth session
 let lastXrpcCall = null;
+// Every XRPC call in order — the legacy sweep (#106) makes more than one write
+// per publish, which lastXrpcCall alone can't see.
+let xrpcCalls = [];
+// Lets one test drive the sweep's failure path.
+let failDeletes = false;
 const mockFetchHandler = async (pathname, opts) => {
   const body = JSON.parse(opts.body);
   lastXrpcCall = { pathname, body };
+  xrpcCalls.push({ method: pathname.replace('/xrpc/', ''), body });
   const method = pathname.replace('/xrpc/', '');
   if (method === 'com.atproto.repo.createRecord') {
     return {
@@ -50,6 +56,9 @@ const mockFetchHandler = async (pathname, opts) => {
     };
   }
   // deleteRecord
+  if (failDeletes) {
+    return { ok: false, status: 500, json: async () => ({}), text: async () => 'delete boom' };
+  }
   return { ok: true, json: async () => ({}), text: async () => 'ok' };
 };
 
@@ -117,6 +126,8 @@ describe('POST /api/availability', () => {
   beforeEach(() => {
     mockSessions.clear();
     lastXrpcCall = null;
+    xrpcCalls = [];
+    failDeletes = false;
     mockListRecordsData = { records: [] };
     mockSessions.set('creator-session', {
       did,
@@ -151,9 +162,12 @@ describe('POST /api/availability', () => {
     const res = await request(app, 'POST', '/api/availability', validBody, sessionCookie);
     assert.equal(res.status, 201);
     assert.ok(lastXrpcCall);
-    assert.equal(lastXrpcCall.pathname, '/xrpc/com.atproto.repo.createRecord');
+    // putRecord at a scope-derived rkey, not createRecord — see #106: a create
+    // is the call that races into duplicates.
+    assert.equal(lastXrpcCall.pathname, '/xrpc/com.atproto.repo.putRecord');
     assert.equal(lastXrpcCall.body.repo, did);
     assert.equal(lastXrpcCall.body.collection, AVAILABILITY_COLLECTION);
+    assert.ok(lastXrpcCall.body.rkey);
     assert.equal(lastXrpcCall.body.record.$type, AVAILABILITY_COLLECTION);
     assert.equal(lastXrpcCall.body.record.trust, 'confirm');
     assert.deepStrictEqual(lastXrpcCall.body.record.scope, validBody.scope);
@@ -185,16 +199,93 @@ describe('POST /api/availability', () => {
     const app = createApp();
     const res = await request(app, 'POST', '/api/availability', validBody, sessionCookie);
     assert.equal(res.status, 200);
-    assert.ok(lastXrpcCall);
-    assert.equal(lastXrpcCall.pathname, '/xrpc/com.atproto.repo.putRecord');
-    assert.equal(lastXrpcCall.body.repo, did);
-    assert.equal(lastXrpcCall.body.collection, AVAILABILITY_COLLECTION);
-    assert.equal(lastXrpcCall.body.rkey, 'oldrkey999');
-    assert.equal(lastXrpcCall.body.swapRecord, 'cid-old');
-    assert.equal(lastXrpcCall.body.record.trust, 'confirm'); // new value wins
-    assert.equal(lastXrpcCall.body.record.createdAt, '2026-01-01T00:00:00.000Z'); // preserved
-    assert.ok(lastXrpcCall.body.record.updatedAt);
+
+    // The rkey now comes from the scope, not from whatever key the prior record
+    // happened to have (#106) — so the legacy TID-keyed record is rewritten at
+    // the deterministic key and the old one swept, rather than reused in place.
+    const put = xrpcCalls.find((c) => c.method === 'com.atproto.repo.putRecord');
+    assert.ok(put, 'must putRecord');
+    assert.equal(put.body.repo, did);
+    assert.equal(put.body.collection, AVAILABILITY_COLLECTION);
+    assert.notEqual(put.body.rkey, 'oldrkey999');
+    assert.equal(put.body.record.trust, 'confirm'); // new value wins
+    assert.equal(put.body.record.createdAt, '2026-01-01T00:00:00.000Z'); // carried across the key change
+    assert.ok(put.body.record.updatedAt);
+
+    const del = xrpcCalls.find((c) => c.method === 'com.atproto.repo.deleteRecord');
+    assert.ok(del, 'the legacy record must be swept, not left as a second public record');
+    assert.equal(del.body.rkey, 'oldrkey999');
+
     assert.equal(res.body.replaced, true);
+    assert.equal(res.body.staleRemaining, undefined);
+  });
+
+  it('derives the rkey from the scope so a re-publish overwrites rather than racing (#106)', async () => {
+    const app = createApp();
+    const res = await request(app, 'POST', '/api/availability', validBody, sessionCookie);
+    assert.equal(res.status, 201);
+
+    // createRecord is what races — two concurrent POSTs could both create.
+    // putRecord at a scope-derived key makes a duplicate unrepresentable.
+    assert.equal(
+      xrpcCalls.some((c) => c.method === 'com.atproto.repo.createRecord'),
+      false,
+      'must never createRecord — that is the racing call'
+    );
+    const put = xrpcCalls.find((c) => c.method === 'com.atproto.repo.putRecord');
+    assert.ok(put);
+    assert.match(put.body.rkey, /^[A-Za-z0-9._~-]{1,512}$/, 'valid ATProto rkey syntax');
+    assert.equal(put.body.swapRecord, undefined, 'no CAS when there is no prior record at that key');
+
+    // Same scope again -> same key. This is the property that kills the race.
+    const firstRkey = put.body.rkey;
+    xrpcCalls = [];
+    await request(app, 'POST', '/api/availability', validBody, sessionCookie);
+    const second = xrpcCalls.find((c) => c.method === 'com.atproto.repo.putRecord');
+    assert.equal(second.body.rkey, firstRkey);
+  });
+
+  it('gives a different scope a different rkey', async () => {
+    const app = createApp();
+    await request(app, 'POST', '/api/availability', validBody, sessionCookie);
+    const a = xrpcCalls.find((c) => c.method === 'com.atproto.repo.putRecord').body.rkey;
+
+    xrpcCalls = [];
+    await request(app, 'POST', '/api/availability', {
+      ...validBody,
+      scope: { type: 'atproto-list', value: 'at://did:plc:owner/app.bsky.graph.list/other' },
+    }, sessionCookie);
+    const b = xrpcCalls.find((c) => c.method === 'com.atproto.repo.putRecord').body.rkey;
+
+    assert.notEqual(a, b, 'two scopes must not collide onto one record');
+  });
+
+  it('reports stale records it could not sweep instead of failing silently', async () => {
+    mockListRecordsData = {
+      records: [
+        {
+          uri: `at://${did}/${AVAILABILITY_COLLECTION}/legacytid01`,
+          cid: 'cid-legacy',
+          value: {
+            $type: AVAILABILITY_COLLECTION,
+            scope: validBody.scope,
+            pattern: { weekly: [{ day: 3, startTime: '10:00', endTime: '11:00' }] },
+            timezone: 'UTC',
+            trust: 'auto',
+            createdAt: '2026-01-01T00:00:00.000Z',
+          },
+        },
+      ],
+    };
+    failDeletes = true;
+    const app = createApp();
+    const res = await request(app, 'POST', '/api/availability', validBody, sessionCookie);
+
+    // The publish still succeeds — the new record landing is the outcome that
+    // matters, and a failed cleanup must not roll it back.
+    assert.equal(res.status, 200);
+    assert.ok(xrpcCalls.find((c) => c.method === 'com.atproto.repo.putRecord'));
+    assert.equal(res.body.staleRemaining, 1);
   });
 });
 
@@ -202,6 +293,8 @@ describe('GET /api/availability/mine', () => {
   beforeEach(() => {
     mockSessions.clear();
     lastXrpcCall = null;
+    xrpcCalls = [];
+    failDeletes = false;
     mockSessions.set('creator-session', {
       did,
       handle: 'caller.test',
@@ -244,6 +337,8 @@ describe('DELETE /api/availability/:rkey', () => {
   beforeEach(() => {
     mockSessions.clear();
     lastXrpcCall = null;
+    xrpcCalls = [];
+    failDeletes = false;
     mockSessions.set('creator-session', {
       did,
       handle: 'caller.test',
