@@ -167,6 +167,9 @@ describe('resolveListAvailability', () => {
       if (u.includes('com.atproto.repo.listRecords')) {
         const params = new URL(u).searchParams;
         const repo = params.get('repo');
+        // LIST_URI's authority is the owner, who is now always queried (#110).
+        // This test is about pagination, so the owner publishes nothing.
+        if (repo === 'did:plc:creator') return { ok: true, json: async () => ({ records: [] }) };
         return { ok: true, json: async () => ({ records: [availabilityRecord(repo)] }) };
       }
       throw new Error(`Unexpected fetch: ${u}`);
@@ -188,6 +191,11 @@ describe('resolveListAvailability', () => {
         return { ok: true, json: async () => pdsDoc('https://pds.gina.example') };
       }
       if (u.includes('com.atproto.repo.listRecords')) {
+        // The owner (LIST_URI's authority) is now always queried (#110); this
+        // test is about picking the latest record, so they publish nothing.
+        if (new URL(u).searchParams.get('repo') === 'did:plc:creator') {
+          return { ok: true, json: async () => ({ records: [] }) };
+        }
         return {
           ok: true,
           json: async () => ({
@@ -236,6 +244,11 @@ describe('resolveListAvailability', () => {
         return { ok: true, json: async () => pdsDoc('https://pds.ok.example') };
       }
       if (u.includes('com.atproto.repo.listRecords')) {
+        // The owner (LIST_URI's authority) is now always queried (#110); this
+        // test is about skipping a broken member, so they publish nothing.
+        if (new URL(u).searchParams.get('repo') === 'did:plc:creator') {
+          return { ok: true, json: async () => ({ records: [] }) };
+        }
         return { ok: true, json: async () => ({ records: [availabilityRecord('did:plc:ok')] }) };
       }
       throw new Error(`Unexpected fetch: ${u}`);
@@ -244,6 +257,103 @@ describe('resolveListAvailability', () => {
     const result = await resolveListAvailability(LIST_URI);
     assert.equal(result.length, 1);
     assert.equal(result[0].did, 'did:plc:ok');
+  });
+
+  it('(h) includes the list owner, whom getList never returns among items (#110)', async () => {
+    // Bluesky omits a list's owner from getList items and its UI refuses to let
+    // an owner add themselves, so the person curating a group's list was never
+    // queried — the organizer could not be scheduled through their own list.
+    // LIST_URI's authority (did:plc:creator) IS the owner: a list record can
+    // only live in its creator's repo.
+    fetchImpl = async (url) => {
+      const u = String(url);
+      if (u.includes('app.bsky.graph.getList')) {
+        return {
+          ok: true,
+          json: async () => ({
+            list: { uri: LIST_URI, creator: { did: 'did:plc:creator' } },
+            items: [{ subject: { did: 'did:plc:alice' } }], // owner absent, as bsky does it
+          }),
+        };
+      }
+      if (u.startsWith('https://plc.directory/')) {
+        const did = decodeURIComponent(u.replace('https://plc.directory/', ''));
+        return { ok: true, json: async () => pdsDoc(`https://pds.${did.split(':').pop()}.example`) };
+      }
+      if (u.includes('com.atproto.repo.listRecords')) {
+        const repo = new URL(u).searchParams.get('repo');
+        return { ok: true, json: async () => ({ records: [availabilityRecord(repo)] }) };
+      }
+      throw new Error(`Unexpected fetch: ${u}`);
+    };
+
+    const result = await resolveListAvailability(LIST_URI);
+    const dids = result.map((r) => r.did).sort();
+    assert.deepEqual(dids, ['did:plc:alice', 'did:plc:creator']);
+  });
+
+  it('(i) does not double-count an owner who also appears in items', async () => {
+    // The Bluesky UI blocks self-add, but the protocol does not — a listitem
+    // record naming the owner is writable directly, so dedupe rather than
+    // resolve the same PDS twice and report them as two participants.
+    let creatorRecordFetches = 0;
+    fetchImpl = async (url) => {
+      const u = String(url);
+      if (u.includes('app.bsky.graph.getList')) {
+        return {
+          ok: true,
+          json: async () => ({
+            list: { uri: LIST_URI, creator: { did: 'did:plc:creator' } },
+            items: [{ subject: { did: 'did:plc:creator' } }], // owner self-added
+          }),
+        };
+      }
+      if (u.startsWith('https://plc.directory/')) {
+        return { ok: true, json: async () => pdsDoc('https://pds.creator.example') };
+      }
+      if (u.includes('com.atproto.repo.listRecords')) {
+        creatorRecordFetches += 1;
+        return { ok: true, json: async () => ({ records: [availabilityRecord('did:plc:creator')] }) };
+      }
+      throw new Error(`Unexpected fetch: ${u}`);
+    };
+
+    const result = await resolveListAvailability(LIST_URI);
+    assert.equal(result.length, 1, 'owner must appear once, not twice');
+    assert.equal(result[0].did, 'did:plc:creator');
+    assert.equal(creatorRecordFetches, 1, 'owner PDS should be queried once');
+  });
+
+  it('(j) an owner who published no record for this list contributes nothing', async () => {
+    // Opt-in is the record's scope, not list membership — so an admin curating
+    // a roster they are not part of stays absent, exactly as before.
+    fetchImpl = async (url) => {
+      const u = String(url);
+      if (u.includes('app.bsky.graph.getList')) {
+        return {
+          ok: true,
+          json: async () => ({
+            list: { uri: LIST_URI, creator: { did: 'did:plc:creator' } },
+            items: [{ subject: { did: 'did:plc:alice' } }],
+          }),
+        };
+      }
+      if (u.startsWith('https://plc.directory/')) {
+        const did = decodeURIComponent(u.replace('https://plc.directory/', ''));
+        return { ok: true, json: async () => pdsDoc(`https://pds.${did.split(':').pop()}.example`) };
+      }
+      if (u.includes('com.atproto.repo.listRecords')) {
+        const repo = new URL(u).searchParams.get('repo');
+        if (repo === 'did:plc:creator') {
+          return { ok: true, json: async () => ({ records: [] }) }; // admin, not a participant
+        }
+        return { ok: true, json: async () => ({ records: [availabilityRecord(repo)] }) };
+      }
+      throw new Error(`Unexpected fetch: ${u}`);
+    };
+
+    const result = await resolveListAvailability(LIST_URI);
+    assert.deepEqual(result.map((r) => r.did), ['did:plc:alice']);
   });
 
   it('(g) a member whose fetch times out (AbortError) is skipped, not fatal to the whole call', async () => {
@@ -276,6 +386,11 @@ describe('resolveListAvailability', () => {
         return { ok: true, json: async () => pdsDoc('https://pds.fast.example') };
       }
       if (u.includes('com.atproto.repo.listRecords')) {
+        // The owner (LIST_URI's authority) is now always queried (#110); this
+        // test is about skipping a hung member, so they publish nothing.
+        if (new URL(u).searchParams.get('repo') === 'did:plc:creator') {
+          return { ok: true, json: async () => ({ records: [] }) };
+        }
         return { ok: true, json: async () => ({ records: [availabilityRecord('did:plc:fast')] }) };
       }
       throw new Error(`Unexpected fetch: ${u}`);
