@@ -4,11 +4,19 @@ import { getClient } from './auth.js';
 import { validateResponseCreate } from '../middleware/validate.js';
 import { incrementResponseCount } from '../lib/pollIndex.js';
 import { sendEmail } from '../lib/email.js';
+import {
+  isServiceConfigured, serviceCreateRecord, servicePutRecord, serviceDeleteRecord, serviceGetRecord,
+} from '../lib/serviceSession.js';
 
 const router = Router();
 
 const RESPONSE_COLLECTION = 'chat.avails.scheduling.response';
 const POLL_COLLECTION = 'chat.avails.scheduling.poll';
+
+// Legacy-path 503: only reachable when the service identity is unconfigured (or
+// when editing a pre-migration record that lives in the creator's repo) AND the
+// creator is signed out. The service path never 503s.
+const UNAVAILABLE_MSG = 'This poll is temporarily unavailable. The poll creator needs to sign back in at avails.zhgnv.com for responses to work. Please try again in a few minutes.';
 
 // Fetch with timeout — prevents hanging on slow PDS responses
 function fetchWithTimeout(url, options = {}, timeoutMs = 10000) {
@@ -66,19 +74,13 @@ async function xrpcCall(oauthSession, method, body) {
   return response.json();
 }
 
-// POST /api/polls/:did/:rkey/responses — submit availability response
-// Anonymous participants write to the CREATOR's PDS using the creator's stored session.
+// POST /api/polls/:did/:rkey/responses — submit availability response.
+// New responses are written to avails' own service repo (#42) so they no longer
+// depend on the creator being signed in. When the service identity is
+// unconfigured, fall back to the legacy creator-PDS write.
 router.post('/:did/:rkey/responses', validateResponseCreate, async (req, res, next) => {
   try {
     const { did, rkey } = req.params;
-
-    // Find creator's OAuth session — required for writing to their PDS
-    const creatorSession = await findOauthSessionByDid(did);
-    if (!creatorSession) {
-      return res.status(503).json({
-        error: 'This poll is temporarily unavailable. The poll creator needs to sign back in at avails.zhgnv.com for responses to work. Please try again in a few minutes.',
-      });
-    }
 
     const pollUri = `at://${did}/${POLL_COLLECTION}/${rkey}`;
     const record = {
@@ -88,15 +90,20 @@ router.post('/:did/:rkey/responses', validateResponseCreate, async (req, res, ne
       createdAt: new Date().toISOString(),
     };
 
-    const createResult = await xrpcCall(creatorSession, 'com.atproto.repo.createRecord', {
-      repo: did,
-      collection: RESPONSE_COLLECTION,
-      record,
-    });
-
-    // Extract the rkey of the newly created response record
-    // AT URI format: at://did/collection/rkey
-    const createdResponseRkey = createResult?.uri?.split('/').pop() || null;
+    let createdResponseRkey = null;
+    if (isServiceConfigured()) {
+      const createResult = await serviceCreateRecord(RESPONSE_COLLECTION, record);
+      createdResponseRkey = createResult?.uri?.split('/').pop() || null;
+    } else {
+      const creatorSession = await findOauthSessionByDid(did);
+      if (!creatorSession) return res.status(503).json({ error: UNAVAILABLE_MSG });
+      const createResult = await xrpcCall(creatorSession, 'com.atproto.repo.createRecord', {
+        repo: did,
+        collection: RESPONSE_COLLECTION,
+        record,
+      });
+      createdResponseRkey = createResult?.uri?.split('/').pop() || null;
+    }
 
     // Increment response count in index and check notifyAfter threshold
     const newCount = incrementResponseCount(did, rkey);
@@ -129,17 +136,13 @@ router.post('/:did/:rkey/responses', validateResponseCreate, async (req, res, ne
   }
 });
 
-// PUT /api/polls/:did/:rkey/responses/:responseRkey — update an existing response
+// PUT /api/polls/:did/:rkey/responses/:responseRkey — update an existing response.
+// A record created since #42 lives in the service repo; a pre-migration record
+// lives in the creator's repo. Disambiguate with a service getRecord, then route
+// the write to the repo that actually holds it.
 router.put('/:did/:rkey/responses/:responseRkey', validateResponseCreate, async (req, res, next) => {
   try {
     const { did, rkey, responseRkey } = req.params;
-
-    const creatorSession = await findOauthSessionByDid(did);
-    if (!creatorSession) {
-      return res.status(503).json({
-        error: 'This poll is temporarily unavailable. The poll creator needs to sign back in at avails.zhgnv.com for responses to work. Please try again in a few minutes.',
-      });
-    }
 
     const pollUri = `at://${did}/${POLL_COLLECTION}/${rkey}`;
     const record = {
@@ -149,12 +152,18 @@ router.put('/:did/:rkey/responses/:responseRkey', validateResponseCreate, async 
       createdAt: new Date().toISOString(),
     };
 
-    await xrpcCall(creatorSession, 'com.atproto.repo.putRecord', {
-      repo: did,
-      collection: RESPONSE_COLLECTION,
-      rkey: responseRkey,
-      record,
-    });
+    if (isServiceConfigured() && await serviceGetRecord(RESPONSE_COLLECTION, responseRkey)) {
+      await servicePutRecord(RESPONSE_COLLECTION, responseRkey, record);
+    } else {
+      const creatorSession = await findOauthSessionByDid(did);
+      if (!creatorSession) return res.status(503).json({ error: UNAVAILABLE_MSG });
+      await xrpcCall(creatorSession, 'com.atproto.repo.putRecord', {
+        repo: did,
+        collection: RESPONSE_COLLECTION,
+        rkey: responseRkey,
+        record,
+      });
+    }
 
     res.json({ ok: true });
   } catch (err) {
@@ -162,32 +171,33 @@ router.put('/:did/:rkey/responses/:responseRkey', validateResponseCreate, async 
   }
 });
 
-// DELETE /:did/:rkey/responses/:responseRkey — delete a response
+// DELETE /:did/:rkey/responses/:responseRkey — delete a response. Same service-vs
+// -legacy disambiguation as PUT.
 router.delete('/:did/:rkey/responses/:responseRkey', async (req, res, next) => {
   try {
     const { did, responseRkey } = req.params;
 
-    const creatorSession = await findOauthSessionByDid(did);
-    if (!creatorSession) {
-      return res.status(503).json({ error: 'This poll is temporarily unavailable. The poll creator needs to sign back in at avails.zhgnv.com for responses to work. Please try again in a few minutes.' });
-    }
-
-    const deleteResult = await creatorSession.fetchHandler(
-      `/xrpc/com.atproto.repo.deleteRecord`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          repo: did,
-          collection: RESPONSE_COLLECTION,
-          rkey: responseRkey,
-        }),
+    if (isServiceConfigured() && await serviceGetRecord(RESPONSE_COLLECTION, responseRkey)) {
+      await serviceDeleteRecord(RESPONSE_COLLECTION, responseRkey);
+    } else {
+      const creatorSession = await findOauthSessionByDid(did);
+      if (!creatorSession) return res.status(503).json({ error: UNAVAILABLE_MSG });
+      const deleteResult = await creatorSession.fetchHandler(
+        `/xrpc/com.atproto.repo.deleteRecord`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            repo: did,
+            collection: RESPONSE_COLLECTION,
+            rkey: responseRkey,
+          }),
+        }
+      );
+      if (!deleteResult.ok) {
+        const text = await deleteResult.text();
+        throw new Error(`Failed to delete response: ${deleteResult.status} ${text}`);
       }
-    );
-
-    if (!deleteResult.ok) {
-      const text = await deleteResult.text();
-      throw new Error(`Failed to delete response: ${deleteResult.status} ${text}`);
     }
 
     res.json({ ok: true });

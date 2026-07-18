@@ -6,7 +6,7 @@
  * mocking the session store and PDS layer to isolate route logic.
  */
 
-import { describe, it, beforeEach, mock } from 'node:test';
+import { describe, it, beforeEach, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import express from 'express';
 
@@ -42,6 +42,21 @@ mock.module('../src/lib/pollIndex.js', {
 mock.module('../src/lib/email.js', {
   namedExports: {
     sendEmail: async () => {},
+  },
+});
+
+// Mock the service identity. isServiceConfigured is driven by an env flag so the
+// legacy describes (flag unset) exercise the creator-session path unchanged, and
+// the service describe (flag 'on') exercises the service-repo path.
+let serviceCalls = [];
+let serviceHas = new Set(); // rkeys the service repo "contains" (getRecord disambiguation)
+mock.module('../src/lib/serviceSession.js', {
+  namedExports: {
+    isServiceConfigured: () => process.env.AVAILS_SERVICE_IDENTIFIER === 'on',
+    serviceCreateRecord: async (collection, record) => { serviceCalls.push({ op: 'create', collection, record }); return { uri: 'at://did:plc:svc/chat.avails.scheduling.response/svc123' }; },
+    servicePutRecord: async (collection, rkey, record) => { serviceCalls.push({ op: 'put', rkey, record }); },
+    serviceDeleteRecord: async (collection, rkey) => { serviceCalls.push({ op: 'delete', rkey }); },
+    serviceGetRecord: async (collection, rkey) => (serviceHas.has(rkey) ? { uri: `at://did:plc:svc/c/${rkey}`, value: {} } : null),
   },
 });
 
@@ -237,7 +252,8 @@ describe('PUT /api/polls/:did/:rkey/responses/:responseRkey', () => {
     assert.equal(lastXrpcCall, null);
   });
 
-  it('returns 503 when creator session is missing', async () => {
+  it('returns 503 when creator session is missing (legacy path only)', async () => {
+    delete process.env.AVAILS_SERVICE_IDENTIFIER; // legacy path
     mockSessions.clear(); // No sessions at all
     const app = createApp();
     const res = await request(app, 'PUT', path, {
@@ -246,5 +262,61 @@ describe('PUT /api/polls/:did/:rkey/responses/:responseRkey', () => {
     });
     assert.equal(res.status, 503);
     assert.ok(res.body.error.includes('unavailable'));
+  });
+});
+
+describe('service-configured write path', () => {
+  const did = 'did:plc:testcreator';
+  const rkey = 'poll123';
+  const path = `/api/polls/${did}/${rkey}/responses`;
+
+  beforeEach(() => {
+    process.env.AVAILS_SERVICE_IDENTIFIER = 'on';
+    mockSessions.clear();
+    lastXrpcCall = null;
+    serviceCalls = [];
+    serviceHas = new Set();
+  });
+  afterEach(() => { delete process.env.AVAILS_SERVICE_IDENTIFIER; });
+
+  it('POST writes to the service repo, not the creator session, and never 503s when creator is signed out', async () => {
+    // creator NOT signed in (mockSessions cleared) — legacy path would 503 here
+    const app = createApp();
+    const res = await request(app, 'POST', path, { name: 'Bea', slots: ['2026-07-21T09:00'] });
+    assert.equal(res.status, 201);
+    assert.equal(serviceCalls.length, 1);
+    assert.equal(serviceCalls[0].op, 'create');
+    assert.equal(serviceCalls[0].record.name, 'Bea');
+    assert.equal(serviceCalls[0].record.pollUri.includes(rkey), true);
+    assert.equal(res.body.responseRkey, 'svc123');
+    assert.equal(lastXrpcCall, null); // creator session NOT used
+  });
+
+  it('PUT of a service-repo record uses the service session', async () => {
+    serviceHas.add('resp456');
+    const app = createApp();
+    const res = await request(app, 'PUT', `/api/polls/${did}/${rkey}/responses/resp456`, { name: 'Bea', slots: ['2026-07-21T09:00'] });
+    assert.equal(res.status, 200);
+    assert.equal(serviceCalls.at(-1).op, 'put');
+    assert.equal(serviceCalls.at(-1).rkey, 'resp456');
+  });
+
+  it('PUT of a legacy (creator-repo) record falls back to the creator session', async () => {
+    // serviceHas empty → serviceGetRecord returns null → legacy path
+    mockSessions.set('creator-session', { did, oauthSession: { fetchHandler: mockFetchHandler } });
+    const app = createApp();
+    const res = await request(app, 'PUT', `/api/polls/${did}/${rkey}/responses/legacyRK`, { name: 'Bea', slots: ['2026-07-21T09:00'] });
+    assert.equal(res.status, 200);
+    assert.equal(serviceCalls.filter((c) => c.op === 'put').length, 0); // service put NOT used
+    assert.ok(lastXrpcCall); // creator session WAS used
+  });
+
+  it('DELETE of a service-repo record uses the service session', async () => {
+    serviceHas.add('resp456');
+    const app = createApp();
+    const res = await request(app, 'DELETE', `/api/polls/${did}/${rkey}/responses/resp456`);
+    assert.equal(res.status, 200);
+    assert.equal(serviceCalls.at(-1).op, 'delete');
+    assert.equal(serviceCalls.at(-1).rkey, 'resp456');
   });
 });
