@@ -36,7 +36,7 @@ The **client has no test runner** — `cd client && npm run build` is the only c
 
 - **Every write endpoint MUST have validation middleware.** A missing middleware on the PUT response route caused silent data corruption (2026-04-07). Routes use `req.validatedBody` (not `req.body`).
 - **Session restore must happen after `app.listen()`.** The OAuth client fetches `client-metadata.json` from itself during restore — starting before listening causes a deadlock.
-- **Anonymous responses require creator's session.** If the creator's session expires or is lost, participants can't submit.
+- **Responses write to avails' own service repo (`AVAILS_SERVICE_*`); the creator's session is not on the response path** (#42). When the service identity is unconfigured, the legacy creator-session path applies (and can 503 if the creator is signed out). New response records live in avails' repo; reads merge creator (legacy) + service repos. See `docs/architecture.md` → Service identity.
 - **Never pass inline `new Set()` / `{}` as React prop defaults.** Use module-level constants. AvailGrid is sensitive to unstable references — causes render loops.
 - **Never place hooks after early returns.** React error #310 ("Rendered more hooks than during the previous render").
 - **`AvailGrid` and `SchedulingGrid` duplicate the grid** (layout, pagination, drag-select, and keyboard/ARIA) — they render the same data and must stay in sync; a change to one almost always belongs in both. Both are keyboard-operable (roving `tabIndex` + arrow/Space) and viewport-aware; preserve that. The availability heatmap's redundant non-color cue is interaction-based (tap-to-reveal + aria-label count), not an in-cell number — see DESIGN.md.
@@ -66,6 +66,9 @@ Railway (single service, Nixpacks builder). Custom domain: avails.zhgnv.com.
 - `ATPROTO_PRIVATE_KEY` — base64-encoded ES256 JWK (Railway mangles raw JSON)
 - `SESSION_SECRET` — cookie signing
 - `MCP_JWT_SECRET` — optional, JWT signing for MCP tokens (falls back to SESSION_SECRET)
+- `AVAILS_SERVICE_IDENTIFIER` — avails' own ATProto account (handle or DID) for the service-repo response store (#42). Setting this + `AVAILS_SERVICE_APP_PASSWORD` **activates** the service path; unset = legacy creator-session writes.
+- `AVAILS_SERVICE_APP_PASSWORD` — app password for that account (not the login password)
+- `AVAILS_SERVICE_PDS` — optional; the account's PDS host for login (default `https://bsky.social`)
 - `TELEGRAM_BOT_TOKEN` — Avails bot token for share_poll
 - `RESEND_API_KEY` — email service
 - `CLIENT_URL` — deployed URL (for redirects and email links)
