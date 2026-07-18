@@ -11,7 +11,7 @@ Read this file when working on avails internals. Not loaded every session — re
 
 There is no database. ATProto PDS is the data store:
 - **Polls**: `chat.avails.scheduling.poll` records in creator's PDS
-- **Responses**: `chat.avails.scheduling.response` records in creator's PDS (anonymous responses written using creator's stored OAuth session)
+- **Responses**: `chat.avails.scheduling.response` records. New responses are written to avails' **own service repo** (see [Service identity](#service-identity)); pre-#42 responses remain in the creator's PDS. Reads merge both. When the service identity is unconfigured, writes fall back to the creator's PDS via the creator's OAuth session (the legacy behavior).
 - **Standing availability**: `chat.avails.scheduling.availability` records in the **participant's own PDS** — the one record type that isn't creator-hosted. See [Standing availability](#standing-availability) below.
 - **Poll index**: Map (`lib/pollIndex.js`) for community-based discovery. Persisted to Railway volume via `persistence.js` (auto-save every 30s, restored on startup).
 - **Sessions**: persisted to Railway volume as JSON (`/data/oauth-sessions.json`, `/data/app-sessions.json`). Restored on startup AFTER server starts listening (critical — session restore fetches client-metadata from itself).
@@ -21,8 +21,18 @@ There is no database. ATProto PDS is the data store:
 1. User enters Bluesky handle → server redirects to ATProto auth server
 2. Auth server redirects back to `/api/auth/callback`
 3. Server stores OAuth session (keyed by DID) + app session (keyed by cookie)
-4. Creator's OAuth session is used for all PDS writes (including anonymous participant responses)
+4. Creator's OAuth session is used for the creator's own PDS writes (poll create/finalize/unschedule). Participant **responses** no longer ride the creator's session — they go to avails' service repo (see [Service identity](#service-identity)); only the legacy fallback path still uses the creator's session for responses.
 5. Private key for `private_key_jwt` auth stored as base64-encoded JWK in `ATPROTO_PRIVATE_KEY` env var
+
+## Service identity
+
+avails has its own ATProto account (a `did:plc`, app-password auth — **not** OAuth; #77 investigated did:web and deferred it). `lib/serviceSession.js` logs in via `com.atproto.server.createSession` and refreshes on expiry, exposing authenticated `serviceCreateRecord`/`servicePutRecord`/`serviceDeleteRecord`/`serviceGetRecord`.
+
+- **Why:** a poll response used to be written with the *creator's* OAuth session into the creator's PDS, so a signed-out creator meant participants got a 503 (#72, #117). Responses now write to avails' own repo, decoupled from any user session.
+- **Feature-flagged (`isServiceConfigured()`):** true iff `AVAILS_SERVICE_IDENTIFIER` + `AVAILS_SERVICE_APP_PASSWORD` are set. Unset → every response route falls back to the legacy creator-session path unchanged, so the code deploys as a no-op until the env vars activate it.
+- **Reads** (`lib/responseReads.js`) merge two public `listRecords` — creator repo (legacy) + service repo (new), paged and filtered by `pollUri`, each tagged `home: 'creator' | 'service'`. Public/unauthenticated; a read never depends on the service *login*, only on resolving the service DID.
+- **Edit/delete** disambiguate with a service `getRecord`: a record present in the service repo is edited there; otherwise the creator-session legacy path handles it (pre-migration records only).
+- **Scope note (Stage 1):** Stage 2 — authenticated respondents writing to *their own* PDS — and private-scope responses are out of scope (avails#42).
 
 ## Server infrastructure
 
@@ -37,7 +47,7 @@ There is no database. ATProto PDS is the data store:
 ## Key gotchas (full context)
 
 - **Session restore must happen after `app.listen()`** — the OAuth client fetches `client-metadata.json` from itself during restore. Starting restore before listening causes a deadlock.
-- **Anonymous responses require creator's session** — if the creator's session expires or is lost, participants can't submit. Sessions persist to Railway volume to survive deploys.
+- **Responses write to avails' service repo, not the creator's session** (#42) — see [Service identity](#service-identity). The creator's session is off the response path when the service identity is configured; the legacy fallback (creator-session write, which can 503 if the creator is signed out) applies only when it isn't.
 - **Old polls use different field names** — `earliestTime`/`latestTime`/`slotDuration` vs `timeRange`/`slotMinutes`. PollView has fallback handling for both formats.
 - **React render loops and hooks** — AvailGrid is sensitive to unstable object references in props. Never pass `new Set()` or `{}` inline as prop defaults. Use module-level constants (`const EMPTY_SET = new Set()`) and assign fallbacks in the function body, not destructuring. The SchedulingGrid was created as a separate component (instead of adding props to AvailGrid) specifically to avoid this. Also: never place hooks (`useMemo`, `useEffect`, etc.) after early returns — React error #310 ("Rendered more hooks than during the previous render").
 - **Document-level event handlers and stale closures** — AvailGrid attaches `pointerup`/`pointermove` to `document`. These handlers must use refs (not state) to read mutable values, or the `useCallback` dependency array causes constant listener teardown/re-add. Pattern: `activeSlotRef` mirrors `activeSlot` state; handler reads ref, state is only for rendering.
@@ -201,7 +211,7 @@ Expect a `Failed to restore OAuth session … invalid_client_metadata` warning o
 
 ## Known architectural debts
 
-- **Response storage coupled to creator session** (#42) — responses written to creator's PDS, sessions persist to volume but architecture limits data ownership and scaling.
+- ~~**Response storage coupled to creator session** (#42)~~ — RESOLVED (Stage 1) by the service identity: new responses write to avails' own repo, reads merge creator+service (see [Service identity](#service-identity)). Remaining: Stage 2 (authenticated respondents own their responses in their own PDS) and private-scope responses.
 - **OAuth scope upgrade doesn't re-prompt** (#49) — ATProto OAuth caches grants; adding new scopes (like the OpenMeet RPC scope) doesn't trigger re-consent. Use admin clear-sessions endpoint + wait for bsky.social propagation (up to 15 min).
 - **No OG metadata** (#46) — poll links show no preview in Telegram/Slack/social media.
 - **ATProto DID URLs** (#45) — poll URLs contain long DIDs; slug-based URLs planned.

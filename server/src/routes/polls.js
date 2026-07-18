@@ -5,12 +5,11 @@ import { indexPoll, updatePollStatus, removePoll, listByCommunity } from '../lib
 import { generateIcs } from '../lib/ical.js';
 import { sendEmail } from '../lib/email.js';
 import { deleteOpenMeetEvent } from './openmeet.js';
-import { sessions } from '../lib/sessionStore.js';
+import { fetchPollResponses } from '../lib/responseReads.js';
 
 const router = Router();
 
 const POLL_COLLECTION = 'chat.avails.scheduling.poll';
-const RESPONSE_COLLECTION = 'chat.avails.scheduling.response';
 
 // Fetch with timeout — prevents hanging on slow PDS responses
 function fetchWithTimeout(url, options = {}, timeoutMs = 10000) {
@@ -132,17 +131,8 @@ router.get('/:did/:rkey', async (req, res, next) => {
     }
     const poll = await pollRes.json();
 
-    // Fetch response records stored in the creator's PDS
-    const responsesUrl = `${pds}/xrpc/com.atproto.repo.listRecords?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(RESPONSE_COLLECTION)}&limit=100`;
-    const responsesRes = await fetchWithTimeout(responsesUrl);
-    let responses = [];
-    if (responsesRes.ok) {
-      const data = await responsesRes.json();
-      // Filter to only responses belonging to this poll, unwrap value
-      responses = (data.records || [])
-        .filter((r) => r.value?.pollUri && r.value.pollUri.includes(`/${rkey}`))
-        .map((r) => ({ ...r.value, uri: r.uri, cid: r.cid }));
-    }
+    // Response records: creator repo (legacy) + service repo (new), merged (#42).
+    const responses = await fetchPollResponses(did, rkey);
 
     res.json({ poll: poll.value, uri: poll.uri, cid: poll.cid, responses });
   } catch (err) {
@@ -243,14 +233,9 @@ router.put('/:did/:rkey/finalize', requireAuth, async (req, res, next) => {
 
     updatePollStatus(did, rkey, 'finalized');
 
-    // Fetch responses for participant names and emails
+    // Fetch responses for participant names and emails (creator + service, #42)
     const pollUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/poll/${did}/${rkey}`;
-    const responsesUrl = `${pds}/xrpc/com.atproto.repo.listRecords?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(RESPONSE_COLLECTION)}&limit=100`;
-    const responsesRes = await fetchWithTimeout(responsesUrl);
-    const responseData = responsesRes.ok ? await responsesRes.json() : { records: [] };
-    const pollResponses = (responseData.records || [])
-      .filter((r) => r.value?.pollUri && r.value.pollUri.includes(`/${rkey}`))
-      .map((r) => r.value);
+    const pollResponses = await fetchPollResponses(did, rkey);
 
     const participants = pollResponses.filter((r) => r.name).map((r) => r.name);
     const icsContent = generateIcs({
@@ -341,12 +326,7 @@ router.delete('/:did/:rkey/finalize', requireAuth, async (req, res, next) => {
 
     // Best-effort: send cancellation emails with METHOD:CANCEL .ics
     const pollUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/poll/${did}/${rkey}`;
-    const responsesUrl = `${pds}/xrpc/com.atproto.repo.listRecords?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(RESPONSE_COLLECTION)}&limit=100`;
-    const responsesRes = await fetchWithTimeout(responsesUrl);
-    const responseData = responsesRes.ok ? await responsesRes.json() : { records: [] };
-    const pollResponses = (responseData.records || [])
-      .filter((r) => r.value?.pollUri && r.value.pollUri.includes(`/${rkey}`))
-      .map((r) => r.value);
+    const pollResponses = await fetchPollResponses(did, rkey);
 
     const participants = pollResponses.filter((r) => r.name).map((r) => r.name);
     const emailList = [...new Set(pollResponses.filter((r) => r.email).map((r) => r.email))];
