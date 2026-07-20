@@ -12,6 +12,7 @@ import availabilityRoutes from './routes/availability.js';
 import communityRoutes from './routes/communities.js';
 import openmeetRoutes from './routes/openmeet.js';
 import { startPersistence, markDirty, saveNow } from './lib/persistence.js';
+import { backfillCommunityFeedPublished } from './lib/pollIndex.js';
 import { restoreOAuthSessions, sessions } from './lib/sessionStore.js';
 import { spaFallback } from './middleware/spaFallback.js';
 import mcpOauthRoutes from './mcp/oauth.js';
@@ -180,6 +181,12 @@ process.on('unhandledRejection', (err) => {
 
 async function start() {
   await startPersistence();
+  // One-time grandfather of open polls into the community feed (#5 sub-project F),
+  // after the index is restored and before serving. Idempotent across restarts.
+  const grandfathered = backfillCommunityFeedPublished();
+  if (grandfathered > 0) {
+    console.log(`Community feed: grandfathered ${grandfathered} open poll(s) as published`);
+  }
   app.listen(PORT, async () => {
     console.log(`Avails server listening on port ${PORT}`);
     try {

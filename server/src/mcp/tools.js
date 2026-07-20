@@ -1,4 +1,4 @@
-import { indexPoll, updatePollStatus, listByCommunity } from '../lib/pollIndex.js';
+import { indexPoll, updatePollStatus, updatePollPublished, listByCommunity } from '../lib/pollIndex.js';
 import { generateIcs } from '../lib/ical.js';
 import { sendEmail } from '../lib/email.js';
 import { getOpenMeetToken } from '../routes/openmeet.js';
@@ -309,6 +309,20 @@ const TOOL_DEFINITIONS = [
           type: 'string',
           description: 'Record key of the poll',
         },
+      },
+      required: ['did', 'rkey'],
+    },
+  },
+  {
+    name: 'publish_to_community_feed',
+    description:
+      "Publish (or unpublish) a poll to its community's dashboard feed in My Community. Creator-only; requires membership of the poll's community. Pass published:false to unpublish.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        did: { type: 'string', description: 'DID of the poll creator' },
+        rkey: { type: 'string', description: 'Record key of the poll' },
+        published: { type: 'boolean', description: 'false to unpublish; defaults to true (publish)' },
       },
       required: ['did', 'rkey'],
     },
@@ -735,9 +749,10 @@ async function sharePoll({ did, rkey, community, topic, message }, authContext) 
 }
 
 async function publishToOpenmeet({ did, rkey }, authContext) {
-  const auth = requireAuth(authContext);
+  if (!authContext) throw new Error('AUTH_REQUIRED');
+  if (!authContext.oauthSession) throw new Error('AUTH_REQUIRED');
+  const auth = authContext;
   if (auth.did !== did) throw new Error('Only the poll creator can publish to OpenMeet');
-  if (!auth.oauthSession) throw new Error('OAuth session not found. Please re-authenticate.');
 
   // Fetch poll from PDS
   const pds = await resolvePds(did);
@@ -840,6 +855,52 @@ async function publishToOpenmeet({ did, rkey }, authContext) {
     startDate: poll.finalTime,
     endDate,
   }, null, 2);
+}
+
+// Publish (published !== false) or unpublish (published === false) a poll to
+// its community's dashboard feed in My Community (#5 sub-project F). Creator-only,
+// gated on the poll's community membership (the same assertMembership gate as
+// share_poll, fails closed). The PDS record's communityFeedPublishedAt is the
+// source of truth (openmeetEventSlug convention: presence = published); the
+// in-memory index mirror is what the public list endpoint filters on, so it is
+// updated only AFTER the authoritative record write succeeds. Shared by the MCP
+// tool and the HTTP route (POST /api/polls/:did/:rkey/publish-community).
+export async function publishToCommunityFeed({ did, rkey, published }, authContext) {
+  if (!authContext) throw new Error('AUTH_REQUIRED');
+  if (!authContext.oauthSession) throw new Error('AUTH_REQUIRED');
+  if (authContext.did !== did) {
+    throw new Error('Only the poll creator can publish it to the community feed');
+  }
+
+  const pds = await resolvePds(did);
+  const getRes = await fetch(
+    `${pds}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(POLL_COLLECTION)}&rkey=${encodeURIComponent(rkey)}`
+  );
+  if (!getRes.ok) throw new Error(`Poll not found: ${getRes.status}`);
+  const existing = await getRes.json();
+  const community = existing.value?.community;
+  if (!community) {
+    throw new Error('This poll has no community set, so it cannot be published to a community feed.');
+  }
+
+  await assertMembership(authContext.did, community);
+
+  const publishedAt = published === false ? null : new Date().toISOString();
+  const updatedRecord = { ...existing.value };
+  if (publishedAt) updatedRecord.communityFeedPublishedAt = publishedAt;
+  else delete updatedRecord.communityFeedPublishedAt;
+
+  await xrpcCall(authContext.oauthSession, 'com.atproto.repo.putRecord', {
+    repo: did,
+    collection: POLL_COLLECTION,
+    rkey,
+    record: updatedRecord,
+    swapRecord: existing.cid,
+  });
+
+  updatePollPublished(did, rkey, publishedAt);
+
+  return JSON.stringify({ ok: true, published: publishedAt !== null, publishedAt, url: pollUrl(did, rkey) });
 }
 
 async function listCommunities() {
@@ -1075,6 +1136,8 @@ export async function callTool(name, args, authContext) {
       return sharePoll(args, authContext);
     case 'publish_to_openmeet':
       return publishToOpenmeet(args, authContext);
+    case 'publish_to_community_feed':
+      return publishToCommunityFeed(args, authContext);
     case 'list_communities':
       return listCommunities();
     case 'schedule_call':
