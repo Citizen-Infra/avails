@@ -6,6 +6,7 @@ import { generateIcs } from '../lib/ical.js';
 import { sendEmail } from '../lib/email.js';
 import { deleteOpenMeetEvent } from './openmeet.js';
 import { fetchPollResponses } from '../lib/responseReads.js';
+import { publishToCommunityFeed } from '../mcp/tools.js';
 
 const router = Router();
 
@@ -77,13 +78,15 @@ router.post('/', requireAuth, validatePollCreate, async (req, res, next) => {
   }
 });
 
-// GET / — list polls for a community from the in-memory index
+// GET / — list polls for a community from the in-memory index.
+// published=1 restricts to polls published to the community feed (#5 sub-project F);
+// omitting the param keeps the original behaviour (all matching polls).
 router.get('/', (req, res) => {
-  const { community, status } = req.query;
+  const { community, status, published } = req.query;
   if (!community) {
     return res.status(400).json({ error: 'community query param required' });
   }
-  const polls = listByCommunity(community, status || 'open');
+  const polls = listByCommunity(community, status || 'open', { publishedOnly: published === '1' });
   res.json({ polls });
 });
 
@@ -191,6 +194,28 @@ router.put('/:did/:rkey', requireAuth, validatePollUpdate, async (req, res, next
 
     res.json({ ok: true, poll: updatedRecord });
   } catch (err) {
+    next(err);
+  }
+});
+
+// POST /:did/:rkey/publish-community — publish/unpublish a poll to its
+// community's dashboard feed in My Community (#5 sub-project F). Creator-only,
+// membership-gated. Delegates to the shared publishToCommunityFeed (also the MCP
+// tool) so the web UI and agents run identical logic.
+router.post('/:did/:rkey/publish-community', requireAuth, async (req, res, next) => {
+  try {
+    const { did, rkey } = req.params;
+    const result = await publishToCommunityFeed(
+      { did, rkey, published: req.body?.published !== false },
+      { did: req.userDid, oauthSession: req.oauthSession }
+    );
+    res.json(JSON.parse(result));
+  } catch (err) {
+    const msg = err?.message || '';
+    if (msg === 'AUTH_REQUIRED') return res.status(401).json({ error: 'Authentication required' });
+    if (/Poll not found/i.test(msg)) return res.status(404).json({ error: 'Poll not found' });
+    if (/no community set/i.test(msg)) return res.status(400).json({ error: msg });
+    if (/creator|not a member|verify your membership/i.test(msg)) return res.status(403).json({ error: msg });
     next(err);
   }
 });
