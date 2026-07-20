@@ -85,4 +85,4 @@ Railway (single service, Nixpacks builder). Custom domain: avails.zhgnv.com.
 
 ## Reference
 
-Read when working on internals: [Architecture & gotchas](docs/architecture.md) — data model, OAuth flow, components, MCP endpoint (nine tools, including `schedule_call` — books a call from standing availability, no poll), standing availability, OpenMeet integration, known debts.
+Read when working on internals: [Architecture & gotchas](docs/architecture.md) — data model, OAuth flow, components, MCP endpoint (ten tools, including `schedule_call` — books a call from standing availability, no poll — and `publish_to_community_feed` — publish/unpublish a poll to its community's My Community feed, creator + membership gated), standing availability, OpenMeet integration, known debts.
