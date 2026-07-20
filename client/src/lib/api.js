@@ -30,6 +30,7 @@ export async function deletePoll(did, rkey) { return apiFetch(`/api/polls/${did}
 export async function deleteResponse(did, rkey, responseRkey) { return apiFetch(`/api/polls/${did}/${rkey}/responses/${responseRkey}`, { method: 'DELETE' }); }
 export async function setGoogleCalendarEvent(did, rkey, googleEventId, googleCalendarId) { return apiFetch(`/api/polls/${did}/${rkey}/google-event`, { method: 'PUT', body: JSON.stringify({ googleEventId, googleCalendarId }) }); }
 export async function publishToOpenMeet(data) { return apiFetch('/api/openmeet/publish', { method: 'POST', body: JSON.stringify(data) }); }
+export async function publishToCommunityFeed(did, rkey, published = true) { return apiFetch(`/api/polls/${did}/${rkey}/publish-community`, { method: 'POST', body: JSON.stringify({ published }) }); }
 export async function getOpenMeetAvailability(startTime, endTime) { return apiFetch('/api/openmeet/availability', { method: 'POST', body: JSON.stringify({ startTime, endTime }) }); }
 export async function createAvailability(data) { return apiFetch('/api/availability', { method: 'POST', body: JSON.stringify(data) }); }
 export async function getMyAvailability() { return apiFetch('/api/availability/mine'); }

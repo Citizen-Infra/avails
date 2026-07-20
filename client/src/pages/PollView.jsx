@@ -1,7 +1,7 @@
 import Logo from '@/components/Logo'
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useParams } from 'react-router'
-import { getPoll, getSession, submitResponse, updateResponse, finalizePoll, unfinalizePoll, deleteResponse, publishToOpenMeet, getOpenMeetAvailability, setGoogleCalendarEvent } from '@/lib/api'
+import { getPoll, getSession, submitResponse, updateResponse, finalizePoll, unfinalizePoll, deleteResponse, publishToOpenMeet, publishToCommunityFeed, getOpenMeetAvailability, setGoogleCalendarEvent } from '@/lib/api'
 import {
   isGoogleConfigured,
   requestGoogleAccess,
@@ -75,6 +75,11 @@ export default function PollView() {
   const [openmeetUrl, setOpenmeetUrl] = useState(null)
   const [publishingToOpenMeet, setPublishingToOpenMeet] = useState(false)
   const [openmeetError, setOpenmeetError] = useState(null)
+  // Community-feed publish (#5 sub-project F). feedPublished starts null and
+  // derives from the loaded record; a toggle sets it explicitly.
+  const [publishingToFeed, setPublishingToFeed] = useState(false)
+  const [feedError, setFeedError] = useState(null)
+  const [feedPublished, setFeedPublished] = useState(null)
   const [showBreakdown, setShowBreakdown] = useState(false)
 
   const [busySlots, setBusySlots] = useState(new Set())
@@ -561,6 +566,20 @@ export default function PollView() {
     }
   }
 
+  async function handlePublishToCommunityFeed(next) {
+    setPublishingToFeed(true)
+    setFeedError(null)
+    try {
+      const result = await publishToCommunityFeed(did, rkey, next)
+      setFeedPublished(result.published)
+    } catch (err) {
+      console.error('Community feed publish error:', err)
+      setFeedError(err.message || 'Failed to update the community feed')
+    } finally {
+      setPublishingToFeed(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#faf9f6] flex items-center justify-center">
@@ -595,6 +614,7 @@ export default function PollView() {
 
   const isOpen = !poll.finalTime
   const isCreator = session?.did === did
+  const feedIsPublished = feedPublished === null ? !!poll.communityFeedPublishedAt : feedPublished
   const creatorTz = poll.timezone
   const showTzNotice = needsConversion(creatorTz)
 
@@ -748,6 +768,32 @@ export default function PollView() {
                 <p className="text-sm text-red-600">{openmeetError}</p>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Creator: publish an open poll to its community's dashboard feed (#5 sub-project F) */}
+        {isOpen && isCreator && poll.community && (
+          <div className="rounded-xl border border-[#e8e5df] bg-[#faf9f6] p-5 sm:p-6">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium text-[#1a1a1a]">Community feed</p>
+                <p className="text-sm text-[#8a8580]">
+                  {feedIsPublished
+                    ? `Showing on the ${poll.community} dashboard so members find it without opening chat.`
+                    : `Publish to the ${poll.community} dashboard so members find it without opening chat.`}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePublishToCommunityFeed(!feedIsPublished)}
+                disabled={publishingToFeed}
+                className="border-[#0d9488] text-[#0d9488] hover:bg-[#ccfbf1] shrink-0"
+              >
+                {publishingToFeed ? 'Saving…' : feedIsPublished ? 'Unpublish' : 'Publish to community feed'}
+              </Button>
+            </div>
+            {feedError && <p className="text-sm text-red-600 mt-2">{feedError}</p>}
           </div>
         )}
 
