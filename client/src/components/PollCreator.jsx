@@ -63,7 +63,7 @@ export default function PollCreator() {
         timeRange: { start: earliestTime, end: latestTime },
         slotMinutes: parseInt(slotDuration, 10),
         timezone: TIMEZONE,
-        communityId: communityId || undefined,
+        community: communityId || undefined,
         notifyAfter: notifyAfter ? parseInt(notifyAfter, 10) : undefined,
         notifyEmail: notifyEmail.trim() || undefined,
         hideResponsesUntilSubmit: hideResponsesUntilSubmit || undefined,
