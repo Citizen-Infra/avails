@@ -135,7 +135,7 @@ export function validateResponseCreate(req, res, next) {
 }
 
 export function validatePollUpdate(req, res, next) {
-  const { title, description, dates, timeRange, slotMinutes, hideResponsesUntilSubmit } = req.body;
+  const { title, description, dates, timeRange, slotMinutes, hideResponsesUntilSubmit, community } = req.body;
 
   const errors = [];
 
@@ -176,6 +176,12 @@ export function validatePollUpdate(req, res, next) {
     errors.push('hideResponsesUntilSubmit must be a boolean');
   }
 
+  // community is the group a poll belongs to. Allowed on update so an existing
+  // poll can be linked/relinked (empty string unlinks). String type, same as create.
+  if (community !== undefined && typeof community !== 'string') {
+    errors.push('community must be a string');
+  }
+
   if (errors.length > 0) {
     return res.status(400).json({ error: errors.join('; ') });
   }
@@ -188,6 +194,7 @@ export function validatePollUpdate(req, res, next) {
   if (timeRange !== undefined) req.validatedBody.timeRange = timeRange;
   if (slotMinutes !== undefined) req.validatedBody.slotMinutes = slotMinutes;
   if (hideResponsesUntilSubmit !== undefined) req.validatedBody.hideResponsesUntilSubmit = hideResponsesUntilSubmit;
+  if (community !== undefined) req.validatedBody.community = community;
 
   next();
 }

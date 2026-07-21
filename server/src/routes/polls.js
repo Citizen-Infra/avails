@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import { validatePollCreate, validatePollUpdate, validateGoogleEvent } from '../middleware/validate.js';
-import { indexPoll, updatePollStatus, removePoll, listByCommunity } from '../lib/pollIndex.js';
+import { indexPoll, updatePollStatus, updatePollCommunity, removePoll, listByCommunity } from '../lib/pollIndex.js';
 import { generateIcs } from '../lib/ical.js';
 import { sendEmail } from '../lib/email.js';
 import { deleteOpenMeetEvent } from './openmeet.js';
@@ -190,6 +190,10 @@ router.put('/:did/:rkey', requireAuth, validatePollUpdate, async (req, res, next
         responseCount: 0,
         createdAt: updatedRecord.createdAt,
       });
+    } else if (req.validatedBody.community !== undefined) {
+      // Community linked/relinked without a title change — re-point the index
+      // (preserving responseCount) so the poll surfaces under the right community.
+      updatePollCommunity(did, rkey, updatedRecord.community);
     }
 
     res.json({ ok: true, poll: updatedRecord });
