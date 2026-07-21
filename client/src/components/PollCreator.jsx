@@ -206,12 +206,14 @@ export default function PollCreator() {
               {communities.length > 0 && (
                 <div className="space-y-2">
                   <Label htmlFor="community" className="text-base font-medium text-[#1a1a1a]">Community <span className="text-[#a09a94] text-xs font-normal">(optional)</span></Label>
-                  <Select value={communityId} onValueChange={setCommunityId}>
+                  {/* Radix forbids a SelectItem value="" — use a sentinel for "None"
+                      and map it back to the empty communityId the submit path expects. */}
+                  <Select value={communityId || '__none__'} onValueChange={v => setCommunityId(v === '__none__' ? '' : v)}>
                     <SelectTrigger id="community" className="border-[#e8e5df] bg-white text-[#1a1a1a]">
                       <SelectValue placeholder="None" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="__none__">None</SelectItem>
                       {communities.map(c => (
                         <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                       ))}
