@@ -263,6 +263,27 @@ describe('validatePollUpdate', () => {
     assert.ok(!nextCalled());
     assert.equal(res._status, 400);
   });
+
+  it('accepts community to link an existing poll', () => {
+    const { req, res, next, nextCalled } = createMocks({ community: 'cibc' });
+    validatePollUpdate(req, res, next);
+    assert.ok(nextCalled());
+    assert.equal(req.validatedBody.community, 'cibc');
+  });
+
+  it('accepts empty community to unlink', () => {
+    const { req, res, next, nextCalled } = createMocks({ community: '' });
+    validatePollUpdate(req, res, next);
+    assert.ok(nextCalled());
+    assert.equal(req.validatedBody.community, '');
+  });
+
+  it('rejects a non-string community', () => {
+    const { req, res, next, nextCalled } = createMocks({ community: 123 });
+    validatePollUpdate(req, res, next);
+    assert.ok(!nextCalled());
+    assert.equal(res._status, 400);
+  });
 });
 
 // ── validateGoogleEvent ─────────────────────────────────────────────────

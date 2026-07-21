@@ -34,6 +34,18 @@ export function updatePollStatus(did, rkey, status) {
   }
 }
 
+// Re-point a poll's community without disturbing its responseCount/status.
+// Called when an existing poll is linked/relinked so listByCommunity (discovery
+// + community feed) reflects the change.
+export function updatePollCommunity(did, rkey, community) {
+  const key = `${did}/${rkey}`;
+  const entry = polls.get(key);
+  if (entry) {
+    polls.set(key, { ...entry, community });
+    markDirty('poll-index');
+  }
+}
+
 // Set (ISO string) or clear (null) a poll's community-feed publish marker.
 export function updatePollPublished(did, rkey, publishedAt) {
   const key = `${did}/${rkey}`;

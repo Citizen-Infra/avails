@@ -1,7 +1,7 @@
 import Logo from '@/components/Logo'
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useParams } from 'react-router'
-import { getPoll, getSession, submitResponse, updateResponse, finalizePoll, unfinalizePoll, deleteResponse, publishToOpenMeet, publishToCommunityFeed, getOpenMeetAvailability, setGoogleCalendarEvent } from '@/lib/api'
+import { getPoll, getSession, submitResponse, updateResponse, finalizePoll, unfinalizePoll, deleteResponse, publishToOpenMeet, publishToCommunityFeed, getOpenMeetAvailability, setGoogleCalendarEvent, getCommunities, updatePoll } from '@/lib/api'
 import {
   isGoogleConfigured,
   requestGoogleAccess,
@@ -13,6 +13,7 @@ import {
 } from '@/lib/googleCalendar'
 import { convertPollTimesToViewer, convertSlotsToViewer, convertSlotsToCreator, getViewerTimezone, needsConversion } from '@/lib/timezone'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import AvailGrid from '@/components/AvailGrid'
 import SchedulingGrid from '@/components/SchedulingGrid'
 import NameEntry from '@/components/NameEntry'
@@ -80,7 +81,15 @@ export default function PollView() {
   const [publishingToFeed, setPublishingToFeed] = useState(false)
   const [feedError, setFeedError] = useState(null)
   const [feedPublished, setFeedPublished] = useState(null)
+  // Community linking (#138): the creator can set/change/clear the poll's community.
+  const [communities, setCommunities] = useState([])
+  const [savingCommunity, setSavingCommunity] = useState(false)
+  const [communityError, setCommunityError] = useState(null)
   const [showBreakdown, setShowBreakdown] = useState(false)
+
+  useEffect(() => {
+    getCommunities().then(setCommunities).catch(() => setCommunities([]))
+  }, [])
 
   const [busySlots, setBusySlots] = useState(new Set())
   const [slotEvents, setSlotEvents] = useState({})
@@ -580,6 +589,22 @@ export default function PollView() {
     }
   }
 
+  // Link / relink / unlink the poll's community. `next` is a community id, or ''
+  // to unlink. Optimistically reflects the change so the feed control appears.
+  async function handleSetCommunity(next) {
+    setSavingCommunity(true)
+    setCommunityError(null)
+    try {
+      await updatePoll(did, rkey, { community: next })
+      setPoll(prev => ({ ...prev, community: next }))
+    } catch (err) {
+      console.error('Set community error:', err)
+      setCommunityError(err.message || 'Failed to update the community')
+    } finally {
+      setSavingCommunity(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#faf9f6] flex items-center justify-center">
@@ -615,6 +640,7 @@ export default function PollView() {
   const isOpen = !poll.finalTime
   const isCreator = session?.did === did
   const feedIsPublished = feedPublished === null ? !!poll.communityFeedPublishedAt : feedPublished
+  const communityName = communities.find(c => c.id === poll.community)?.name || poll.community
   const creatorTz = poll.timezone
   const showTzNotice = needsConversion(creatorTz)
 
@@ -771,29 +797,56 @@ export default function PollView() {
           </div>
         )}
 
-        {/* Creator: publish an open poll to its community's dashboard feed (#5 sub-project F) */}
-        {isOpen && isCreator && poll.community && (
-          <div className="rounded-xl border border-[#e8e5df] bg-[#faf9f6] p-5 sm:p-6">
+        {/* Creator: link the poll to a community, then publish it to that
+            community's dashboard feed. The feed row appears once a community is
+            set (#138 selector merged with the #5 sub-project F publish control). */}
+        {isOpen && isCreator && (communities.length > 0 || poll.community) && (
+          <div className="rounded-xl border border-[#e8e5df] bg-[#faf9f6] p-5 sm:p-6 space-y-4">
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div className="space-y-0.5">
-                <p className="text-sm font-medium text-[#1a1a1a]">Community feed</p>
-                <p className="text-sm text-[#8a8580]">
-                  {feedIsPublished
-                    ? `Showing on the ${poll.community} dashboard so members find it without opening chat.`
-                    : `Publish to the ${poll.community} dashboard so members find it without opening chat.`}
-                </p>
+                <p className="text-sm font-medium text-[#1a1a1a]">Community</p>
+                <p className="text-sm text-[#8a8580]">Choose the community this poll belongs to.</p>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePublishToCommunityFeed(!feedIsPublished)}
-                disabled={publishingToFeed}
-                className="border-[#0d9488] text-[#0d9488] hover:bg-[#ccfbf1] shrink-0"
+              <Select
+                value={poll.community || '__none__'}
+                onValueChange={v => handleSetCommunity(v === '__none__' ? '' : v)}
+                disabled={savingCommunity}
               >
-                {publishingToFeed ? 'Saving…' : feedIsPublished ? 'Unpublish' : 'Publish to community feed'}
-              </Button>
+                <SelectTrigger aria-label="Community" className="w-full sm:w-[220px] border-[#e8e5df] bg-white text-[#1a1a1a]">
+                  <SelectValue placeholder="None" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {communities.map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            {feedError && <p className="text-sm text-red-600 mt-2">{feedError}</p>}
+            {communityError && <p className="text-sm text-red-600">{communityError}</p>}
+
+            {poll.community && (
+              <div className="flex items-center justify-between gap-4 flex-wrap border-t border-[#e8e5df] pt-4">
+                <div className="space-y-0.5">
+                  <p className="text-sm font-medium text-[#1a1a1a]">Community feed</p>
+                  <p className="text-sm text-[#8a8580]">
+                    {feedIsPublished
+                      ? `Showing on the ${communityName} dashboard so members find it without opening chat.`
+                      : `Publish to the ${communityName} dashboard so members find it without opening chat.`}
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePublishToCommunityFeed(!feedIsPublished)}
+                  disabled={publishingToFeed}
+                  className="border-[#0d9488] text-[#0d9488] hover:bg-[#ccfbf1] shrink-0"
+                >
+                  {publishingToFeed ? 'Saving…' : feedIsPublished ? 'Unpublish' : 'Publish to community feed'}
+                </Button>
+              </div>
+            )}
+            {feedError && <p className="text-sm text-red-600">{feedError}</p>}
           </div>
         )}
 
