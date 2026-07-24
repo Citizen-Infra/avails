@@ -1,0 +1,71 @@
+{
+  "$schema": "https://fundingjson.org/schema/v1.1.0.json",
+  "version": "v1.1.0",
+  "entity": {
+    "type": "organisation",
+    "role": "steward",
+    "name": "Citizen Infrastructure Builders Club",
+    "email": "artem.zhiganov@newspeak.house",
+    "phone": "",
+    "description": "The Citizen Infrastructure Builders Club (CIBC) is a collective that builds and stewards free, open-source tools putting communities in control of their own information and decisions - community dashboards, decentralised scheduling, fair-sortition, and deliberation infrastructure. Contributions fund hosting, API costs, and continued development across the ecosystem.",
+    "webpageUrl": {
+      "url": "https://github.com/Citizen-Infra",
+      "wellKnown": ""
+    }
+  },
+  "projects": [{
+    "guid": "avails",
+    "name": "Avails",
+    "description": "ATProto-powered group scheduling - an open-source, self-hostable alternative to LettuceMeet. Find a time that works across a group without handing your calendar or contacts to a proprietary service.",
+    "webpageUrl": {
+      "url": "https://github.com/Citizen-Infra/avails",
+      "wellKnown": ""
+    },
+    "repositoryUrl": {
+      "url": "https://github.com/Citizen-Infra/avails",
+      "wellKnown": ""
+    },
+    "licenses": ["spdx:AGPL-3.0"],
+    "tags": ["scheduling", "atproto", "civic-tech", "group-coordination", "self-hostable", "open-source"]
+  }],
+  "funding": {
+    "channels": [{
+      "guid": "opencollective",
+      "type": "payment-provider",
+      "address": "https://opencollective.com/citizen-infra",
+      "description": "Recurring or one-off contributions via Open Collective (fiscally hosted by The Social Change Nest). Transparent public ledger; funds go to hosting and development."
+    }],
+    "plans": [
+      {
+        "guid": "backer",
+        "status": "active",
+        "name": "Backer",
+        "description": "Funds hosting, API costs, and development of open-source citizen infrastructure.",
+        "amount": 5,
+        "currency": "GBP",
+        "frequency": "monthly",
+        "channels": ["opencollective"]
+      },
+      {
+        "guid": "sponsor",
+        "status": "active",
+        "name": "Sponsor",
+        "description": "Sustains the full Citizen Infra ecosystem - hosting, development, and expansion to new communities. Sponsors are listed on the GitHub org page.",
+        "amount": 100,
+        "currency": "GBP",
+        "frequency": "monthly",
+        "channels": ["opencollective"]
+      },
+      {
+        "guid": "goodwill",
+        "status": "active",
+        "name": "One-off contribution",
+        "description": "Give any amount, once.",
+        "amount": 0,
+        "currency": "GBP",
+        "frequency": "one-time",
+        "channels": ["opencollective"]
+      }
+    ]
+  }
+}
