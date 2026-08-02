@@ -4,6 +4,7 @@ import { getClient } from './auth.js';
 import { validateResponseCreate } from '../middleware/validate.js';
 import { incrementResponseCount } from '../lib/pollIndex.js';
 import { sendEmail } from '../lib/email.js';
+import { composeEmail } from '../lib/email-template.js';
 import {
   isServiceConfigured, serviceCreateRecord, servicePutRecord, serviceDeleteRecord, serviceGetRecord,
 } from '../lib/serviceSession.js';
@@ -118,10 +119,20 @@ router.post('/:did/:rkey/responses', validateResponseCreate, async (req, res, ne
         const poll = pollData.value;
         if (poll.notifyAfter && newCount >= poll.notifyAfter && poll.creatorEmail) {
           const viewUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/poll/${did}/${rkey}`;
+          const plural = (n) => (n !== 1 ? 's' : '');
           await sendEmail({
             to: poll.creatorEmail,
-            subject: `${poll.title} — ${newCount} response${newCount !== 1 ? 's' : ''} received`,
-            html: `<p>Your poll <strong>${poll.title}</strong> has reached ${newCount} response${newCount !== 1 ? 's' : ''}.</p><p><a href="${viewUrl}">View responses</a></p>`,
+            subject: `${poll.title} — ${newCount} response${plural(newCount)} received`,
+            ...composeEmail({
+              heading: `${poll.title} has ${newCount} response${plural(newCount)}`,
+              paragraphs: [
+                `You asked to hear once this poll reached ${poll.notifyAfter} response${plural(poll.notifyAfter)}. It is at ${newCount}.`,
+                'You can pick a time now, or leave the poll open and wait for more people to answer.',
+              ],
+              action: { label: 'See who is available', url: viewUrl },
+              footer:
+                'You are receiving this because you created this poll and asked to be notified at a response count.',
+            }),
           });
         }
       }
