@@ -45,7 +45,7 @@ You don't need to know or care about any of this to use avails. It works like an
 Avails has a built-in [MCP](https://modelcontextprotocol.io) endpoint — connect it to Claude Code, Cursor, or any MCP-compatible AI tool and manage polls from your terminal.
 
 ```bash
-claude mcp add -s local -t http avails https://avails.zhgnv.com/mcp
+claude mcp add -s local -t http avails https://avails.citizeninfra.org/mcp
 ```
 
 Then just ask:
