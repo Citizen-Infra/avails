@@ -108,6 +108,8 @@ A warm, paper-based neutral field with one teal accent and a two-color data sema
 ### Named Rules
 **The Single Voice Rule.** Gather Teal is the only brand hue. If a second accent color is entering a screen, it is a mistake; reach for weight, size, or a neutral instead.
 
+**The Email Link Exception (2026-08-02).** Deep Teal (`#0f766e`) is permitted **alone**, for body-size link text in transactional email only. Gather Teal on Paper Cream measures **3.56:1**, which clears AA for large text and UI but falls under the 4.5:1 required for normal text, and an email body link is normal text. Deep Teal measures **5.28:1**. This is the single carve-out from the companion-only rule above; it does not extend to the app, where teal appears at larger sizes or as a UI surface rather than as body-size text. See `server/src/lib/email-template.js`.
+
 **The No Cold Grey Rule.** Every neutral is warmed toward paper. Pure greys are forbidden on brand surfaces. (Note: the shadcn base layer in `globals.css` ships cold `oklch(... 0 0)` neutrals with chroma 0; those leak coldness into any unstyled shadcn component and must be overridden, not inherited.)
 
 ## 3. Typography

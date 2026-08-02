@@ -1,6 +1,7 @@
 import { indexPoll, updatePollStatus, updatePollPublished, listByCommunity } from '../lib/pollIndex.js';
 import { generateIcs } from '../lib/ical.js';
 import { sendEmail } from '../lib/email.js';
+import { composeEmail } from '../lib/email-template.js';
 import { getOpenMeetToken } from '../routes/openmeet.js';
 import { computeBestSlots } from './overlap.js';
 import { sendTelegramMessage } from './telegram.js';
@@ -22,18 +23,10 @@ const MIN_CALL_COVERAGE = 2;
 // Helpers (mirrors patterns from routes/polls.js)
 // ---------------------------------------------------------------------------
 
-// Minimal HTML-escape for caller-controlled strings (e.g. poll/call titles)
-// interpolated into email HTML bodies. Mirrors the escapeHtml in lib/og.js
-// (not exported from there, so duplicated locally rather than reaching into
-// an unrelated module for a 6-line helper).
-function escapeHtml(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-}
+// The local escapeHtml that used to live here is gone: composeEmail() in
+// lib/email-template.js takes plain text and escapes it itself, so no caller
+// hand-writes email HTML any more. lib/og.js keeps its own copy for OG meta
+// tags, which is a different concern.
 
 async function resolvePds(did) {
   const res = await fetch(`https://plc.directory/${encodeURIComponent(did)}`);
@@ -608,12 +601,31 @@ async function schedule({ did, rkey, finalTime, finalDuration }, authContext) {
     const uniqueEmails = [...new Set(emailAddresses)];
 
     if (uniqueEmails.length > 0) {
+      const whenStr = new Date(updatedRecord.finalTime).toLocaleString('en-US', {
+        dateStyle: 'full',
+        timeStyle: 'short',
+        timeZone: updatedRecord.timezone || 'UTC',
+      });
+      // Same message as the REST finalize path in routes/polls.js. If one
+      // changes, change both.
+      const composed = composeEmail({
+        heading: `${updatedRecord.title} is scheduled`,
+        paragraphs: [
+          `${whenStr}, for ${updatedRecord.finalDuration} minutes.`,
+          updatedRecord.description,
+          participants.length > 0 ? `Who answered the poll: ${participants.join(', ')}.` : null,
+          'A calendar invite is attached, so this should appear in your calendar automatically.',
+        ],
+        action: { label: 'View the poll', url },
+        footer:
+          'You are receiving this because you answered this poll or were added to its notification list. No action is needed.',
+      });
       const results = await Promise.allSettled(
         uniqueEmails.map((email) =>
           sendEmail({
             to: email,
             subject: `${updatedRecord.title} — time confirmed`,
-            html: `<p><strong>${updatedRecord.title}</strong> has been scheduled.</p>${updatedRecord.description ? `<p>${updatedRecord.description}</p>` : ''}<p><strong>When:</strong> ${new Date(updatedRecord.finalTime).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short', timeZone: updatedRecord.timezone || 'UTC' })} (${updatedRecord.finalDuration} min)</p>${participants.length > 0 ? `<p><strong>Participants:</strong> ${participants.join(', ')}</p>` : ''}<p><a href="${url}">View poll</a></p><p>A calendar invite is attached.</p>`,
+            ...composed,
             attachments: [
               {
                 filename: 'invite.ics',
@@ -1066,13 +1078,25 @@ async function scheduleCall({ scope, durationMinutes, window, title, voterDids }
     .filter((m) => m?.record?.value?.email);
 
   if (emailTargets.length > 0) {
-    const safeTitle = escapeHtml(title);
+    // No poll link here: schedule_call books from standing availability, so
+    // there is no poll page to send anyone to.
+    const composed = composeEmail({
+      heading: `${title} is scheduled`,
+      paragraphs: [
+        `${new Date(finalTime).toUTCString()}, for ${durationMinutes} minutes.`,
+        'This was booked against the availability you already shared, so there was no poll to answer.',
+        'A calendar invite is attached, so this should appear in your calendar automatically.',
+      ],
+      action: null,
+      footer:
+        'You are receiving this because your standing availability covered this time. No action is needed.',
+    });
     await Promise.allSettled(
       emailTargets.map((m) =>
         sendEmail({
           to: m.record.value.email,
           subject: `${title} — call scheduled`,
-          html: `<p><strong>${safeTitle}</strong> has been scheduled.</p><p><strong>When:</strong> ${new Date(finalTime).toUTCString()} (${durationMinutes} min)</p><p>A calendar invite is attached.</p>`,
+          ...composed,
           attachments: [{ filename: 'invite.ics', content: icsBase64 }],
         })
       )

@@ -4,6 +4,7 @@ import { validatePollCreate, validatePollUpdate, validateGoogleEvent } from '../
 import { indexPoll, updatePollStatus, updatePollCommunity, removePoll, listByCommunity } from '../lib/pollIndex.js';
 import { generateIcs } from '../lib/ical.js';
 import { sendEmail } from '../lib/email.js';
+import { composeEmail } from '../lib/email-template.js';
 import { deleteOpenMeetEvent } from './openmeet.js';
 import { fetchPollResponses } from '../lib/responseReads.js';
 import { publishToCommunityFeed } from '../mcp/tools.js';
@@ -282,12 +283,30 @@ router.put('/:did/:rkey/finalize', requireAuth, async (req, res, next) => {
     const clientEmails = Array.isArray(notifyEmails) ? notifyEmails : [];
     const emailList = [...new Set([...responseEmails, ...clientEmails])];
     if (emailList.length > 0) {
+      const whenStr = new Date(updatedRecord.finalTime).toLocaleString('en-US', {
+        dateStyle: 'full',
+        timeStyle: 'short',
+        timeZone: updatedRecord.timezone || 'UTC',
+      });
+      // Composed once, not per recipient: the body is identical for everyone.
+      const composed = composeEmail({
+        heading: `${updatedRecord.title} is scheduled`,
+        paragraphs: [
+          `${whenStr}, for ${updatedRecord.finalDuration} minutes.`,
+          updatedRecord.description,
+          participants.length > 0 ? `Who answered the poll: ${participants.join(', ')}.` : null,
+          'A calendar invite is attached, so this should appear in your calendar automatically.',
+        ],
+        action: { label: 'View the poll', url: pollUrl },
+        footer:
+          'You are receiving this because you answered this poll or were added to its notification list. No action is needed.',
+      });
       await Promise.allSettled(
         emailList.map((email) =>
           sendEmail({
             to: email,
             subject: `${updatedRecord.title} — time confirmed`,
-            html: `<p><strong>${updatedRecord.title}</strong> has been scheduled.</p>${updatedRecord.description ? `<p>${updatedRecord.description}</p>` : ''}<p><strong>When:</strong> ${new Date(updatedRecord.finalTime).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short', timeZone: updatedRecord.timezone || 'UTC' })} (${updatedRecord.finalDuration} min)</p>${participants.length > 0 ? `<p><strong>Participants:</strong> ${participants.join(', ')}</p>` : ''}<p><a href="${pollUrl}">View poll</a></p><p>A calendar invite is attached.</p>`,
+            ...composed,
             attachments: [
               {
                 filename: 'invite.ics',
@@ -377,12 +396,24 @@ router.delete('/:did/:rkey/finalize', requireAuth, async (req, res, next) => {
         timeZone: snapshot.timezone || 'UTC',
       });
 
+      const composed = composeEmail({
+        heading: `${snapshot.title} is no longer scheduled`,
+        paragraphs: [
+          `The time that had been picked, ${whenStr}, is cancelled.`,
+          'Your calendar should remove it on its own, since a cancellation is attached.',
+          'The poll is open again, so you can change your availability if your options have shifted.',
+        ],
+        action: { label: 'Update your availability', url: pollUrl },
+        footer:
+          'You are receiving this because you answered this poll or were added to its notification list.',
+      });
+
       await Promise.allSettled(
         emailList.map((email) =>
           sendEmail({
             to: email,
             subject: `Cancelled: ${snapshot.title}`,
-            html: `<p><strong>${snapshot.title}</strong> has been unscheduled.</p><p>The previously-scheduled time (${whenStr}) is cancelled. Your calendar should remove it automatically.</p><p><a href="${pollUrl}">View poll</a> — the poll is open again and you can update your availability.</p>`,
+            ...composed,
             attachments: [
               {
                 filename: 'cancel.ics',
