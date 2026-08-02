@@ -47,3 +47,9 @@
 - **State:** main clean; both PRs merged + deployed; `publish_to_community_feed` verified live on the MCP endpoint.
 - **Next:** none for F. Open: #130/#131.
 - **Lesson:** Verify plan tooling before writing tests — plan assumed vitest, avails uses node:test; `indexPoll(did,rkey,poll)` is 3 args not one object; persist via `markDirty` not the guessed `schedulePersist`. Architecture held; specifics were guesses.
+
+## 2026-08-02 — Email layer rebuilt; domain + MCP audit
+- **Done:** #146 shipped (PR #147): composeEmail() produces HTML+text from plain text, escaping by construction (4 of 5 sites were unescaped, not 2); sendEmail now requires `text` and validates before the no-API-key return. #145 fixed a fallback From pointing at a deleted domain. README MCP line → avails.citizeninfra.org.
+- **Decisions:** light-brand email register, not full DESIGN.md treatment (heavier HTML hurts inbox placement). Deep Teal #0f766e for body links — Gather Teal is 3.56:1 and fails AA; exception documented in DESIGN.md.
+- **State:** deployed, both hosts 200. avails.citizeninfra.org live but NOT migrated — ATPROTO_CLIENT_ID untouched, so the re-consent cost is unspent.
+- **Next:** avails hand-rolls MCP with no SDK and is pinned to protocol 2026-07-21 — decide hand-implement vs adopt the SDK (#142).
