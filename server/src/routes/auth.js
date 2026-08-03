@@ -178,8 +178,8 @@ router.get('/callback', async (req, res, next) => {
     // Check if this callback is from an MCP OAuth flow
     const callbackState = params.get('state');
     const resultState = result.state;
-    const mcpRedirect = tryMcpCallback(resultState, session, did, handle)
-      || tryMcpCallback(callbackState, session, did, handle);
+    const mcpRedirect = (await tryMcpCallback(resultState, session, did, handle))
+      || (await tryMcpCallback(callbackState, session, did, handle));
     if (mcpRedirect) {
       return res.type('html').send(`<!DOCTYPE html>
 <html>

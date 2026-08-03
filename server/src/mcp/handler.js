@@ -25,8 +25,22 @@ async function extractAuthContext(req) {
     // mcp_client_id IS the client_id in the new RFC 7591 flow
     const clientId = claims.mcp_client_id || claims.client_id;
     const mcpClient = getClient(clientId);
-    if (!mcpClient) return null;
-    if (mcpClient.did !== claims.sub) return null;
+    // Both of these used to return null silently, so a valid, unexpired token
+    // being rejected looked identical to no token at all — the request just
+    // logged "unauthenticated" and the client reported "token expired". Say
+    // which one it was; the difference is a lost registration versus a lost DID
+    // binding, and they have different causes.
+    if (!mcpClient) {
+      console.warn(`MCP auth: no client registered for ${clientId} (token is valid) — registration lost?`);
+      return null;
+    }
+    if (mcpClient.did !== claims.sub) {
+      console.warn(
+        `MCP auth: client ${clientId} is bound to ${mcpClient.did === null ? 'no DID' : mcpClient.did}` +
+        `, token claims ${claims.sub} — DID binding lost or mismatched`
+      );
+      return null;
+    }
 
     // Get the canonical OAuth session from the ATProto client
     // This ensures correct DPoP key bindings (not a stale session reference)
