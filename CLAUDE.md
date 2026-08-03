@@ -85,4 +85,4 @@ Railway (single service, Nixpacks builder). Custom domain: avails.zhgnv.com.
 
 ## Reference
 
-Read when working on internals: [Architecture & gotchas](docs/architecture.md) — data model, OAuth flow, components, MCP endpoint (ten tools, including `schedule_call` — books a call from standing availability, no poll — and `publish_to_community_feed` — publish/unpublish a poll to its community's My Community feed, creator + membership gated), standing availability, OpenMeet integration, known debts.
+Read when working on internals: [Architecture & gotchas](docs/architecture.md) — data model, OAuth flow, components, MCP endpoint (eleven tools, including `delete_poll` — creator-only, allows finalized polls because deleting is error correction, and deliberately leaves service-repo responses alone exactly as the REST delete does (#148) — and `schedule_call` — books a call from standing availability, no poll — and `publish_to_community_feed` — publish/unpublish a poll to its community's My Community feed, creator + membership gated), standing availability, OpenMeet integration, known debts.
