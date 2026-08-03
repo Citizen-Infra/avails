@@ -12,6 +12,7 @@ import availabilityRoutes from './routes/availability.js';
 import communityRoutes from './routes/communities.js';
 import openmeetRoutes from './routes/openmeet.js';
 import { corsOriginCheck } from './lib/corsOrigins.js';
+import { legacyHostRedirect } from './middleware/legacyHostRedirect.js';
 import { startPersistence, markDirty, saveNow } from './lib/persistence.js';
 import { backfillCommunityFeedPublished } from './lib/pollIndex.js';
 import { restoreOAuthSessions, sessions } from './lib/sessionStore.js';
@@ -43,6 +44,13 @@ app.use(cors({
   origin: corsOriginCheck,
   credentials: true,
 }));
+
+// Retired hosts forward here (#150). Placed AFTER cors so a preflight is still
+// answered normally — browsers do not follow redirects on OPTIONS, so putting
+// this first would break CORS for anything still calling the old host — and
+// BEFORE express.json, since a 308 never reads the body.
+app.use(legacyHostRedirect);
+
 app.use(express.json());
 app.use(cookieParser());
 
