@@ -4,7 +4,7 @@ Open-source group scheduling on the AT Protocol. An alternative to [LettuceMeet]
 
 **Live at [avails.citizeninfra.org](https://avails.citizeninfra.org)**
 
-<sub>`avails.zhgnv.com` also serves the same app and will keep working. The move to CIBC's own domain is in progress — see [#150](https://github.com/Citizen-Infra/avails/issues/150).</sub>
+<sub>`avails.zhgnv.com` permanently redirects here as of 2026-08-04 ([#150](https://github.com/Citizen-Infra/avails/issues/150)). Old links keep working; sign-in and the MCP endpoint live on the new host only.</sub>
 
 <!-- TODO: Add screenshot of the heatmap grid with multiple responses -->
 

@@ -21,7 +21,7 @@ export default function Terms() {
         <div className="space-y-6 text-base text-[#1a1a1a] leading-relaxed">
           <section className="space-y-3">
             <h2 className="text-xl font-semibold">What this is</h2>
-            <p>Avails is a free, open-source scheduling tool operated by <a href="https://github.com/Citizen-Infra" className="text-[#0d9488] underline underline-offset-2" target="_blank" rel="noopener noreferrer">Citizen Infrastructure</a>. These terms cover your use of avails.citizeninfra.org, and of avails.zhgnv.com, which serves the same service.</p>
+            <p>Avails is a free, open-source scheduling tool operated by <a href="https://github.com/Citizen-Infra" className="text-[#0d9488] underline underline-offset-2" target="_blank" rel="noopener noreferrer">Citizen Infrastructure</a>. These terms cover your use of avails.citizeninfra.org. The former address, avails.zhgnv.com, now redirects here.</p>
           </section>
 
           <section className="space-y-3">
