@@ -17,7 +17,7 @@ const POLL_COLLECTION = 'chat.avails.scheduling.poll';
 // Legacy-path 503: only reachable when the service identity is unconfigured (or
 // when editing a pre-migration record that lives in the creator's repo) AND the
 // creator is signed out. The service path never 503s.
-const UNAVAILABLE_MSG = 'This poll is temporarily unavailable. The poll creator needs to sign back in at avails.zhgnv.com for responses to work. Please try again in a few minutes.';
+const UNAVAILABLE_MSG = 'This poll is temporarily unavailable. The poll creator needs to sign back in at avails.citizeninfra.org for responses to work. Please try again in a few minutes.';
 
 // Fetch with timeout — prevents hanging on slow PDS responses
 function fetchWithTimeout(url, options = {}, timeoutMs = 10000) {

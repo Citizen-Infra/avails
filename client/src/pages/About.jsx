@@ -148,7 +148,7 @@ export default function About() {
           </p>
 
           <div className="mt-10 rounded-xl bg-[#f5f3f0] p-8">
-            <p className="text-sm font-mono text-[#6b6560] mb-4">$ claude mcp add -s local -t http avails https://avails.zhgnv.com/mcp</p>
+            <p className="text-sm font-mono text-[#6b6560] mb-4">$ claude mcp add -s local -t http avails https://avails.citizeninfra.org/mcp</p>
             <div className="grid sm:grid-cols-2 gap-6 mt-6">
               <div>
                 <p className="text-sm font-semibold text-[#0d9488] uppercase tracking-wider mb-2">

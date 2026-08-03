@@ -47,7 +47,7 @@ export async function getClient() {
     throw new Error('ATPROTO_CLIENT_ID and ATPROTO_REDIRECT_URI must be set');
   }
 
-  // Derive base URL from the client ID URL (e.g. https://avails.zhgnv.com)
+  // Derive base URL from the client ID URL (e.g. https://avails.citizeninfra.org)
   const clientUri = new URL(clientId).origin;
 
   // Load the signing key from env var. Generate one with:

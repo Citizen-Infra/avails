@@ -55,7 +55,7 @@ Always use `frontend-design` skill for visual/UI tasks. Always query shadcn MCP 
 
 ## Deployment
 
-Railway (single service, Nixpacks builder). Custom domain: avails.zhgnv.com.
+Railway (single service, Nixpacks builder). Custom domain: **avails.citizeninfra.org** (since 2026-08-04, #150). `avails.zhgnv.com` is still a Railway domain on the same service but no longer serves — `LEGACY_HOSTS` makes it 308 to the live host.
 - `railway.json` configures build command, start command, and `watchPatterns` (only code changes trigger deploys)
 - `.node-version` = 22 (required for Vite 7 + Tailwind v4)
 - Railway volume mounted at `/data` for session persistence
