@@ -71,7 +71,8 @@ Railway (single service, Nixpacks builder). Custom domain: avails.zhgnv.com.
 - `AVAILS_SERVICE_PDS` — optional; the account's PDS host for login (default `https://bsky.social`)
 - `TELEGRAM_BOT_TOKEN` — Avails bot token for share_poll
 - `RESEND_API_KEY` — email service
-- `CLIENT_URL` — deployed URL (for redirects and email links)
+- `CLIENT_URL` — deployed URL (for redirects and email links). No longer the CORS allowlist — see `CORS_ORIGINS`.
+- `CORS_ORIGINS` — optional, comma-separated extra browser origins allowed to call the API (#151). `CLIENT_URL` is always allowed, so leaving this unset preserves the previous single-origin behaviour. During a domain migration, point `CLIENT_URL` at the new host immediately (redirects and email links should move at once) and list the old host here until nothing calls it.
 - `DATA_DIR` — Railway volume mount path (`/data`)
 - `VITE_GOOGLE_CLIENT_ID` — optional, for Google Calendar integration: busy-time overlay, event create on schedule, event cancel on unschedule, writable-calendar picker (baked into client build)
 - `OPENMEET_TENANT_ID` — OpenMeet instance tenant (default: `lsdfaopkljdfs`)
