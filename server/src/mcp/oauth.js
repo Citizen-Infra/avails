@@ -6,6 +6,7 @@ import { getClient as getOAuthClient } from '../routes/auth.js';
 import { createSession } from '../lib/sessionStore.js';
 import { registerClient, getClient, bindClientDid } from './clients.js';
 import { signToken } from './jwt.js';
+import { saveNow } from '../lib/persistence.js';
 
 const router = Router();
 
@@ -260,7 +261,7 @@ button:hover{background:#0b7f74}</style>
  * @param {string} handle - the authenticated user's handle
  * @returns {string|null} redirect URL for MCP client, or null
  */
-export function tryMcpCallback(state, oauthSession, did, handle) {
+export async function tryMcpCallback(state, oauthSession, did, handle) {
   const pending = pendingAuths.get(state);
   if (!pending) return null;
 
@@ -268,6 +269,14 @@ export function tryMcpCallback(state, oauthSession, did, handle) {
 
   // Bind DID to MCP client
   bindClientDid(pending.mcpClientId, did);
+
+  // Force the write instead of waiting for the 30s persistence tick. The DID
+  // bound above is exactly what extractAuthContext compares `claims.sub`
+  // against, and both of its failure paths return null silently — so a bind
+  // lost to a restart before the next flush comes back as `did: null` and every
+  // later request from that client is treated as unauthenticated, forever, with
+  // nothing in the logs. Paying one small write per authorization closes that.
+  await saveNow();
 
   // Issue one-time auth code
   const code = crypto.randomBytes(32).toString('hex');
