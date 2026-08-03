@@ -60,3 +60,10 @@
 - **State:** main clean; #42 live + prod-verified (last DoD item met); community feature fully working end-to-end. Open: #136 (private communities in dropdown), #4 (Phase 2 trigger).
 - **Next:** Phase 2 trigger (#4) needs the service account to publish availability to the "Standing Avails Test" list (a 2nd record → `booked:true`), OR build #136.
 - **Lesson:** Mis-dated the whole session's artifacts (plan file, commits, comments) "2026-07-18", carried from the compaction summary, when it was 2026-08-02 — re-anchor on the system reminder's date after compaction (saved to memory). And: fixing the visible layer of a stacked bug reliably exposes the next one down.
+
+## 2026-08-03 — delete_poll, and why MCP tokens kept "expiring"
+- **Done:** `delete_poll` (#148 → #152), exercised in production to remove the #42 smoke poll. MCP DID-binding now persists immediately and both silent auth-rejection paths log which fired (#153). Filed #149 (`schedule_call` books calls and emails people with **no auth**), #150 (domain migration).
+- **Decisions:** `delete_poll` allows finalized polls — the REST delete does, and two delete paths disagreeing about what is deletable is worse than either rule. It deliberately leaves service-repo responses alone, matching the REST delete; whether both should sweep them is its own change.
+- **State:** main clean, deployed. #149 is the notable open item: verified from a bare curl that anyone can call `schedule_call` against a public list URI and fire ICS invites at its members.
+- **Lessons:** (1) **"Token expired" was a lie the client told about a 401.** The JWT was valid for another 22 hours; `extractAuthContext` was rejecting it through a path that returned `null` with no log. Diagnosing one occurrence took Railway deploy logs, an HTTP timeline, a JWT decode and three source files — it should have taken one log line, so both paths now warn. (2) **Asking "what credential do I need?" was the security audit.** Designing CA's caller surfaced that `schedule_call` never opted into the per-tool auth model.
+- **Next:** #149 (gate `schedule_call`), #150 (domain), and `add_to_call` from #120 once a real booking exists.
