@@ -34,13 +34,38 @@ export function signToken(secret, payload, expiresInSecs = 3600) {
 }
 
 /**
+ * True when a JWT claim matches one of the expected values. Handles the claim
+ * being an array (`aud` is allowed to be one by RFC 7519, even though signToken
+ * only ever writes a string) and rejects anything non-string or empty.
+ */
+function claimMatches(value, expected) {
+  const allowed = Array.isArray(expected) ? expected : [expected];
+  const values = Array.isArray(value) ? value : [value];
+  return values.some((v) => typeof v === 'string' && v.length > 0 && allowed.includes(v));
+}
+
+/**
  * Verify a JWT token with HS256
+ *
+ * A valid signature proves only that WE minted this token — not that we minted
+ * it for THIS service. `iss` and `aud` are written by signToken and were never
+ * read back, so a token issued under one identity was accepted under any other
+ * sharing the signing key. avails answers on two domains today (#150) with one
+ * MCP_JWT_SECRET, so that is a live condition rather than a hypothetical.
+ *
+ * Both checks are opt-in: passing neither preserves the old behaviour, which
+ * keeps this a safe drop-in for any caller that has no expectation to state.
+ *
  * @param {string} secret - The secret key for verification
  * @param {string} token - The JWT token to verify
+ * @param {object} [expect] - Optional claim expectations
+ * @param {string|string[]} [expect.issuer] - Acceptable `iss` values
+ * @param {string|string[]} [expect.audience] - Acceptable `aud` values
  * @returns {object} The decoded claims
- * @throws {Error} If token is invalid, signature doesn't match, or token is expired
+ * @throws {Error} If token is invalid, signature doesn't match, token is expired,
+ *                 or a stated issuer/audience expectation is not met
  */
-export function verifyToken(secret, token) {
+export function verifyToken(secret, token, { issuer, audience } = {}) {
   const parts = token.split('.');
 
   if (parts.length !== 3) {
@@ -73,6 +98,17 @@ export function verifyToken(secret, token) {
   const now = Math.floor(Date.now() / 1000);
   if (payload.exp < now) {
     throw new Error('Token expired');
+  }
+
+  // Distinct messages on purpose. "Token expired" and "wrong issuer" are the
+  // same symptom to a client — it re-runs OAuth — but completely different
+  // causes to whoever reads the log, and today has already shown how easily
+  // those get conflated.
+  if (issuer !== undefined && !claimMatches(payload.iss, issuer)) {
+    throw new Error(`Invalid issuer: ${JSON.stringify(payload.iss ?? null)}`);
+  }
+  if (audience !== undefined && !claimMatches(payload.aud, audience)) {
+    throw new Error(`Invalid audience: ${JSON.stringify(payload.aud ?? null)}`);
   }
 
   return payload;

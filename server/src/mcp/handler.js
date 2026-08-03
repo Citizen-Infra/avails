@@ -1,5 +1,6 @@
 // server/src/mcp/handler.js
 import { verifyToken } from './jwt.js';
+import { acceptedIssuers } from './issuers.js';
 import { secretMatches } from '../lib/bearerAuth.js';
 import { getClient } from './clients.js';
 import { getClient as getOAuthClient } from '../routes/auth.js';
@@ -34,7 +35,13 @@ async function extractAuthContext(req) {
   }
 
   try {
-    const claims = verifyToken(getJwtSecret(), token);
+    // A signature only proves we minted the token; iss/aud prove we minted it
+    // for THIS service. They were written and never read (#156), and avails
+    // answers on two domains with one signing key (#150).
+    const claims = verifyToken(getJwtSecret(), token, {
+      issuer: acceptedIssuers(),
+      audience: acceptedIssuers(),
+    });
     // mcp_client_id IS the client_id in the new RFC 7591 flow
     const clientId = claims.mcp_client_id || claims.client_id;
     const mcpClient = getClient(clientId);

@@ -6,6 +6,7 @@ import { getClient as getOAuthClient } from '../routes/auth.js';
 import { createSession } from '../lib/sessionStore.js';
 import { registerClient, getClient, bindClientDid } from './clients.js';
 import { signToken } from './jwt.js';
+import { getExternalBase } from './issuers.js';
 import { saveNow } from '../lib/persistence.js';
 
 const router = Router();
@@ -20,9 +21,6 @@ function getJwtSecret() {
   return process.env.MCP_JWT_SECRET || process.env.SESSION_SECRET;
 }
 
-function getExternalBase() {
-  return process.env.CLIENT_URL || 'http://localhost:5173';
-}
 
 // --- Well-known endpoints ---
 

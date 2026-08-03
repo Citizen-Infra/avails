@@ -65,7 +65,8 @@ Railway (single service, Nixpacks builder). Custom domain: avails.zhgnv.com.
 - `ATPROTO_REDIRECT_URI` — OAuth callback URL
 - `ATPROTO_PRIVATE_KEY` — base64-encoded ES256 JWK (Railway mangles raw JSON)
 - `SESSION_SECRET` — cookie signing
-- `MCP_JWT_SECRET` — optional, JWT signing for MCP tokens (falls back to SESSION_SECRET)
+- `MCP_JWT_SECRET` — JWT signing for MCP tokens. Falls back to `SESSION_SECRET` if unset, which is why it must be **set** in production: `SESSION_SECRET` was also an admin credential sent in a URL, so the two were entangled (#156). Changing this value invalidates every outstanding MCP token — clients see "token expired" and must re-run OAuth.
+- `MCP_ACCEPTED_ISSUERS` — optional, comma-separated. Extra `iss`/`aud` values accepted on an MCP token alongside the live `CLIENT_URL`. `verifyToken` validates both claims (#156); without this list, changing `CLIENT_URL` — which the `avails.zhgnv.com` → `avails.citizeninfra.org` migration will do (#150) — invalidates every outstanding token at once. Put the old URL here for the duration of the cutover to make it a rollover rather than a flag day. Same shape as community-admin's `CA_ACCEPTED_DIDS`.
 - `AVAILS_SERVICE_IDENTIFIER` — avails' own ATProto account (handle or DID) for the service-repo response store (#42). Setting this + `AVAILS_SERVICE_APP_PASSWORD` **activates** the service path; unset = legacy creator-session writes.
 - `AVAILS_SERVICE_APP_PASSWORD` — app password for that account (not the login password)
 - `AVAILS_SERVICE_PDS` — optional; the account's PDS host for login (default `https://bsky.social`)
