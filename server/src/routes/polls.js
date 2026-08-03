@@ -7,6 +7,7 @@ import { sendEmail } from '../lib/email.js';
 import { composeEmail } from '../lib/email-template.js';
 import { deleteOpenMeetEvent } from './openmeet.js';
 import { fetchPollResponses } from '../lib/responseReads.js';
+import { pollUrl } from '../lib/pollUrl.js';
 import { publishToCommunityFeed } from '../mcp/tools.js';
 
 const router = Router();
@@ -127,9 +128,10 @@ router.get('/:did/:rkey', async (req, res, next) => {
     const { did, rkey } = req.params;
     const pds = await resolvePds(did);
 
-    // Fetch the poll record
-    const pollUrl = `${pds}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(POLL_COLLECTION)}&rkey=${encodeURIComponent(rkey)}`;
-    const pollRes = await fetchWithTimeout(pollUrl);
+    // Fetch the poll record. Named recordUrl, not pollUrl: this is the PDS
+    // getRecord endpoint, not the poll's page on the web.
+    const recordUrl = `${pds}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(POLL_COLLECTION)}&rkey=${encodeURIComponent(rkey)}`;
+    const pollRes = await fetchWithTimeout(recordUrl);
     if (!pollRes.ok) {
       return res.status(pollRes.status).json({ error: 'Poll not found' });
     }
@@ -264,13 +266,13 @@ router.put('/:did/:rkey/finalize', requireAuth, async (req, res, next) => {
     updatePollStatus(did, rkey, 'finalized');
 
     // Fetch responses for participant names and emails (creator + service, #42)
-    const pollUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/poll/${did}/${rkey}`;
+    const url = pollUrl(did, rkey);
     const pollResponses = await fetchPollResponses(did, rkey);
 
     const participants = pollResponses.filter((r) => r.name).map((r) => r.name);
     const icsContent = generateIcs({
       poll: updatedRecord,
-      pollUrl,
+      pollUrl: url,
       did,
       rkey,
       participants,
@@ -297,7 +299,7 @@ router.put('/:did/:rkey/finalize', requireAuth, async (req, res, next) => {
           participants.length > 0 ? `Who answered the poll: ${participants.join(', ')}.` : null,
           'A calendar invite is attached, so this should appear in your calendar automatically.',
         ],
-        action: { label: 'View the poll', url: pollUrl },
+        action: { label: 'View the poll', url },
         footer:
           'You are receiving this because you answered this poll or were added to its notification list. No action is needed.',
       });
@@ -373,7 +375,7 @@ router.delete('/:did/:rkey/finalize', requireAuth, async (req, res, next) => {
     }
 
     // Best-effort: send cancellation emails with METHOD:CANCEL .ics
-    const pollUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/poll/${did}/${rkey}`;
+    const url = pollUrl(did, rkey);
     const pollResponses = await fetchPollResponses(did, rkey);
 
     const participants = pollResponses.filter((r) => r.name).map((r) => r.name);
@@ -382,7 +384,7 @@ router.delete('/:did/:rkey/finalize', requireAuth, async (req, res, next) => {
     if (emailList.length > 0) {
       const cancelIcs = generateIcs({
         poll: snapshot,
-        pollUrl,
+        pollUrl: url,
         did,
         rkey,
         participants,
@@ -403,7 +405,7 @@ router.delete('/:did/:rkey/finalize', requireAuth, async (req, res, next) => {
           'Your calendar should remove it on its own, since a cancellation is attached.',
           'The poll is open again, so you can change your availability if your options have shifted.',
         ],
-        action: { label: 'Update your availability', url: pollUrl },
+        action: { label: 'Update your availability', url },
         footer:
           'You are receiving this because you answered this poll or were added to its notification list.',
       });

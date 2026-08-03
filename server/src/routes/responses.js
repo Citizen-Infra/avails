@@ -5,6 +5,7 @@ import { validateResponseCreate } from '../middleware/validate.js';
 import { incrementResponseCount } from '../lib/pollIndex.js';
 import { sendEmail } from '../lib/email.js';
 import { composeEmail } from '../lib/email-template.js';
+import { pollUrl } from '../lib/pollUrl.js';
 import {
   isServiceConfigured, serviceCreateRecord, servicePutRecord, serviceDeleteRecord, serviceGetRecord,
 } from '../lib/serviceSession.js';
@@ -112,13 +113,16 @@ router.post('/:did/:rkey/responses', validateResponseCreate, async (req, res, ne
     // Fetch poll to check notifyAfter threshold and creator email
     try {
       const pds = await resolvePds(did);
-      const pollUrl = `${pds}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(POLL_COLLECTION)}&rkey=${encodeURIComponent(rkey)}`;
-      const pollRes = await fetchWithTimeout(pollUrl);
+      // recordUrl, not pollUrl: this is the PDS getRecord endpoint, not the
+      // poll's page on the web. Naming it pollUrl would shadow the imported
+      // helper in this scope and turn the call below into a TypeError.
+      const recordUrl = `${pds}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(POLL_COLLECTION)}&rkey=${encodeURIComponent(rkey)}`;
+      const pollRes = await fetchWithTimeout(recordUrl);
       if (pollRes.ok) {
         const pollData = await pollRes.json();
         const poll = pollData.value;
         if (poll.notifyAfter && newCount >= poll.notifyAfter && poll.creatorEmail) {
-          const viewUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/poll/${did}/${rkey}`;
+          const viewUrl = pollUrl(did, rkey);
           const plural = (n) => (n !== 1 ? 's' : '');
           await sendEmail({
             to: poll.creatorEmail,
