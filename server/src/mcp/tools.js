@@ -1,4 +1,4 @@
-import { indexPoll, updatePollStatus, updatePollPublished, listByCommunity } from '../lib/pollIndex.js';
+import { indexPoll, updatePollStatus, updatePollPublished, listByCommunity, removePoll } from '../lib/pollIndex.js';
 import { generateIcs } from '../lib/ical.js';
 import { sendEmail } from '../lib/email.js';
 import { composeEmail } from '../lib/email-template.js';
@@ -212,6 +212,21 @@ const TOOL_DEFINITIONS = [
         hideResponsesUntilSubmit: {
           type: 'boolean',
           description: 'If true, respondents see no other responses on the grid until they submit their own',
+        },
+      },
+      required: ['rkey'],
+    },
+  },
+  {
+    name: 'delete_poll',
+    description:
+      "Delete one of your own polls. Removes the poll record from your PDS and drops it from the community index. Works on finalized polls too — this is error correction. Responses already collected are NOT deleted; they live in avails' own repo and simply stop being reachable.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rkey: {
+          type: 'string',
+          description: 'Record key of the poll to delete',
         },
       },
       required: ['rkey'],
@@ -514,6 +529,58 @@ async function updatePoll(args, authContext) {
   }
 
   return JSON.stringify({ ok: true, poll: updatedRecord, url: pollUrl(did, rkey) });
+}
+
+// delete_poll (#148): an agent could create polls through this surface but never
+// remove one, so every throwaway poll was permanent litter in the creator's repo
+// until a human opened the UI. That asymmetry made verifying anything leave
+// residue by construction.
+//
+// The rkey is resolved against authContext.did, so a caller can only ever delete
+// out of their own repo — the creator check the REST route performs explicitly
+// (`req.userDid !== did` -> 403) is structural here rather than conditional.
+//
+// Unlike update_poll this does NOT refuse a finalized poll. The REST delete
+// allows it, and two delete paths for the same object disagreeing about what is
+// deletable would be worse than either rule: deleting is error correction, and
+// the creator's judgement governs.
+//
+// Responses are deliberately left alone. Since #42 they live in avails' own
+// repo, not the creator's, so removing the poll record cannot reach them —
+// exactly as the REST delete already behaves. fetchPollResponses filters by
+// `pollUri.endsWith('/<rkey>')`, so they become unreachable rather than
+// corrupting anything. Whether both paths should sweep them is a real question
+// and belongs to its own change, not to one of the two callers.
+async function deletePoll(args, authContext) {
+  if (!authContext) throw new Error('AUTH_REQUIRED');
+  if (!authContext.oauthSession) throw new Error('AUTH_REQUIRED');
+
+  const { rkey } = args;
+  if (!rkey) throw new Error('rkey is required');
+
+  const did = authContext.did;
+  const pds = await resolvePds(did);
+
+  // Read first so a wrong rkey is a clear "not found" rather than a silent
+  // success — deleteRecord does not distinguish the two.
+  const getRes = await fetch(
+    `${pds}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(POLL_COLLECTION)}&rkey=${encodeURIComponent(rkey)}`
+  );
+  if (!getRes.ok) throw new Error(`Poll not found: ${getRes.status}`);
+  const existing = await getRes.json();
+
+  await xrpcCall(authContext.oauthSession, 'com.atproto.repo.deleteRecord', {
+    repo: did,
+    collection: POLL_COLLECTION,
+    rkey,
+  });
+
+  removePoll(did, rkey);
+
+  return JSON.stringify({
+    ok: true,
+    deleted: { did, rkey, title: existing.value?.title || null },
+  });
 }
 
 async function listMyPolls(_args, authContext) {
@@ -1140,6 +1207,8 @@ export async function callTool(name, args, authContext) {
       return createPoll(args, authContext);
     case 'update_poll':
       return updatePoll(args, authContext);
+    case 'delete_poll':
+      return deletePoll(args, authContext);
     case 'list_my_polls':
       return listMyPolls(args, authContext);
     case 'schedule':
