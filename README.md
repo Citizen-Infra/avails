@@ -2,7 +2,9 @@
 
 Open-source group scheduling on the AT Protocol. An alternative to [LettuceMeet](https://lettucemeet.com/) where your polls live in your Bluesky account — not a centralized database.
 
-**Live at [avails.zhgnv.com](https://avails.zhgnv.com)**
+**Live at [avails.citizeninfra.org](https://avails.citizeninfra.org)**
+
+<sub>`avails.zhgnv.com` also serves the same app and will keep working. The move to CIBC's own domain is in progress — see [#150](https://github.com/Citizen-Infra/avails/issues/150).</sub>
 
 <!-- TODO: Add screenshot of the heatmap grid with multiple responses -->
 
