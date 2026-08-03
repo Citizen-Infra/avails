@@ -11,6 +11,7 @@ import responseRoutes from './routes/responses.js';
 import availabilityRoutes from './routes/availability.js';
 import communityRoutes from './routes/communities.js';
 import openmeetRoutes from './routes/openmeet.js';
+import { corsOriginCheck } from './lib/corsOrigins.js';
 import { startPersistence, markDirty, saveNow } from './lib/persistence.js';
 import { backfillCommunityFeedPublished } from './lib/pollIndex.js';
 import { restoreOAuthSessions, sessions } from './lib/sessionStore.js';
@@ -38,7 +39,7 @@ const PORT = process.env.PORT || 3000;
 app.set('trust proxy', 1);
 
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: corsOriginCheck,
   credentials: true,
 }));
 app.use(express.json());
