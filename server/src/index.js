@@ -19,6 +19,7 @@ import { spaFallback } from './middleware/spaFallback.js';
 import mcpOauthRoutes from './mcp/oauth.js';
 import { handleMcp, handleMcpDelete } from './mcp/handler.js';
 import { pollOgHandler } from './lib/og.js';
+import { secretMatches, bearerFrom } from './lib/bearerAuth.js';
 
 dotenv.config();
 
@@ -129,9 +130,18 @@ app.use('/mcp', mcpOauthRoutes);
 app.post('/mcp', mcpLimiter, handleMcp);
 app.delete('/mcp', handleMcpDelete);
 
-// Admin: clear all sessions (requires SESSION_SECRET as query param)
+// Admin: clear all sessions. Logs every user out, so it is credentialed.
+//
+// The credential arrives in an Authorization header and has its own variable.
+// It used to be SESSION_SECRET read from `?key=`, which was two problems at
+// once (#156): a secret in a URL is recorded by access logs, proxies, browser
+// history and Referer headers, and that same value was the HS256 signing key
+// for every MCP access token.
+//
+// Fails closed when AVAILS_ADMIN_SECRET is unset — an admin endpoint with no
+// credential configured must deny, never fall back to another secret.
 app.post('/api/admin/clear-sessions', async (req, res) => {
-  if (req.query.key !== process.env.SESSION_SECRET) {
+  if (!secretMatches(bearerFrom(req), process.env.AVAILS_ADMIN_SECRET)) {
     return res.status(403).json({ error: 'Invalid key' });
   }
   const appCount = sessions.size;

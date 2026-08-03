@@ -1,6 +1,6 @@
 // server/src/mcp/handler.js
-import crypto from 'node:crypto';
 import { verifyToken } from './jwt.js';
+import { secretMatches } from '../lib/bearerAuth.js';
 import { getClient } from './clients.js';
 import { getClient as getOAuthClient } from '../routes/auth.js';
 import { callTool, listTools } from './tools.js';
@@ -16,14 +16,6 @@ function getJwtSecret() {
  * Extract MCP auth context from Bearer JWT token.
  * Returns null if no auth or invalid.
  */
-// Constant-time compare so the shared secret cannot be recovered a byte at a
-// time. Comparing lengths first leaks only the length, which is not a secret.
-function secretMatches(token, secret) {
-  const a = Buffer.from(token);
-  const b = Buffer.from(secret);
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
-}
-
 async function extractAuthContext(req) {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) return null;

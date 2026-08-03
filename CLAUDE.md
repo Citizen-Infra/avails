@@ -78,6 +78,7 @@ Railway (single service, Nixpacks builder). Custom domain: avails.zhgnv.com.
 - `OPENMEET_TENANT_ID` — OpenMeet instance tenant (default: `lsdfaopkljdfs`)
 - `CA_MEMBERSHIP_URL` — community-admin base URL; `share_poll` gates on membership via `GET /api/memberships` (S4). A trailing slash is stripped in code.
 - `CA_CONFIG_SECRET` — Bearer secret for that lookup; must equal community-admin's `CA_CONFIG_SECRET`. If unset, `share_poll` fails closed (denies).
+- `AVAILS_ADMIN_SECRET` — Bearer credential for `POST /api/admin/clear-sessions`, which logs every user out. Sent as `Authorization: Bearer <value>`, **never** a query parameter: it was previously `SESSION_SECRET` read from `?key=`, which put a secret into access logs, proxy logs, browser history and `Referer` headers, and that same value signed every MCP access token (#156). **Unset = the endpoint denies everything**; it never falls back to another secret. `SESSION_SECRET` and `MCP_JWT_SECRET` must all three be distinct values.
 - `AVAILS_SERVICE_SECRET` — Bearer secret that authorizes **inbound** `schedule_call` from community-admin's call-proposal trigger (#149). Note the direction: `CA_CONFIG_SECRET` is what avails sends *to* CA, this is what CA sends *to* avails. Deliberately a **separate** value — scenius-digest also holds `CA_CONFIG_SECRET`, so reusing it would let scenius-digest book calls and email people. If unset, the service path is simply unavailable and only a list's owner can call `schedule_call`; it never opens the tool up.
 
 ## Task Tracking
