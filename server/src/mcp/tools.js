@@ -1026,7 +1026,33 @@ function parseAtUri(uri) {
 // schedule_call (#103, Task 8, Phase 1): books a call straight from a
 // group's standing availability — no poll. Reading availability records is
 // public (no auth), so this tool does not require authContext.
-async function scheduleCall({ scope, durationMinutes, window, title, voterDids }) {
+// This tool books real calls and sends ICS invites to the people it books, so
+// it must never be callable anonymously (#149). Two callers are legitimate:
+//
+//   - a service, via AVAILS_SERVICE_SECRET — community-admin's call-proposal
+//     trigger acts for a community rather than a person, so there is no user
+//     DID to check;
+//   - the owner of the list itself.
+//
+// Ownership is structural rather than looked up: an at:// URI names the repo it
+// lives in, so the DID in the list URI IS its owner. Same shape delete_poll
+// uses, and it cannot drift out of sync with the record it authorizes.
+//
+// Anonymous callers get AUTH_REQUIRED, which the handler turns into a 401
+// pointing at the OAuth metadata — signing in genuinely is the fix for them.
+// A signed-in non-owner gets a plain error instead: another OAuth round trip
+// would not help, and sending them back through one would be a lie.
+function assertMayScheduleFor(listUri, authContext) {
+  if (!authContext) throw new Error('AUTH_REQUIRED');
+  if (authContext.service) return;
+  const owner = String(listUri).slice('at://'.length).split('/')[0];
+  if (authContext.did && authContext.did === owner) return;
+  throw new Error(
+    'Not your list. schedule_call books a call and emails the people it books, so it is limited to the list owner or an authorized service.'
+  );
+}
+
+async function scheduleCall({ scope, durationMinutes, window, title, voterDids }, authContext) {
   const normalizedScope = normalizeScope(scope);
 
   if (normalizedScope.type === 'ca-community') {
@@ -1037,6 +1063,10 @@ async function scheduleCall({ scope, durationMinutes, window, title, voterDids }
   if (normalizedScope.type !== 'atproto-list') {
     throw new Error(`Unsupported scope type "${normalizedScope.type}". Phase 1 only supports "atproto-list".`);
   }
+
+  // After the scope is known to be a list (so there is an owner to compare
+  // against) and before anything reads records or sends mail.
+  assertMayScheduleFor(normalizedScope.value, authContext);
   if (!Number.isInteger(durationMinutes) || durationMinutes <= 0) {
     throw new Error('durationMinutes must be a positive integer');
   }
@@ -1222,7 +1252,7 @@ export async function callTool(name, args, authContext) {
     case 'list_communities':
       return listCommunities();
     case 'schedule_call':
-      return scheduleCall(args);
+      return scheduleCall(args, authContext);
     default:
       throw new Error(`Unknown tool: ${name}`);
   }

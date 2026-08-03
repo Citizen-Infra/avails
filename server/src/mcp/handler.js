@@ -1,4 +1,5 @@
 // server/src/mcp/handler.js
+import crypto from 'node:crypto';
 import { verifyToken } from './jwt.js';
 import { getClient } from './clients.js';
 import { getClient as getOAuthClient } from '../routes/auth.js';
@@ -15,11 +16,31 @@ function getJwtSecret() {
  * Extract MCP auth context from Bearer JWT token.
  * Returns null if no auth or invalid.
  */
+// Constant-time compare so the shared secret cannot be recovered a byte at a
+// time. Comparing lengths first leaks only the length, which is not a secret.
+function secretMatches(token, secret) {
+  const a = Buffer.from(token);
+  const b = Buffer.from(secret);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
 async function extractAuthContext(req) {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) return null;
 
   const token = authHeader.slice(7);
+
+  // The shared service credential is a caller, not a person. community-admin's
+  // call-proposal trigger acts on behalf of a community, so it has no DID and no
+  // OAuth session — and every tool that needs one must still refuse it, which is
+  // why this returns an explicitly DID-less context rather than a privileged
+  // one. It is checked before the JWT path because it is not a JWT and would
+  // only ever fail verification there.
+  const serviceSecret = process.env.AVAILS_SERVICE_SECRET;
+  if (serviceSecret && secretMatches(token, serviceSecret)) {
+    return { service: 'community-admin', did: null, handle: null, oauthSession: null };
+  }
+
   try {
     const claims = verifyToken(getJwtSecret(), token);
     // mcp_client_id IS the client_id in the new RFC 7591 flow

@@ -15,6 +15,13 @@ import assert from 'node:assert/strict';
 
 const LIST_URI = 'at://did:plc:creator/app.bsky.graph.list/thelist';
 
+// schedule_call is gated (#149) — it books calls and emails the people it books.
+// These orchestration tests are not about the gate, so they run as the service
+// caller (community-admin's trigger). The gate itself is exercised below.
+const SERVICE = { service: 'community-admin', did: null, handle: null, oauthSession: null };
+const OWNER = { service: null, did: 'did:plc:creator', handle: 'creator.test', oauthSession: null };
+const STRANGER = { service: null, did: 'did:plc:someoneelse', handle: 'nosy.test', oauthSession: null };
+
 function member(did, trust, { timezone = 'UTC' } = {}) {
   return {
     did,
@@ -115,7 +122,7 @@ describe('schedule_call', () => {
       durationMinutes: 60,
       window: WINDOW,
       title: 'Weekly sync',
-    }, null);
+    }, SERVICE);
     const result = JSON.parse(raw);
 
     assert.equal(result.booked, true);
@@ -144,7 +151,7 @@ describe('schedule_call', () => {
       durationMinutes: 60,
       window: WINDOW,
       title: 'Weekly sync',
-    }, null);
+    }, SERVICE);
     const result = JSON.parse(raw);
 
     assert.equal(result.booked, false);
@@ -166,7 +173,7 @@ describe('schedule_call', () => {
       durationMinutes: 60,
       window: WINDOW,
       title: 'Weekly sync',
-    }, null);
+    }, SERVICE);
     const result = JSON.parse(raw);
 
     assert.equal(result.booked, false);
@@ -190,7 +197,7 @@ describe('schedule_call', () => {
       durationMinutes: 30,
       window: WINDOW,
       title: 'Planning call',
-    }, null);
+    }, SERVICE);
     const result = JSON.parse(raw);
 
     assert.equal(result.booked, true);
@@ -214,7 +221,7 @@ describe('schedule_call', () => {
         durationMinutes: 60,
         window: WINDOW,
         title: 'Weekly sync',
-      }, null),
+      }, SERVICE),
       /scope\.type is required/
     );
     assert.deepEqual(fetchCalls, []);
@@ -228,7 +235,7 @@ describe('schedule_call', () => {
         durationMinutes: 60,
         window: WINDOW,
         title: 'Weekly sync',
-      }, null),
+      }, SERVICE),
       /Unknown scope\.type "atproto-lst"/
     );
     assert.deepEqual(fetchCalls, []);
@@ -251,7 +258,7 @@ describe('schedule_call', () => {
       durationMinutes: 60,
       window: WINDOW,
       title: 'Weekly sync',
-    }, null));
+    }, SERVICE));
 
     assert.equal(result.booked, true);
   });
@@ -266,7 +273,7 @@ describe('schedule_call', () => {
         durationMinutes: 60,
         window: WINDOW,
         title: 'Weekly sync',
-      }, null),
+      }, SERVICE),
       /Phase 1/
     );
     assert.deepEqual(fetchCalls, []);
@@ -289,7 +296,7 @@ describe('schedule_call', () => {
       scope: { type: 'atproto-list', value: LIST_URI },
       durationMinutes: 60, window: WINDOW, title: 'Voted call',
       voterDids: ['did:plc:alice', 'did:plc:bob'],
-    }, null));
+    }, SERVICE));
 
     assert.equal(result.booked, true);
     assert.equal(listCalled, false, 'whole-list resolution must NOT run when voterDids is given');
@@ -305,7 +312,7 @@ describe('schedule_call', () => {
       scope: { type: 'atproto-list', value: LIST_URI },
       durationMinutes: 60, window: WINDOW, title: 'Voted call',
       voterDids: ['did:plc:alice', 'did:plc:ghost'],
-    }, null));
+    }, SERVICE));
     assert.equal(result.booked, false);
     assert.equal(result.fallback, 'create_poll');
   });
@@ -316,7 +323,7 @@ describe('schedule_call', () => {
       () => callTool('schedule_call', {
         scope: { type: 'atproto-list', value: LIST_URI },
         durationMinutes: 60, window: WINDOW, title: 'x', voterDids: [],
-      }, null),
+      }, SERVICE),
       /voterDids.*non-empty|non-empty.*voterDids/i
     );
     assert.deepEqual(fetchCalls, []);
@@ -328,15 +335,80 @@ describe('schedule_call', () => {
       () => callTool('schedule_call', {
         scope: { type: 'atproto-list', value: LIST_URI },
         durationMinutes: 60, window: WINDOW, title: 'x', voterDids: 'did:plc:alice',
-      }, null),
+      }, SERVICE),
       /voterDids must be an array/i
     );
     await assert.rejects(
       () => callTool('schedule_call', {
         scope: { type: 'atproto-list', value: LIST_URI },
         durationMinutes: 60, window: WINDOW, title: 'x', voterDids: ['not-a-did'],
-      }, null),
+      }, SERVICE),
       /voterDids must be an array/i
     );
+  });
+});
+
+// #149: the tool books real calls and mails ICS invites to the people it books,
+// and Bluesky lists are public records, so the list URI was never the barrier.
+// It used to accept any caller, including one with no credential at all.
+describe('schedule_call authorization', () => {
+  const ARGS = {
+    scope: { type: 'atproto-list', value: LIST_URI },
+    durationMinutes: 60,
+    window: WINDOW,
+    title: 'Weekly sync',
+  };
+
+  // Every rejection below also asserts nothing was resolved and no mail was
+  // sent. A gate that refuses AFTER doing the work would still leak the
+  // group's schedule and still email people.
+  function assertDidNothing() {
+    assert.deepEqual(fetchCalls, []);
+    assert.deepEqual(sendEmailCalls, []);
+  }
+
+  it('refuses an anonymous caller with AUTH_REQUIRED, which the handler turns into a 401', async () => {
+    resetHooks();
+    resolveListAvailabilityImpl = async () => { throw new Error('must not resolve for an anonymous caller'); };
+    await assert.rejects(() => callTool('schedule_call', ARGS, null), /AUTH_REQUIRED/);
+    assertDidNothing();
+  });
+
+  it('refuses a signed-in stranger, and does NOT send them back through OAuth', async () => {
+    resetHooks();
+    resolveListAvailabilityImpl = async () => { throw new Error('must not resolve for a non-owner'); };
+    // Not AUTH_REQUIRED: they are already authenticated, so another OAuth round
+    // trip would not help and pretending otherwise would be a lie.
+    await assert.rejects(() => callTool('schedule_call', ARGS, STRANGER), /Not your list/);
+    await assert.doesNotReject(async () => {
+      try { await callTool('schedule_call', ARGS, STRANGER); } catch (err) {
+        assert.ok(!/AUTH_REQUIRED/.test(err.message));
+      }
+    });
+    assertDidNothing();
+  });
+
+  it('allows the list owner — the DID in the list URI is its owner, no lookup needed', async () => {
+    resetHooks();
+    resolveListAvailabilityImpl = async () => [member('did:plc:alice', 'auto'), member('did:plc:bob', 'auto')];
+    bestCallSlotsImpl = () => [{ slot: '2026-07-21T14:00', participants: ['did:plc:alice', 'did:plc:bob'], count: 2 }];
+    const result = JSON.parse(await callTool('schedule_call', ARGS, OWNER));
+    assert.equal(result.booked, true);
+  });
+
+  it('allows the service credential, which has no DID at all', async () => {
+    resetHooks();
+    resolveListAvailabilityImpl = async () => [member('did:plc:alice', 'auto'), member('did:plc:bob', 'auto')];
+    bestCallSlotsImpl = () => [{ slot: '2026-07-21T14:00', participants: ['did:plc:alice', 'did:plc:bob'], count: 2 }];
+    const result = JSON.parse(await callTool('schedule_call', ARGS, SERVICE));
+    assert.equal(result.booked, true);
+  });
+
+  it('a DID that merely prefixes the owner is not the owner', async () => {
+    resetHooks();
+    resolveListAvailabilityImpl = async () => { throw new Error('must not resolve'); };
+    const almost = { service: null, did: 'did:plc:creato', handle: 'x', oauthSession: null };
+    await assert.rejects(() => callTool('schedule_call', ARGS, almost), /Not your list/);
+    assertDidNothing();
   });
 });
