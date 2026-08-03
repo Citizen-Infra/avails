@@ -44,6 +44,7 @@ The **client has no test runner** — `cd client && npm run build` is the only c
 - **Date formatting must use local time.** Never `toISOString().slice(0, 10)` — it shifts dates for UTC+ timezones. Use `formatDateLocal()` helper.
 - **Old polls use different field names.** `earliestTime`/`latestTime`/`slotDuration` vs `timeRange`/`slotMinutes`. PollView has fallback handling.
 - **Never distribute polls to Telegram without explicit user confirmation.**
+- **An identifier a caller pins is a list, not a value.** `CORS_ORIGINS` exists because `CLIENT_URL` was doing three jobs at once — CORS allow-origin, redirect targets, email links — and a domain migration wants different values for them at the same moment (#151). The same shape applies to `ATPROTO_CLIENT_ID`: it is host-bound, so consider building client metadata from the **request origin** rather than a fixed env var if avails will ever answer on two hosts during a cutover. Before changing any host-bound value, check consumers' **deploy environments**, not just their repos — `CA_MEMBERSHIP_URL` lives only in Railway and appears in no `.env.example`. Rule + episodes: cibc-brain `decisions/2026-08-03-identifiers-accept-a-set-during-migration.md` (D-08).
 - **Google Calendar insert/cancel failures must never roll back finalize/unfinalize.** PDS state is source of truth; the Google event is a courtesy artifact. Encoded via inner try/catches in `insertGoogleEvent` and `handleUnschedule` — don't "improve" them by letting errors propagate.
 
 ## Skills & Design Context
