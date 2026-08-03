@@ -9,6 +9,7 @@ import { assertMembership } from '../lib/membership.js';
 import { resolveListAvailability, resolveAvailabilityForDids } from './listMembers.js';
 import { bestCallSlots } from './availabilityOverlap.js';
 import { fetchCommunityConfig } from '../lib/communityConfig.js';
+import { pollUrl } from '../lib/pollUrl.js';
 
 const POLL_COLLECTION = 'chat.avails.scheduling.poll';
 const RESPONSE_COLLECTION = 'chat.avails.scheduling.response';
@@ -50,11 +51,6 @@ async function xrpcCall(oauthSession, method, body) {
     throw new Error(`XRPC ${method} failed (${response.status}): ${text}`);
   }
   return response.json();
-}
-
-function pollUrl(did, rkey) {
-  const base = process.env.CLIENT_URL || 'http://localhost:5173';
-  return `${base}/p/${did}/${rkey}`;
 }
 
 // Community config now comes from the shared lib/communityConfig.js helper
