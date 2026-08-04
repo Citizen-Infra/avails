@@ -18,7 +18,6 @@ mock.module('../src/lib/sessionStore.js', {
     getSession: (id) => mockSessions.get(id),
     createSession: () => 'mock-session-id',
     deleteSession: () => {},
-    restoreOAuthSessions: async () => {},
     cleanupExpiredSessions: () => {},
     getOAuthSession: () => null,
   },
