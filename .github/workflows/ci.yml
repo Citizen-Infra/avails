@@ -10,8 +10,17 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      # v4 of both ran on Node 20, which GitHub deprecated — every run was
+      # force-migrated to Node 24 and printed a warning. v5 is where each moved
+      # to Node 24 properly; v7 is current.
+      #
+      # Two breaking changes on the way here could have bitten and don't:
+      # setup-node v5 starts auto-caching when package.json carries a
+      # `packageManager` field (none of ours does), and checkout v7 blocks fork
+      # checkouts for `pull_request_target`/`workflow_run` (this workflow runs on
+      # `push`/`pull_request`). Re-check both if either of those changes.
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - name: Install client dependencies
