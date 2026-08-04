@@ -15,7 +15,7 @@ import { corsOriginCheck } from './lib/corsOrigins.js';
 import { legacyHostRedirect } from './middleware/legacyHostRedirect.js';
 import { startPersistence, markDirty, saveNow } from './lib/persistence.js';
 import { backfillCommunityFeedPublished } from './lib/pollIndex.js';
-import { restoreOAuthSessions, sessions } from './lib/sessionStore.js';
+import { cleanupExpiredSessions, sessions } from './lib/sessionStore.js';
 import { spaFallback } from './middleware/spaFallback.js';
 import mcpOauthRoutes from './mcp/oauth.js';
 import { handleMcp, handleMcpDelete } from './mcp/handler.js';
@@ -206,13 +206,23 @@ async function start() {
   if (grandfathered > 0) {
     console.log(`Community feed: grandfathered ${grandfathered} open poll(s) as published`);
   }
+
+  // Drop sessions that can never be used again. Purely local, so it runs before
+  // listen — unlike the OAuth restore that used to happen here (#117), which
+  // needed our public host to be reachable by a REMOTE authorization server and
+  // therefore could not be sequenced correctly from inside this process at all.
+  // Sessions now come back on the first request that needs one.
+  cleanupExpiredSessions();
+
   app.listen(PORT, async () => {
     console.log(`Avails server listening on port ${PORT}`);
+    // Build the OAuth client eagerly. No network I/O — the client metadata is a
+    // literal object — but it does import and validate ATPROTO_PRIVATE_KEY, so
+    // a malformed key surfaces in the boot log instead of at a user's sign-in.
     try {
-      const client = await getClient();
-      await restoreOAuthSessions(client);
+      await getClient();
     } catch (err) {
-      console.warn('Could not restore OAuth sessions:', err.message);
+      console.error('OAuth client failed to initialise — sign-in will not work:', err.message);
     }
   });
 }

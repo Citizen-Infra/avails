@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { NodeOAuthClient } from '@atproto/oauth-client-node';
 import { JoseKey } from '@atproto/jwk-jose';
-import { createSession, deleteSession, getSession, sessions, restoreOAuthSessions, cleanupExpiredSessions } from '../lib/sessionStore.js';
+import { createSession, deleteSession, getSession, sessions } from '../lib/sessionStore.js';
 import { registerStore, markDirty } from '../lib/persistence.js';
 import { tryMcpCallback } from '../mcp/oauth.js';
 

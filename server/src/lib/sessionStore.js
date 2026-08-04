@@ -9,19 +9,36 @@ export const sessions = new Map();
 const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 /**
- * Remove sessions older than 30 days. Call on startup after loading from disk.
+ * Drop sessions that can never be used again: past the 30-day cutoff, or
+ * missing the DID that restoring one requires. Call on startup after loading
+ * from disk.
+ *
+ * Deliberately local — no OAuth client, no network. A session that arrives
+ * from disk with no live `oauthSession` is kept, not pruned: that is the normal
+ * state of every session at boot (the live object is stripped before
+ * serializing), and the request paths restore it on demand. See the note on
+ * the boot sequence in index.js for why nothing restores here.
  */
 export function cleanupExpiredSessions() {
   const cutoff = Date.now() - SESSION_MAX_AGE_MS;
-  let removed = 0;
+  let expired = 0;
+  let unrestorable = 0;
   for (const [sessionId, data] of sessions) {
     if (data.createdAt && data.createdAt < cutoff) {
       sessions.delete(sessionId);
-      removed++;
+      expired++;
+    } else if (!data.did) {
+      sessions.delete(sessionId);
+      unrestorable++;
     }
   }
-  if (removed > 0) {
-    console.log(`Cleaned up ${removed} expired app sessions`);
+  if (expired > 0) {
+    console.log(`Cleaned up ${expired} expired app sessions`);
+  }
+  if (unrestorable > 0) {
+    console.log(`Cleaned up ${unrestorable} app sessions with no DID`);
+  }
+  if (expired + unrestorable > 0) {
     markDirty('app-sessions');
   }
 }
@@ -62,36 +79,21 @@ export function getOAuthSession(sessionId) {
   return session?.oauthSession || null;
 }
 
-/**
- * After loading app-sessions from disk, the oauthSession field is missing
- * (it's a live object that can't be serialized). Call this with the OAuth client
- * to rebuild live sessions via client.restore(did).
- */
-export async function restoreOAuthSessions(client) {
-  // Remove stale sessions before restoring live OAuth sessions
-  cleanupExpiredSessions();
-
-  let restored = 0;
-  for (const [sessionId, data] of sessions) {
-    if (data.oauthSession) continue; // already live
-    if (!data.did) {
-      sessions.delete(sessionId);
-      continue;
-    }
-    try {
-      const oauthSession = await client.restore(data.did);
-      data.oauthSession = oauthSession;
-      restored++;
-    } catch (err) {
-      console.warn(`Failed to restore OAuth session for ${data.did} (will retry on demand):`, err.message);
-      data.oauthSession = null;
-    }
-  }
-  const deferred = [...sessions.values()].filter(d => d.did && !d.oauthSession).length;
-  if (restored > 0) {
-    console.log(`Restored ${restored} live OAuth sessions`);
-  }
-  if (deferred > 0) {
-    console.log(`${deferred} sessions deferred — will restore on demand`);
-  }
-}
+// restoreOAuthSessions() used to live here: on boot it called
+// client.restore(did) for every persisted session, to rebuild the live
+// oauthSession that serialization strips. It is gone (#117).
+//
+// client.restore() refreshes the token against the user's PDS authorization
+// server, and that server fetches our client_id URL to validate the
+// private_key_jwt it is sent. The fetch is made by bsky.social, not by us — so
+// it needs our PUBLIC host to be reachable, and on a fresh Railway container
+// the edge does not route until the health check passes. Boot lost that race
+// about half the time and the authorization server replied
+// `invalid_client_metadata`.
+//
+// Because the fetcher is remote, no local ordering fixes it — running after
+// app.listen() is necessary but not sufficient, which is exactly what the old
+// comment on that constraint got wrong. The restore is now done by the request
+// paths that already did it (requireAuth, findOauthSessionByDid in
+// routes/responses.js, mcp/handler.js), which run when the edge is definitely
+// routing because a request just arrived through it.

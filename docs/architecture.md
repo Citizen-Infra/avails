@@ -14,7 +14,7 @@ There is no database. ATProto PDS is the data store:
 - **Responses**: `chat.avails.scheduling.response` records. New responses are written to avails' **own service repo** (see [Service identity](#service-identity)); pre-#42 responses remain in the creator's PDS. Reads merge both. When the service identity is unconfigured, writes fall back to the creator's PDS via the creator's OAuth session (the legacy behavior).
 - **Standing availability**: `chat.avails.scheduling.availability` records in the **participant's own PDS** — the one record type that isn't creator-hosted. See [Standing availability](#standing-availability) below.
 - **Poll index**: Map (`lib/pollIndex.js`) for community-based discovery. Persisted to Railway volume via `persistence.js` (auto-save every 30s, restored on startup).
-- **Sessions**: persisted to Railway volume as JSON (`/data/oauth-sessions.json`, `/data/app-sessions.json`). Restored on startup AFTER server starts listening (critical — session restore fetches client-metadata from itself).
+- **Sessions**: persisted to Railway volume as JSON (`/data/oauth-sessions.json`, `/data/app-sessions.json`). Loaded on startup, then pruned locally; the live OAuth session is rebuilt lazily on the first request that needs it, never at boot (#117).
 
 ## ATProto OAuth flow
 
@@ -48,7 +48,7 @@ avails has its own ATProto account (a `did:plc`, app-password auth — **not** O
 
 ## Key gotchas (full context)
 
-- **Session restore must happen after `app.listen()`** — the OAuth client fetches `client-metadata.json` from itself during restore. Starting restore before listening causes a deadlock.
+- **Never restore OAuth sessions at boot** (#117) — `client.restore(did)` refreshes the token against the user's PDS authorization server, and *that server* fetches our `client_id` URL to validate the `private_key_jwt` we send. The fetch is made by bsky.social, not by us, so it needs our **public host** to be reachable — and Railway's edge does not route to a fresh container until its health check passes. Boot lost that race on roughly half of deploys. This was long described here as "the OAuth client fetches client-metadata from itself, so restore must run after `app.listen()`"; the ordering advice was right by accident, the mechanism was wrong, and it implied a local fix existed. None does: the fetcher is remote. Restores belong on the request paths (`requireAuth`, `findOauthSessionByDid`, `mcp/handler.js`), which by definition run only once the edge is routing.
 - **Responses write to avails' service repo, not the creator's session** (#42) — see [Service identity](#service-identity). The creator's session is off the response path when the service identity is configured; the legacy fallback (creator-session write, which can 503 if the creator is signed out) applies only when it isn't.
 - **Old polls use different field names** — `earliestTime`/`latestTime`/`slotDuration` vs `timeRange`/`slotMinutes`. PollView has fallback handling for both formats.
 - **React render loops and hooks** — AvailGrid is sensitive to unstable object references in props. Never pass `new Set()` or `{}` inline as prop defaults. Use module-level constants (`const EMPTY_SET = new Set()`) and assign fallbacks in the function body, not destructuring. The SchedulingGrid was created as a separate component (instead of adding props to AvailGrid) specifically to avoid this. Also: never place hooks (`useMemo`, `useEffect`, etc.) after early returns — React error #310 ("Rendered more hooks than during the previous render").
@@ -190,7 +190,7 @@ The client-metadata route is versioned — `repo:chat.avails.scheduling.availabi
 
 Verified on the v3→v4 rotation (2026-07-17): **zero sign-in downtime**. Step 5 clears existing users' cached pre-upgrade grants so they re-consent on next sign-in (#49) — the rotation only forces re-consent for *new* sign-ins, while stored server-side sessions keep old grants that lack the new scope.
 
-Expect a `Failed to restore OAuth session … invalid_client_metadata` warning on roughly every other boot afterwards — that's the unrelated startup race (#117), harmless since `requireAuth` lazy-restores, but easy to misread as the rotation having failed.
+Boots used to log `Failed to restore OAuth session … invalid_client_metadata` about half the time after a rotation, which read as the rotation having failed when it hadn't. That was the startup race, and the startup restore is gone (#117), so the line should no longer appear at all. If it does, it is coming from a request path and is worth investigating rather than dismissing.
 
 ### Admin endpoint
 
