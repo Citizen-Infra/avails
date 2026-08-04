@@ -116,8 +116,11 @@ describe('schedule MCP tool — calendar invite (#105)', () => {
     assert.match(ics, /BEGIN:VCALENDAR/);
     assert.match(ics, /SUMMARY:Weekly sync/);
     assert.match(ics, /DTSTART:20260721T140000Z/);
-    // Deterministic UID must resolve from did/rkey, not "avails-undefined-undefined@…"
-    assert.match(ics, /UID:avails-did:plc:creator-poll1@avails\.test/);
+    // Deterministic UID must resolve from did/rkey, not "avails-undefined-undefined@…".
+    // The right-hand side is deliberately NOT CLIENT_URL (set to avails.test at
+    // the top of this file) — it is a frozen namespace, so a host move can't
+    // orphan outstanding invites. See test/ical.uid.test.js.
+    assert.match(ics, /UID:avails-did:plc:creator-poll1@avails\.citizeninfra\.org/);
     assert.doesNotMatch(ics, /undefined/);
     // Participants are surfaced in the description, proving they were passed through.
     assert.match(ics, /Alice/);

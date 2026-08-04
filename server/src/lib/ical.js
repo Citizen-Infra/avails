@@ -1,11 +1,31 @@
 import ical, { ICalCalendarMethod } from 'ical-generator';
 
+// The right-hand side of the UID. A FROZEN NAMESPACE, NOT A DEPLOYMENT HOST.
+//
+// Do not update this when avails moves hosts. Every event already invited
+// carries the old value, and a METHOD:CANCEL only removes an event from
+// someone's calendar if its UID matches the REQUEST they already imported —
+// so changing it silently orphans every outstanding invite. Nothing errors;
+// cancellations just stop working.
+//
+// This used to be derived from CLIENT_URL, which meant the 2026-08-04 move
+// from avails.zhgnv.com did exactly that. It was harmless only because every
+// event invited under the old host had already happened. Frozen at that moment
+// precisely because the exposure was zero.
+//
+// RFC 5545 §3.8.4.7 recommends the right-hand side carry "some domain
+// identifier (either of the host itself **or otherwise**)" — "or otherwise" is
+// what makes a fixed namespace the intended shape rather than a workaround.
+// Uniqueness does not rest on it in any case: the left-hand side carries a
+// DID, which is globally unique by construction.
+const UID_NAMESPACE = 'avails.citizeninfra.org';
+
 // Deterministic UID lets calendar apps match a subsequent METHOD:CANCEL
 // back to the original invite they already imported. Uses poll did/rkey so
-// it's stable across republish/unschedule cycles.
+// it's stable across republish/unschedule cycles — and no environment input,
+// so it's stable across redeploys and host moves too.
 export function icsUidFor(did, rkey) {
-  const host = new URL(process.env.CLIENT_URL || 'https://avails.local').host;
-  return `avails-${did}-${rkey}@${host}`;
+  return `avails-${did}-${rkey}@${UID_NAMESPACE}`;
 }
 
 /**
