@@ -164,3 +164,27 @@ export async function handleMcp(req, res) {
 export function handleMcpDelete(req, res) {
   res.sendStatus(204);
 }
+
+/**
+ * GET /mcp — 405.
+ *
+ * A client may GET the MCP endpoint to open a server-to-client SSE stream. The
+ * Streamable HTTP spec gives a server exactly two allowed answers: return
+ * `Content-Type: text/event-stream`, or return 405 to say there is no stream
+ * here. Avails' MCP is request/response only — it never initiates messages —
+ * so 405 is the honest one.
+ *
+ * This route exists because without it the request fell through to the SPA
+ * fallback and got `200 text/html`, which is neither answer. A client cannot
+ * read a stream out of that and gets no error telling it to stop, so it
+ * reconnects forever: production ran a 2-3/s GET /mcp loop for hours on
+ * 2026-08-04, every request a 200.
+ *
+ * RFC 9110 requires the Allow header on a 405.
+ */
+export function handleMcpGet(req, res) {
+  res.set('Allow', 'POST, DELETE');
+  res.status(405).json({
+    error: 'This MCP endpoint does not offer an SSE stream. Use POST for JSON-RPC.',
+  });
+}

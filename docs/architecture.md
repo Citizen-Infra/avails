@@ -150,7 +150,11 @@ Phase 1 is list-scope only. `ca-community` scoping (private community-admin comm
 
 ## MCP endpoint
 
-Embedded `POST /mcp` JSON-RPC endpoint with ATProto OAuth (Smoke Signal pattern). Nine tools:
+Embedded `POST /mcp` JSON-RPC endpoint with ATProto OAuth (Smoke Signal pattern).
+
+`GET /mcp` returns **405** with `Allow: POST, DELETE`. A client may GET the endpoint to open a server-to-client SSE stream, and the Streamable HTTP spec allows only two answers: `Content-Type: text/event-stream`, or 405 to say there is no stream here. Avails never initiates messages, so 405 is the accurate one. Without that route the request fell through to the SPA fallback and returned `200 text/html`, which is neither — a client reads that as a stream that opened and closed instantly, and reconnects forever (#164).
+
+Nine tools:
 
 | Tool | Auth | Description |
 |------|------|-------------|

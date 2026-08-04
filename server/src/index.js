@@ -18,7 +18,7 @@ import { backfillCommunityFeedPublished } from './lib/pollIndex.js';
 import { cleanupExpiredSessions, sessions } from './lib/sessionStore.js';
 import { spaFallback } from './middleware/spaFallback.js';
 import mcpOauthRoutes from './mcp/oauth.js';
-import { handleMcp, handleMcpDelete } from './mcp/handler.js';
+import { handleMcp, handleMcpDelete, handleMcpGet } from './mcp/handler.js';
 import { pollOgHandler } from './lib/og.js';
 import { secretMatches, bearerFrom } from './lib/bearerAuth.js';
 
@@ -137,6 +137,12 @@ app.use('/mcp', mcpOauthRoutes);
 // budget. DELETE is session teardown, not a fan-out surface, so it's exempt.
 app.post('/mcp', mcpLimiter, handleMcp);
 app.delete('/mcp', handleMcpDelete);
+
+// GET /mcp is how a client opens a server-to-client SSE stream. We don't offer
+// one, and the spec's answer for that is 405 — not the SPA shell this used to
+// fall through to. Must be registered before express.static/spaFallback, and it
+// matches /mcp exactly so the OAuth sub-routes mounted above are untouched.
+app.get('/mcp', handleMcpGet);
 
 // Admin: clear all sessions. Logs every user out, so it is credentialed.
 //
