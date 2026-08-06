@@ -147,6 +147,7 @@ A finalized poll can carry a `meetingUrl` — a video call link, on the poll rec
 ### Pages
 - `Landing.jsx` — hero (unauthenticated) or My Polls + PollCreator (authenticated)
 - `PollView.jsx` — main poll page: grid + responses + scheduling
+- `StandingAvailability.jsx` — **`/standing`** — publish when you are generally free for a group, once, independent of any poll. Was `/availability` until 2026-08-06: every part of this product is availability (the grid, a response, the heatmap), so that path named the page with the one word that distinguished it from nothing, while saying nothing about what is actually different — that it outlives any single poll. Renamed before the feature was announced, so no shared link could break. `/availability` still redirects. Note the REST API `/api/availability` is unaffected and keeps its name.
 - `About.jsx` — Citizen Infra ecosystem info
 - `Privacy.jsx`, `Terms.jsx` — legal pages (required for Google OAuth consent screen)
 
