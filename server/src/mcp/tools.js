@@ -11,6 +11,12 @@ import { normalizeScope } from './scope.js';
 import { bestCallSlots } from './availabilityOverlap.js';
 import { fetchCommunityConfig } from '../lib/communityConfig.js';
 import { pollUrl } from '../lib/pollUrl.js';
+import {
+  recallBooking,
+  claimBooking,
+  releaseBooking,
+  rememberBooking,
+} from './bookingLedger.js';
 
 const POLL_COLLECTION = 'chat.avails.scheduling.poll';
 const RESPONSE_COLLECTION = 'chat.avails.scheduling.response';
@@ -332,7 +338,7 @@ const TOOL_DEFINITIONS = [
   {
     name: 'schedule_call',
     description:
-      'Book a call directly from a group\'s standing availability — no poll. Resolves the members\' standing-availability records for the given scope, finds the best overlapping slot in the requested window, and books it if coverage is sufficient (at least 2 members with records, and at least 2 free at the chosen slot). Members whose record has trust:auto are auto-booked; trust:confirm members are returned separately and are NOT silently committed. If coverage is too thin, returns a fallback signal instead of booking — it does not create a poll itself. Pass voterDids to book for a specific subset (the people who voted/liked) rather than the whole group. Two scope kinds: an atproto-list scope can be resolved whole (avails reads the list from the AppView) or subset; a ca-community scope REQUIRES voterDids and an authorized service credential, because a community\'s membership lives in community-admin and cannot be read from ATProto.',
+      'Book a call directly from a group\'s standing availability — no poll. Resolves the members\' standing-availability records for the given scope, finds the best overlapping slot in the requested window, and books it if coverage is sufficient (at least 2 members with records, and at least 2 free at the chosen slot). Members whose record has trust:auto are auto-booked; trust:confirm members are returned separately and are NOT silently committed. If coverage is too thin, returns a fallback signal instead of booking — it does not create a poll itself. Pass voterDids to book for a specific subset (the people who voted/liked) rather than the whole group. Two scope kinds: an atproto-list scope can be resolved whole (avails reads the list from the AppView) or subset; a ca-community scope REQUIRES voterDids and an authorized service credential, because a community\'s membership lives in community-admin and cannot be read from ATProto. This tool books a real call and emails real people, so pass an idempotencyKey if you might retry: without one, a retry books again.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -375,6 +381,10 @@ const TOOL_DEFINITIONS = [
           type: 'array',
           items: { type: 'string' },
           description: 'Optional. When present, book only for these DIDs (the people who opted into this specific proposal — e.g. the likers of a Bluesky post), instead of the whole list. Their records are still matched to `scope`; a DID that published no availability for this list is a coverage miss. Omit to schedule for the entire list.',
+        },
+        idempotencyKey: {
+          type: 'string',
+          description: 'Optional, and strongly recommended for any automated caller. A stable key you choose that identifies this booking request — community-admin derives it from the proposal id. If a call was already booked under this key, that booking is returned unchanged with `alreadyBooked: true` and nobody is emailed again. Without a key, a request that books here but whose response is lost to a timeout or a restart will book a SECOND call, and send everyone a second calendar invitation, when you retry. A `booked: false` result is never remembered, so a key can be reused after coverage was too thin.',
         },
       },
       required: ['scope', 'durationMinutes', 'window', 'title'],
@@ -1035,7 +1045,10 @@ function assertMayScheduleFor(scope, authContext) {
   );
 }
 
-async function scheduleCall({ scope, durationMinutes, window, title, voterDids }, authContext) {
+async function scheduleCall(
+  { scope, durationMinutes, window, title, voterDids, idempotencyKey },
+  authContext
+) {
   const normalizedScope = normalizeScope(scope);
 
   // Before anything reads records or sends mail.
@@ -1078,6 +1091,39 @@ async function scheduleCall({ scope, durationMinutes, window, title, voterDids }
     );
   }
 
+  if (idempotencyKey !== undefined && (typeof idempotencyKey !== 'string' || !idempotencyKey.trim())) {
+    throw new Error('idempotencyKey, when provided, must be a non-empty string');
+  }
+  const key = idempotencyKey?.trim();
+
+  // No key means today's behaviour, unchanged: a lost response books again.
+  // That is a choice a caller makes, not an oversight (#166 option 4) — and
+  // it is the right one for a person asking once, interactively.
+  if (!key) {
+    return performBooking({ normalizedScope, durationMinutes, window, title, voterDids, key: null });
+  }
+
+  const prior = recallBooking(key);
+  if (prior) {
+    // Option 3's shape: an agent can tell "I booked this" from "this was
+    // already booked", which is a third answer community-admin's fire() can
+    // record — distinct from both "avails declined" and "we could not ask".
+    return JSON.stringify({ ...prior.result, alreadyBooked: true, bookedAt: prior.bookedAt });
+  }
+
+  if (!claimBooking(key)) {
+    throw new Error(
+      'A booking with this idempotencyKey is already in flight. Retry: once it completes you will get that booking back rather than a second one.'
+    );
+  }
+  try {
+    return await performBooking({ normalizedScope, durationMinutes, window, title, voterDids, key });
+  } finally {
+    releaseBooking(key);
+  }
+}
+
+async function performBooking({ normalizedScope, durationMinutes, window, title, voterDids, key }) {
   const members = voterDids
     ? await resolveAvailabilityForDids(voterDids, normalizedScope)
     : await resolveListAvailability(normalizedScope.value);
@@ -1152,6 +1198,39 @@ async function scheduleCall({ scope, durationMinutes, window, title, voterDids }
   });
   const icsBase64 = Buffer.from(icsContent).toString('base64');
 
+  const result = {
+    booked: true,
+    slot: top.slot,
+    durationMinutes,
+    title,
+    participants: top.participants,
+    autoBooked,
+    needsConfirm,
+    coverage: {
+      withRecords,
+      membersFree: top.count,
+      // When voter-scoped, let the caller see how many of the people who voted
+      // actually had a usable record — so CA can message "3 of 5 voters haven't
+      // published availability" rather than guessing.
+      ...(voterDids ? { voters: voterDids.length, votersWithoutRecords: voterDids.length - withRecords } : {}),
+    },
+  };
+
+  // Record the booking BEFORE the invitations go out, not after.
+  //
+  // A crash between booking and recording is the one sliver no ledger closes.
+  // Recording first puts that sliver on the side of a MISSED invitation rather
+  // than a duplicate one — which is the harm #166 exists to prevent, and which
+  // matches how this tool already treats email: a courtesy that must never fail
+  // a booking. Only successful bookings are remembered; a `booked: false`
+  // coverage answer is a legitimate "ask again later", since the group may
+  // publish more availability tomorrow.
+  //
+  // A write failure here is deliberately fatal. If the booking cannot be
+  // recorded, idempotency is not real, and failing before anyone is emailed
+  // leaves the caller free to retry with nothing duplicated.
+  if (key) await rememberBooking(key, result);
+
   // Best-effort email: standing-availability records don't carry an email
   // field in the lexicon today, so this will usually send to nobody — but
   // if a record does carry one, notify it, and never fail the booking on
@@ -1186,23 +1265,7 @@ async function scheduleCall({ scope, durationMinutes, window, title, voterDids }
     );
   }
 
-  return JSON.stringify({
-    booked: true,
-    slot: top.slot,
-    durationMinutes,
-    title,
-    participants: top.participants,
-    autoBooked,
-    needsConfirm,
-    coverage: {
-      withRecords,
-      membersFree: top.count,
-      // When voter-scoped, let the caller see how many of the people who voted
-      // actually had a usable record — so CA can message "3 of 5 voters haven't
-      // published availability" rather than guessing.
-      ...(voterDids ? { voters: voterDids.length, votersWithoutRecords: voterDids.length - withRecords } : {}),
-    },
-  });
+  return JSON.stringify(result);
 }
 
 // ---------------------------------------------------------------------------
