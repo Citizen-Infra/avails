@@ -12,6 +12,9 @@
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtemp, readFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 
 const LIST_URI = 'at://did:plc:creator/app.bsky.graph.list/thelist';
 
@@ -79,11 +82,18 @@ globalThis.fetch = async (url, opts) => {
   throw new Error(`Unexpected fetch() call in schedule_call test: ${url}`);
 };
 
+// The booking ledger (#166) registers a persistence store at import time and
+// writes through it durably. Point DATA_DIR at a throwaway directory before
+// tools.js pulls the ledger in, so the suite never touches ./data.
+process.env.DATA_DIR = await mkdtemp(path.join(tmpdir(), 'avails-booking-'));
+
 const { callTool } = await import('../src/mcp/tools.js');
+const { _resetBookingLedger } = await import('../src/mcp/bookingLedger.js');
 
 function resetHooks() {
   sendEmailCalls = [];
   fetchCalls = [];
+  _resetBookingLedger();
   resolveListAvailabilityImpl = async () => {
     throw new Error('resolveListAvailability should not be called in this test');
   };
@@ -469,5 +479,173 @@ describe('schedule_call authorization', () => {
     const almost = { service: null, did: 'did:plc:creato', handle: 'x', oauthSession: null };
     await assert.rejects(() => callTool('schedule_call', ARGS, almost), /Not your list/);
     assertDidNothing();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Idempotency (#166)
+//
+// schedule_call books a real call and mails real people. A request that
+// succeeds here and fails to return — a timeout, a dropped connection, a
+// container replaced mid-reply — is indistinguishable to the caller from one
+// that never arrived, so the caller retries. Without a memory here, that books
+// a second call and sends everyone a second calendar invitation.
+//
+// These tests use members WITH an email address (the base `member()` helper
+// omits one, so most tests above mail nobody) because the count of invitations
+// sent is the harm being asserted, not the count of rows.
+// ---------------------------------------------------------------------------
+describe('schedule_call idempotency (#166)', () => {
+  const BOOK_ARGS = {
+    scope: { type: 'atproto-list', value: LIST_URI },
+    durationMinutes: 60,
+    window: WINDOW,
+    title: 'Weekly sync',
+  };
+
+  function mailedMember(did, trust = 'auto') {
+    const m = member(did, trust);
+    m.record.value.email = `${did.split(':').pop()}@example.test`;
+    return m;
+  }
+
+  function bookable(members) {
+    resolveListAvailabilityImpl = async () => members;
+    bestCallSlotsImpl = () => [
+      { slot: '2026-07-21T14:00', participants: members.map((m) => m.did), count: members.length },
+    ];
+    return members;
+  }
+
+  it('a repeated key returns the first booking instead of booking a second call', async () => {
+    resetHooks();
+    bookable([mailedMember('did:plc:alice'), mailedMember('did:plc:bob')]);
+
+    const first = JSON.parse(
+      await callTool('schedule_call', { ...BOOK_ARGS, idempotencyKey: 'proposal-42' }, SERVICE)
+    );
+    assert.equal(first.booked, true);
+    assert.equal(first.alreadyBooked, undefined, 'a first booking is not flagged as a repeat');
+    assert.equal(sendEmailCalls.length, 2);
+
+    // A retry must not reach availability resolution at all: the stored answer
+    // comes back before any work happens.
+    resolveListAvailabilityImpl = async () => { throw new Error('must not resolve on a retry'); };
+    bestCallSlotsImpl = () => { throw new Error('must not recompute on a retry'); };
+
+    const second = JSON.parse(
+      await callTool('schedule_call', { ...BOOK_ARGS, idempotencyKey: 'proposal-42' }, SERVICE)
+    );
+    assert.equal(second.booked, true);
+    assert.equal(second.alreadyBooked, true, 'the caller can tell this apart from a fresh booking');
+    assert.equal(second.slot, first.slot);
+    assert.deepEqual(second.participants, first.participants);
+    assert.ok(second.bookedAt, 'carries when the original booking happened');
+
+    // The blast radius #166 exists to prevent.
+    assert.equal(sendEmailCalls.length, 2, 'no second round of calendar invitations');
+  });
+
+  it('records the booking durably, not on the 30-second flush', async () => {
+    resetHooks();
+    bookable([mailedMember('did:plc:alice'), mailedMember('did:plc:bob')]);
+    await callTool('schedule_call', { ...BOOK_ARGS, idempotencyKey: 'durable-1' }, SERVICE);
+
+    // On disk by the time the call returns. The periodic flush is exactly the
+    // blind spot here: a container replaced immediately after booking would
+    // otherwise come back with no memory of it.
+    const onDisk = JSON.parse(
+      await readFile(path.join(process.env.DATA_DIR, 'call-bookings.json'), 'utf8')
+    );
+    assert.ok(onDisk['durable-1'], 'key is on disk before the call returns');
+    assert.equal(onDisk['durable-1'].result.slot, '2026-07-21T14:00');
+  });
+
+  it('different keys are different bookings', async () => {
+    resetHooks();
+    bookable([mailedMember('did:plc:alice'), mailedMember('did:plc:bob')]);
+
+    const a = JSON.parse(await callTool('schedule_call', { ...BOOK_ARGS, idempotencyKey: 'k-a' }, SERVICE));
+    const b = JSON.parse(await callTool('schedule_call', { ...BOOK_ARGS, idempotencyKey: 'k-b' }, SERVICE));
+
+    assert.equal(a.alreadyBooked, undefined);
+    assert.equal(b.alreadyBooked, undefined);
+    // Two genuinely different calls for the same group in the same window are
+    // legitimate, which is why the key is caller-supplied rather than derived
+    // from the request's shape.
+    assert.equal(sendEmailCalls.length, 4);
+  });
+
+  it('without a key, a repeat books again — unchanged behaviour, and a choice', async () => {
+    resetHooks();
+    bookable([mailedMember('did:plc:alice'), mailedMember('did:plc:bob')]);
+
+    await callTool('schedule_call', BOOK_ARGS, SERVICE);
+    const second = JSON.parse(await callTool('schedule_call', BOOK_ARGS, SERVICE));
+
+    assert.equal(second.booked, true);
+    assert.equal(second.alreadyBooked, undefined);
+    assert.equal(sendEmailCalls.length, 4, 'keyless callers keep the old semantics');
+  });
+
+  it('a booked:false answer is not remembered — thin coverage today may be fine tomorrow', async () => {
+    resetHooks();
+    // Only one member has a record: below the coverage floor.
+    resolveListAvailabilityImpl = async () => [mailedMember('did:plc:alice')];
+
+    const declined = JSON.parse(
+      await callTool('schedule_call', { ...BOOK_ARGS, idempotencyKey: 'thin-1' }, SERVICE)
+    );
+    assert.equal(declined.booked, false);
+    assert.equal(declined.fallback, 'create_poll');
+
+    // Same key later, once more people have published availability.
+    bookable([mailedMember('did:plc:alice'), mailedMember('did:plc:bob')]);
+    const booked = JSON.parse(
+      await callTool('schedule_call', { ...BOOK_ARGS, idempotencyKey: 'thin-1' }, SERVICE)
+    );
+    assert.equal(booked.booked, true);
+    assert.equal(booked.alreadyBooked, undefined, 'a declined ask never becomes a phantom booking');
+  });
+
+  it('an overlapping call with the same key is refused rather than booking in parallel', async () => {
+    resetHooks();
+    const members = [mailedMember('did:plc:alice'), mailedMember('did:plc:bob')];
+    let release;
+    const gate = new Promise((r) => { release = r; });
+    resolveListAvailabilityImpl = async () => { await gate; return members; };
+    bestCallSlotsImpl = () => [
+      { slot: '2026-07-21T14:00', participants: members.map((m) => m.did), count: 2 },
+    ];
+
+    const first = callTool('schedule_call', { ...BOOK_ARGS, idempotencyKey: 'race-1' }, SERVICE);
+    await assert.rejects(
+      () => callTool('schedule_call', { ...BOOK_ARGS, idempotencyKey: 'race-1' }, SERVICE),
+      /already in flight/
+    );
+
+    release();
+    assert.equal(JSON.parse(await first).booked, true);
+    assert.equal(sendEmailCalls.length, 2, 'only one round of invitations');
+
+    // The claim is released once the first attempt finishes, so the retry the
+    // error message asks for gets the booking rather than the same refusal.
+    const retry = JSON.parse(
+      await callTool('schedule_call', { ...BOOK_ARGS, idempotencyKey: 'race-1' }, SERVICE)
+    );
+    assert.equal(retry.alreadyBooked, true);
+  });
+
+  it('rejects a blank or non-string key rather than silently booking unguarded', async () => {
+    resetHooks();
+    resolveListAvailabilityImpl = async () => { throw new Error('must not resolve'); };
+
+    for (const bad of ['', '   ', 42, null]) {
+      await assert.rejects(
+        () => callTool('schedule_call', { ...BOOK_ARGS, idempotencyKey: bad }, SERVICE),
+        /idempotencyKey/
+      );
+    }
+    assert.deepEqual(sendEmailCalls, []);
   });
 });
