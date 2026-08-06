@@ -278,6 +278,57 @@ describe('schedule_call', () => {
   // must name the missing argument: resolving zero members instead would be
   // reported as "nobody has published availability", sending the organizer to
   // chase a coverage problem that does not exist.
+  // The failure this catches is not "it errored" — it is that a malformed
+  // window produced ZERO candidate slots, which surfaced as a fallback with
+  // "no overlapping availability found" and was announced to members as though
+  // nobody could make it. community-admin sent ISO timestamps for fourteen
+  // months and not one call-proposal ever booked.
+  it('(w1) an ISO date-time window is refused, rather than silently yielding no slots', async () => {
+    resetHooks();
+
+    await assert.rejects(
+      () => callTool('schedule_call', {
+        scope: LIST_URI,
+        durationMinutes: 60,
+        window: { start: '2026-07-21T00:00:00.000Z', end: '2026-07-28T00:00:00.000Z' },
+        title: 'Weekly sync',
+      }, SERVICE),
+      (err) => {
+        assert.match(err.message, /YYYY-MM-DD/);
+        // The reason must name the silent failure, or the next caller "fixes"
+        // it by loosening the check.
+        assert.match(err.message, /no candidate slots/);
+        return true;
+      }
+    );
+    assert.deepEqual(fetchCalls, []);
+  });
+
+  it('(w2) a plain date window is accepted', async () => {
+    resetHooks();
+    resolveListAvailabilityImpl = async () => [member('did:plc:alice', 'auto'), member('did:plc:bob', 'auto')];
+    bestCallSlotsImpl = () => [
+      { slot: '2026-07-21T14:00', participants: ['did:plc:alice', 'did:plc:bob'], count: 2 },
+    ];
+
+    const result = JSON.parse(await callTool('schedule_call', {
+      scope: LIST_URI, durationMinutes: 60,
+      window: { start: '2026-07-21', end: '2026-07-28' }, title: 'Weekly sync',
+    }, SERVICE));
+    assert.equal(result.booked, true);
+  });
+
+  it('(w3) a backwards window is refused', async () => {
+    resetHooks();
+    await assert.rejects(
+      () => callTool('schedule_call', {
+        scope: LIST_URI, durationMinutes: 60,
+        window: { start: '2026-07-28', end: '2026-07-21' }, title: 'Weekly sync',
+      }, SERVICE),
+      /before window\.start/
+    );
+  });
+
   it('(e) a ca-community scope without voterDids fails naming the missing argument, before touching resolveListAvailability', async () => {
     resetHooks();
     // resolveListAvailabilityImpl left as the "should not be called" throw.
