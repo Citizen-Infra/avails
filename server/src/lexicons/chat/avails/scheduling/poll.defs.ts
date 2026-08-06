@@ -23,6 +23,11 @@ type Main = {
   finalDuration?: number
 
   /**
+   * Video call link for the scheduled meeting (Jitsi, Meet, Zoom, or any http(s) URL). Surfaced in the .ics invite and the finalized banner. Cleared on unschedule, since the link belongs to the meeting rather than the poll.
+   */
+  meetingUrl?: string
+
+  /**
    * Slug of the OpenMeet event created when the poll was published. Cleared on unschedule so the OpenMeet event can be deleted.
    */
   openmeetEventSlug?: string
@@ -73,6 +78,9 @@ const main = /*#__PURE__*/ l.record<'tid', Main>(
     finalTime: /*#__PURE__*/ l.optional(/*#__PURE__*/ l.string()),
     finalDuration: /*#__PURE__*/ l.optional(
       /*#__PURE__*/ l.integer({ minimum: 15 }),
+    ),
+    meetingUrl: /*#__PURE__*/ l.optional(
+      /*#__PURE__*/ l.string({ maxLength: 500 }),
     ),
     openmeetEventSlug: /*#__PURE__*/ l.optional(/*#__PURE__*/ l.string()),
     googleEventId: /*#__PURE__*/ l.optional(/*#__PURE__*/ l.string()),

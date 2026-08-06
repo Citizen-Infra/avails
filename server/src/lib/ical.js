@@ -30,7 +30,7 @@ export function icsUidFor(did, rkey) {
 
 /**
  * @param {object} opts
- * @param {object} opts.poll     The poll record (needs title, finalTime, finalDuration, optional description)
+ * @param {object} opts.poll     The poll record (needs title, finalTime, finalDuration, optional description, optional meetingUrl)
  * @param {string} opts.pollUrl  Link back to the poll
  * @param {string} opts.did      Poll creator's DID (for deterministic UID)
  * @param {string} opts.rkey     Poll record key (for deterministic UID)
@@ -44,8 +44,16 @@ export function generateIcs({ poll, pollUrl, did, rkey, participants = [], metho
   const start = new Date(poll.finalTime);
   const end = new Date(start.getTime() + poll.finalDuration * 60 * 1000);
 
+  // Never on a cancellation: a join link on a meeting that is not happening is
+  // an invitation to sit in an empty room. The CANCEL's job is to remove the
+  // event, not to describe how to attend it.
+  const meetingUrl = method === 'CANCEL' ? null : poll.meetingUrl || null;
+
   const descParts = [];
   if (poll.description) descParts.push(poll.description);
+  // Above the participant list and the poll link, because it is the one line
+  // someone opens this event to find, five minutes before the call.
+  if (meetingUrl) descParts.push(`Join: ${meetingUrl}`);
   if (participants.length > 0) descParts.push(`Participants: ${participants.join(', ')}`);
   descParts.push(
     method === 'CANCEL'
@@ -59,6 +67,15 @@ export function generateIcs({ poll, pollUrl, did, rkey, participants = [], metho
     end,
     summary: method === 'CANCEL' ? `Cancelled: ${poll.title}` : poll.title,
     description: descParts.join('\n\n'),
+    // LOCATION carries the join link, because that is where calendar clients
+    // look for one: Google, Outlook and Apple all render a URL here as the
+    // event's join affordance. It is duplicated in the description on purpose —
+    // LOCATION is what a client makes tappable, the description is what
+    // survives a client that does not.
+    ...(meetingUrl ? { location: meetingUrl } : {}),
+    // URL stays the poll: it is the durable record of the decision, and a
+    // client that shows only one of the two should show that one after the
+    // meeting has passed.
     url: pollUrl,
     status: method === 'CANCEL' ? 'CANCELLED' : 'CONFIRMED',
   });
