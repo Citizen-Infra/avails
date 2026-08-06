@@ -1076,6 +1076,30 @@ async function scheduleCall(
   if (!window || !window.start || !window.end) {
     throw new Error('window ({start, end}) is required');
   }
+  // Shape-checked, because a malformed window does not fail — it produces ZERO
+  // candidate slots, which this tool then reports as `fallback: create_poll`
+  // with "no overlapping availability found", and community-admin announces to
+  // members as "we could not find a time that worked for everyone who replied".
+  // A caller bug, blamed on the participants, in public.
+  //
+  // That is exactly how it went: community-admin sent full ISO timestamps for
+  // fourteen months. eachDateInRange splits on '-', so Number('07T00:00:00.000Z')
+  // was NaN, the range collapsed to one unusable entry, and no weekly window
+  // could ever match. Not one call-proposal ever booked, and nothing anywhere
+  // said why (community-admin#129, found 2026-08-06).
+  //
+  // Same rule as assertResolvableScope: "nobody is free" and "you asked the
+  // wrong question" must never produce the same answer.
+  for (const [field, value] of [['start', window.start], ['end', window.end]]) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value))) {
+      throw new Error(
+        `window.${field} must be a YYYY-MM-DD date, got "${value}". A date-time is not accepted: it silently yields no candidate slots.`
+      );
+    }
+  }
+  if (window.end < window.start) {
+    throw new Error(`window.end (${window.end}) is before window.start (${window.start})`);
+  }
   if (!title) {
     throw new Error('title is required');
   }
