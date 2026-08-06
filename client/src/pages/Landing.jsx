@@ -79,8 +79,13 @@ export default function Landing() {
             <span className="text-xl font-bold tracking-tight text-[#1a1a1a]">avails</span>
           </a>
           <div className="flex items-center gap-3 sm:gap-6 min-w-0">
+            {/* "Standing availability", not "Availability": the page's own h1
+                says the former, and so does the link to it further down this
+                page. Everything here is availability, so the bare noun named
+                the destination with the one word that told you nothing about
+                it. nowrap because two words must not wrap in a 64px header. */}
             {session?.did && (
-              <a href="/standing" className="hidden sm:block text-base text-[#6b6560] hover:text-[#1a1a1a] transition-colors">Availability</a>
+              <a href="/standing" className="hidden sm:block whitespace-nowrap text-base text-[#6b6560] hover:text-[#1a1a1a] transition-colors">Standing availability</a>
             )}
             <a href="/about" className="hidden sm:block text-base text-[#6b6560] hover:text-[#1a1a1a] transition-colors">About</a>
             <AuthButton />
