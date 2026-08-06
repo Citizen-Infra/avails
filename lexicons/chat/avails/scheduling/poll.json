@@ -25,6 +25,7 @@
           "status": { "type": "string", "knownValues": ["open", "closed"] },
           "finalTime": { "type": "string" },
           "finalDuration": { "type": "integer", "minimum": 15 },
+          "meetingUrl": { "type": "string", "maxLength": 500, "description": "Video call link for the scheduled meeting (Jitsi, Meet, Zoom, or any http(s) URL). Surfaced in the .ics invite and the finalized banner. Cleared on unschedule, since the link belongs to the meeting rather than the poll." },
           "openmeetEventSlug": { "type": "string", "description": "Slug of the OpenMeet event created when the poll was published. Cleared on unschedule so the OpenMeet event can be deleted." },
           "googleEventId": { "type": "string", "description": "ID of the Google Calendar event created when the poll was scheduled. Cleared on unschedule so the event can be auto-cancelled." },
           "googleCalendarId": { "type": "string", "description": "ID of the Google Calendar the event was inserted into. Paired with googleEventId for cleanup on unschedule." },

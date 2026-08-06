@@ -3,6 +3,8 @@
  * Whitelist allowed fields, validate types and ranges.
  */
 
+import { normalizeMeetingUrl } from '../lib/meetingUrl.js';
+
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_REGEX = /^\d{2}:\d{2}$/;
 const SLOT_REGEX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
@@ -195,6 +197,61 @@ export function validatePollUpdate(req, res, next) {
   if (slotMinutes !== undefined) req.validatedBody.slotMinutes = slotMinutes;
   if (hideResponsesUntilSubmit !== undefined) req.validatedBody.hideResponsesUntilSubmit = hideResponsesUntilSubmit;
   if (community !== undefined) req.validatedBody.community = community;
+
+  next();
+}
+
+// PUT /:did/:rkey/finalize. This route validated inline and read req.body
+// directly, against the project's own rule that every write endpoint has
+// validation middleware and reads req.validatedBody. Fixed here rather than
+// later because #19 adds meetingUrl to this route, and that value is a
+// user-supplied URL bound for an .ics and an href — exactly the kind of field
+// the rule exists for.
+//
+// notifyEmails is passed through as a plain array of strings. It is a fallback
+// list of addresses the client collected, and the route already de-dupes it
+// against the responses; the point here is that it cannot arrive as an object
+// or a nested structure.
+export function validateFinalize(req, res, next) {
+  const { finalTime, finalDuration, notifyEmails, meetingUrl } = req.body;
+
+  const errors = [];
+
+  if (typeof finalTime !== 'string' || finalTime.trim() === '') {
+    errors.push('finalTime is required');
+  } else if (Number.isNaN(new Date(finalTime).getTime())) {
+    errors.push('finalTime must be a valid date');
+  }
+
+  if (!Number.isInteger(finalDuration) || finalDuration < 15) {
+    errors.push('finalDuration must be an integer of at least 15 minutes');
+  }
+
+  if (notifyEmails !== undefined) {
+    if (!Array.isArray(notifyEmails) || !notifyEmails.every((e) => typeof e === 'string')) {
+      errors.push('notifyEmails must be an array of strings');
+    }
+  }
+
+  let normalizedMeetingUrl = null;
+  if (meetingUrl !== undefined) {
+    try {
+      normalizedMeetingUrl = normalizeMeetingUrl(meetingUrl);
+    } catch (err) {
+      errors.push(err.message);
+    }
+  }
+
+  if (errors.length > 0) {
+    return res.status(400).json({ error: errors.join('; ') });
+  }
+
+  req.validatedBody = { finalTime, finalDuration };
+  if (notifyEmails !== undefined) req.validatedBody.notifyEmails = notifyEmails;
+  // Only when the caller mentioned the field. Absence must stay distinguishable
+  // from an explicit clear: a client that finalizes without knowing about
+  // meeting links should not wipe one that is already set.
+  if (meetingUrl !== undefined) req.validatedBody.meetingUrl = normalizedMeetingUrl;
 
   next();
 }

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
-import { validatePollCreate, validatePollUpdate, validateGoogleEvent } from '../middleware/validate.js';
+import { validatePollCreate, validatePollUpdate, validateGoogleEvent, validateFinalize } from '../middleware/validate.js';
 import { indexPoll, updatePollStatus, updatePollCommunity, removePoll, listByCommunity } from '../lib/pollIndex.js';
 import { generateIcs } from '../lib/ical.js';
 import { sendEmail } from '../lib/email.js';
@@ -228,7 +228,7 @@ router.post('/:did/:rkey/publish-community', requireAuth, async (req, res, next)
 });
 
 // PUT /:did/:rkey/finalize — finalize poll, send .ics emails
-router.put('/:did/:rkey/finalize', requireAuth, async (req, res, next) => {
+router.put('/:did/:rkey/finalize', requireAuth, validateFinalize, async (req, res, next) => {
   try {
     const { did, rkey } = req.params;
 
@@ -236,10 +236,7 @@ router.put('/:did/:rkey/finalize', requireAuth, async (req, res, next) => {
       return res.status(403).json({ error: 'Only the poll creator can finalize' });
     }
 
-    const { finalTime, finalDuration, notifyEmails } = req.body;
-    if (!finalTime || !finalDuration) {
-      return res.status(400).json({ error: 'finalTime and finalDuration required' });
-    }
+    const { finalTime, finalDuration, notifyEmails, meetingUrl } = req.validatedBody;
 
     // Read existing record to merge fields and get CID for swap
     const pds = await resolvePds(did);
@@ -254,6 +251,15 @@ router.put('/:did/:rkey/finalize', requireAuth, async (req, res, next) => {
       finalDuration,
       status: 'finalized',
     };
+
+    // Three-way, because the field has three meanings: untouched (keep whatever
+    // the record already had), a URL (set it), and an explicit clear (drop the
+    // key entirely rather than writing an empty string, which the lexicon would
+    // accept and every consumer would then have to treat as falsy-but-present).
+    if (meetingUrl !== undefined) {
+      if (meetingUrl === null) delete updatedRecord.meetingUrl;
+      else updatedRecord.meetingUrl = meetingUrl;
+    }
 
     await xrpcCall(req.oauthSession, 'com.atproto.repo.putRecord', {
       repo: did,
@@ -354,8 +360,11 @@ router.delete('/:did/:rkey/finalize', requireAuth, async (req, res, next) => {
     // Snapshot for the cancellation email — needs title + finalTime/Duration pre-clear
     const snapshot = { ...existingValue };
 
-    // Build the new record without the scheduling fields
-    const { finalTime: _ft, finalDuration: _fd, openmeetEventSlug: _oes, googleEventId: _gei, googleCalendarId: _gci, ...rest } = existingValue;
+    // Build the new record without the scheduling fields. meetingUrl goes with
+    // them: the link belongs to the meeting, not to the poll, so leaving it
+    // behind would hand the next finalize a stale room from a decision that was
+    // reversed. The snapshot above still has it for the cancellation email.
+    const { finalTime: _ft, finalDuration: _fd, openmeetEventSlug: _oes, googleEventId: _gei, googleCalendarId: _gci, meetingUrl: _mu, ...rest } = existingValue;
     const updatedRecord = { ...rest, status: 'open' };
 
     await xrpcCall(req.oauthSession, 'com.atproto.repo.putRecord', {

@@ -11,6 +11,7 @@ import { normalizeScope } from './scope.js';
 import { bestCallSlots } from './availabilityOverlap.js';
 import { fetchCommunityConfig } from '../lib/communityConfig.js';
 import { pollUrl } from '../lib/pollUrl.js';
+import { normalizeMeetingUrl } from '../lib/meetingUrl.js';
 import {
   recallBooking,
   claimBooking,
@@ -257,6 +258,10 @@ const TOOL_DEFINITIONS = [
         finalDuration: {
           type: 'number',
           description: 'Meeting duration in minutes',
+        },
+        meetingUrl: {
+          type: 'string',
+          description: 'Optional video call link (http or https). Goes into the calendar invite as the event location and in its description, and shows on the poll page. A Jitsi room needs no account and can simply be named: https://meet.jit.si/avails-<rkey>. Pass an empty string to clear a link that is already set; omit the field to leave it alone.',
         },
       },
       required: ['did', 'rkey', 'finalTime', 'finalDuration'],
@@ -617,13 +622,18 @@ async function listMyPolls(_args, authContext) {
   return JSON.stringify({ polls });
 }
 
-async function schedule({ did, rkey, finalTime, finalDuration }, authContext) {
+async function schedule({ did, rkey, finalTime, finalDuration, meetingUrl }, authContext) {
   if (!authContext) throw new Error('AUTH_REQUIRED');
   if (!authContext.oauthSession) throw new Error('AUTH_REQUIRED');
 
   if (authContext.did !== did) {
     throw new Error('Only the poll creator can finalize a poll');
   }
+
+  // Same normalizer the REST route's middleware uses. An agent-supplied URL is
+  // no more trustworthy than a pasted one, and this one reaches the same .ics
+  // and the same href.
+  const normalizedMeetingUrl = meetingUrl === undefined ? undefined : normalizeMeetingUrl(meetingUrl);
 
   const pds = await resolvePds(did);
 
@@ -640,6 +650,13 @@ async function schedule({ did, rkey, finalTime, finalDuration }, authContext) {
     finalDuration,
     status: 'finalized',
   };
+
+  // Untouched / set / explicitly cleared — see the same three-way in
+  // routes/polls.js. An omitted field must not wipe a link already set.
+  if (normalizedMeetingUrl !== undefined) {
+    if (normalizedMeetingUrl === null) delete updatedRecord.meetingUrl;
+    else updatedRecord.meetingUrl = normalizedMeetingUrl;
+  }
 
   await xrpcCall(authContext.oauthSession, 'com.atproto.repo.putRecord', {
     repo: did,

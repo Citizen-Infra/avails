@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { validateResponseCreate, validatePollCreate, validatePollUpdate, validateGoogleEvent } from '../src/middleware/validate.js';
+import { validateResponseCreate, validatePollCreate, validatePollUpdate, validateGoogleEvent, validateFinalize } from '../src/middleware/validate.js';
 
 // Helper: create mock req/res/next for middleware testing
 function createMocks(body = {}) {
@@ -361,5 +361,75 @@ describe('validateGoogleEvent', () => {
     validateGoogleEvent(req, res, next);
     assert.ok(!nextCalled());
     assert.equal(res._status, 400);
+  });
+});
+
+// ── validateFinalize ────────────────────────────────────────────────────
+
+describe('validateFinalize', () => {
+  const valid = { finalTime: '2026-08-11T14:00:00.000Z', finalDuration: 60 };
+
+  it('passes a valid finalize and whitelists to the known fields', () => {
+    const { req, res, next, nextCalled } = createMocks({ ...valid, sneaky: 'x' });
+    validateFinalize(req, res, next);
+    assert.ok(nextCalled());
+    assert.deepStrictEqual(req.validatedBody, valid);
+  });
+
+  it('rejects a missing or unparseable finalTime', () => {
+    for (const body of [{ finalDuration: 60 }, { ...valid, finalTime: 'next tuesday' }]) {
+      const { req, res, next, nextCalled } = createMocks(body);
+      validateFinalize(req, res, next);
+      assert.ok(!nextCalled());
+      assert.equal(res._status, 400);
+    }
+  });
+
+  it('rejects a duration that is missing, fractional, or under the 15-minute floor', () => {
+    for (const d of [undefined, 0, 10, 42.5, '60']) {
+      const { req, res, next, nextCalled } = createMocks({ ...valid, finalDuration: d });
+      validateFinalize(req, res, next);
+      assert.ok(!nextCalled(), `duration ${d} should be rejected`);
+      assert.equal(res._status, 400);
+    }
+  });
+
+  it('carries a valid meetingUrl through', () => {
+    const { req, res, next, nextCalled } = createMocks({ ...valid, meetingUrl: 'https://meet.jit.si/x' });
+    validateFinalize(req, res, next);
+    assert.ok(nextCalled());
+    assert.equal(req.validatedBody.meetingUrl, 'https://meet.jit.si/x');
+  });
+
+  it('rejects a hostile meetingUrl before it can reach the .ics or the banner', () => {
+    for (const hostile of ['javascript:alert(1)', 'https://ok.test/a\r\nX-EVIL:1']) {
+      const { req, res, next, nextCalled } = createMocks({ ...valid, meetingUrl: hostile });
+      validateFinalize(req, res, next);
+      assert.ok(!nextCalled());
+      assert.equal(res._status, 400);
+    }
+  });
+
+  it('distinguishes an omitted meetingUrl from an explicit clear', () => {
+    // Absence must leave an existing link alone; an empty string must remove
+    // it. Collapsing the two would let a client that predates this feature
+    // silently wipe the link on every finalize.
+    const omitted = createMocks({ ...valid });
+    validateFinalize(omitted.req, omitted.res, omitted.next);
+    assert.ok(!('meetingUrl' in omitted.req.validatedBody), 'omitted stays absent');
+
+    const cleared = createMocks({ ...valid, meetingUrl: '' });
+    validateFinalize(cleared.req, cleared.res, cleared.next);
+    assert.ok('meetingUrl' in cleared.req.validatedBody, 'an explicit clear is present');
+    assert.equal(cleared.req.validatedBody.meetingUrl, null);
+  });
+
+  it('rejects a notifyEmails that is not an array of strings', () => {
+    for (const bad of ['a@b.test', [1, 2], [{ email: 'a@b.test' }]]) {
+      const { req, res, next, nextCalled } = createMocks({ ...valid, notifyEmails: bad });
+      validateFinalize(req, res, next);
+      assert.ok(!nextCalled());
+      assert.equal(res._status, 400);
+    }
   });
 });
