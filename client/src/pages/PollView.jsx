@@ -1,7 +1,7 @@
 import Logo from '@/components/Logo'
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useParams } from 'react-router'
-import { getPoll, getSession, submitResponse, updateResponse, finalizePoll, unfinalizePoll, deleteResponse, publishToOpenMeet, publishToCommunityFeed, getOpenMeetAvailability, setGoogleCalendarEvent, getCommunities, updatePoll } from '@/lib/api'
+import { getPoll, getSession, submitResponse, updateResponse, finalizePoll, unfinalizePoll, deleteResponse, publishToOpenMeet, publishToCommunityFeed, getOpenMeetAvailability, setGoogleCalendarEvent, getCommunities, updatePoll, setMeetingLink } from '@/lib/api'
 import {
   isGoogleConfigured,
   requestGoogleAccess,
@@ -24,8 +24,22 @@ import DeletePollDialog from '@/components/DeletePollDialog'
 import DeleteResponseDialog from '@/components/DeleteResponseDialog'
 import UnscheduleDialog from '@/components/UnscheduleDialog'
 import GuestModal from '@/components/GuestModal'
+import MeetingLinkField, { jitsiSuggestionFor } from '@/components/MeetingLinkField'
 
 const EMPTY_SET = new Set()
+
+// The host of a meeting link, for display beside "Join the call". A Zoom link
+// carrying a passcode query string is unreadable in full; the anchor keeps the
+// whole URL. Falls back to the raw value if it will not parse — the server
+// validated it, so an unparseable one reaching here means something is wrong,
+// and hiding it would be worse than showing it.
+function hostOf(url) {
+  try {
+    return new URL(url).host
+  } catch {
+    return url
+  }
+}
 
 export default function PollView() {
   const { did, rkey } = useParams()
@@ -73,6 +87,12 @@ export default function PollView() {
   const [showGuestModal, setShowGuestModal] = useState(false)
   const [justSubmitted, setJustSubmitted] = useState(false) // transient post-submit confirmation
   const [calendarCleanupWarning, setCalendarCleanupWarning] = useState(null) // best-effort google-delete notice
+  // Meeting link (#19). `draft` is what the field holds in either place;
+  // `editing` is only the result card's inline editor being open.
+  const [meetingUrlDraft, setMeetingUrlDraft] = useState('')
+  const [editingMeetingUrl, setEditingMeetingUrl] = useState(false)
+  const [meetingUrlSaving, setMeetingUrlSaving] = useState(false)
+  const [meetingUrlError, setMeetingUrlError] = useState(null)
   const [openmeetUrl, setOpenmeetUrl] = useState(null)
   const [publishingToOpenMeet, setPublishingToOpenMeet] = useState(false)
   const [openmeetError, setOpenmeetError] = useState(null)
@@ -465,10 +485,14 @@ export default function PollView() {
       const finalDuration = schedulingSlots.length * mins
       const notifyEmails = [...new Set(responses.filter(r => r.email).map(r => r.email))]
 
-      // 1) PDS finalize + .ics emails. Source of truth.
-      await finalizePoll(did, rkey, finalTime, finalDuration, notifyEmails)
+      // 1) PDS finalize + .ics emails. Source of truth. The meeting link rides
+      // along so the FIRST invite already carries it — adding one afterwards
+      // costs everyone a second email.
+      const link = meetingUrlDraft.trim()
+      await finalizePoll(did, rkey, finalTime, finalDuration, notifyEmails, link || undefined)
       setSchedulingMode(false)
       setSchedulingSlots([])
+      setMeetingUrlDraft('')
 
       // 2) Optional Google Calendar insert. Independent — never rolls back the schedule.
       if (chosenCalendarId !== 'none' && googleToken) {
@@ -481,6 +505,32 @@ export default function PollView() {
     } finally {
       setSchedulingLoading(false)
     }
+  }
+
+  // Save a link on an ALREADY scheduled poll. Separate from finalize because
+  // the server sends a different message for it: "the link changed", not "the
+  // meeting is booked". An unchanged value is a no-op there, so opening the
+  // editor and closing it again mails nobody.
+  async function handleSaveMeetingLink() {
+    if (meetingUrlSaving) return
+    setMeetingUrlSaving(true)
+    setMeetingUrlError(null)
+    try {
+      await setMeetingLink(did, rkey, meetingUrlDraft.trim())
+      setEditingMeetingUrl(false)
+      fetchData()
+    } catch (err) {
+      // The server owns what counts as a valid link, so show its wording.
+      setMeetingUrlError(err.message || 'Could not save the meeting link')
+    } finally {
+      setMeetingUrlSaving(false)
+    }
+  }
+
+  function openMeetingLinkEditor() {
+    setMeetingUrlDraft(poll?.meetingUrl || '')
+    setMeetingUrlError(null)
+    setEditingMeetingUrl(true)
   }
 
   async function retryCalendarInsert() {
@@ -752,6 +802,81 @@ export default function PollView() {
               {poll.finalDuration && <span className="text-[#6b6560] text-lg ml-2">({poll.finalDuration} min)</span>}
             </p>
 
+            {/* Join, directly under the time. It is the one line someone opens
+                this page to find five minutes before the call, so it sits above
+                the calendar and OpenMeet rows rather than among them.
+                Confirmed Green, not Gather Teal: teal inside this green card
+                would put two brand voices in one component. */}
+            {poll.meetingUrl && !editingMeetingUrl && (
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <a
+                  href={poll.meetingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group inline-flex items-baseline gap-2 text-lg font-semibold text-[#15803d] hover:text-[#166534] no-underline"
+                >
+                  <span className="underline underline-offset-4 decoration-2">Join the call</span>
+                  {/* The host alone, because a Zoom link carrying a passcode
+                      query string is unreadable; the anchor keeps all of it.
+                      Explicitly not underlined — inside the anchor it would
+                      inherit one and read as a second, competing link. */}
+                  <span className="text-sm font-normal text-[#6b6560] no-underline break-all">
+                    {hostOf(poll.meetingUrl)}
+                  </span>
+                </a>
+                {isCreator && (
+                  <button
+                    onClick={openMeetingLinkEditor}
+                    className="text-sm text-[#6b6560] hover:text-[#1a1a1a] underline underline-offset-2 transition-colors"
+                  >
+                    Edit
+                  </button>
+                )}
+              </div>
+            )}
+
+            {isCreator && !poll.meetingUrl && !editingMeetingUrl && (
+              <button
+                onClick={openMeetingLinkEditor}
+                className="text-sm font-medium text-[#15803d] hover:text-[#166534] underline underline-offset-2 transition-colors"
+              >
+                Add a meeting link
+              </button>
+            )}
+
+            {isCreator && editingMeetingUrl && (
+              <div className="space-y-3 max-w-md">
+                <MeetingLinkField
+                  value={meetingUrlDraft}
+                  onChange={setMeetingUrlDraft}
+                  suggestion={jitsiSuggestionFor(rkey)}
+                  error={meetingUrlError}
+                  disabled={meetingUrlSaving}
+                  autoFocus
+                />
+                <div className="flex items-center gap-3">
+                  <Button
+                    size="sm"
+                    onClick={handleSaveMeetingLink}
+                    disabled={meetingUrlSaving}
+                    className="bg-[#15803d] text-white hover:bg-[#166534]"
+                  >
+                    {meetingUrlSaving ? 'Saving…' : 'Save link'}
+                  </Button>
+                  <button
+                    onClick={() => { setEditingMeetingUrl(false); setMeetingUrlError(null) }}
+                    disabled={meetingUrlSaving}
+                    className="text-sm text-[#6b6560] hover:text-[#1a1a1a] transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+                <p className="text-sm text-[#6b6560]">
+                  Everyone who answered gets an updated invite. The time does not change.
+                </p>
+              </div>
+            )}
+
             {googleEventLink && (
               <p className="text-sm text-[#0d9488]">
                 Added to {googleEventLink.calendarSummary} —{' '}
@@ -930,6 +1055,9 @@ export default function PollView() {
                 chosenCalendarId={chosenCalendarId}
                 onChooseCalendar={setChosenCalendarId}
                 onConnectGoogle={() => connectGoogleCalendar({ forEvent: true })}
+                meetingUrl={meetingUrlDraft}
+                onMeetingUrlChange={setMeetingUrlDraft}
+                jitsiSuggestion={jitsiSuggestionFor(rkey)}
               />
             ) : (
               <AvailGrid

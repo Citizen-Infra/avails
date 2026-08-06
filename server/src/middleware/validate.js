@@ -256,6 +256,28 @@ export function validateFinalize(req, res, next) {
   next();
 }
 
+// PUT /:did/:rkey/meeting-link. Unlike validateFinalize, meetingUrl is REQUIRED
+// here — this route exists only to change the link, so an absent field is a
+// malformed request rather than "leave it alone". An empty string still means
+// "remove the link", which is why absence and emptiness must not collapse.
+export function validateMeetingLink(req, res, next) {
+  const { meetingUrl } = req.body ?? {};
+
+  if (meetingUrl === undefined) {
+    return res.status(400).json({ error: 'meetingUrl is required (send an empty string to remove the link)' });
+  }
+
+  let normalized;
+  try {
+    normalized = normalizeMeetingUrl(meetingUrl);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+
+  req.validatedBody = { meetingUrl: normalized };
+  next();
+}
+
 export function validateGoogleEvent(req, res, next) {
   const { googleEventId, googleCalendarId } = req.body;
 

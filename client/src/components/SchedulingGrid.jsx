@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import { cn } from '@/lib/utils'
+import MeetingLinkField from './MeetingLinkField'
 import '../styles/avail-grid.css'
 
 /**
@@ -72,6 +73,12 @@ export default function SchedulingGrid({
   chosenCalendarId,           // string | 'none'
   onChooseCalendar,           // (id: string | 'none') => void
   onConnectGoogle,            // () => void — opens OAuth with events scope
+  // Meeting link (#19). Set here so the FIRST invite already carries it; the
+  // result card handles adding one later. Omit onMeetingUrlChange to hide the
+  // field entirely.
+  meetingUrl = '',            // string — controlled by the parent
+  onMeetingUrlChange,         // ((v: string) => void) | undefined
+  jitsiSuggestion,            // string — the room offered, never pre-filled
 }) {
   const times = useMemo(
     () => generateSlots(dates, timeRange, slotMinutes),
@@ -250,6 +257,22 @@ export default function SchedulingGrid({
           </div>
         </div>
       </div>
+
+      {/* Below the teal bar rather than inside it, for two reasons: the bar is
+          already a dense control strip that would crowd at the sm breakpoint,
+          and white body text on Gather Teal measures 3.75:1 — fine for the
+          bar's large text and buttons, under AA for a field label and an error
+          message. On Paper Cream those clear it comfortably. */}
+      {onMeetingUrlChange && (
+        <div className="max-w-md">
+          <MeetingLinkField
+            value={meetingUrl}
+            onChange={onMeetingUrlChange}
+            suggestion={jitsiSuggestion}
+            disabled={confirmLoading}
+          />
+        </div>
+      )}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 

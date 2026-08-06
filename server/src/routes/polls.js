@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
-import { validatePollCreate, validatePollUpdate, validateGoogleEvent, validateFinalize } from '../middleware/validate.js';
+import { validatePollCreate, validatePollUpdate, validateGoogleEvent, validateFinalize, validateMeetingLink } from '../middleware/validate.js';
 import { indexPoll, updatePollStatus, updatePollCommunity, removePoll, listByCommunity } from '../lib/pollIndex.js';
 import { generateIcs } from '../lib/ical.js';
 import { sendEmail } from '../lib/email.js';
@@ -327,6 +327,125 @@ router.put('/:did/:rkey/finalize', requireAuth, validateFinalize, async (req, re
     }
 
     res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /:did/:rkey/meeting-link — set, change, or remove the meeting link on a
+// poll that is ALREADY scheduled (#19).
+//
+// Deliberately not a second call to /finalize, which would work mechanically —
+// it re-sends, and the frozen UID (#167) means calendars update in place —
+// but would mail everyone an announcement of a scheduling they already
+// received. That distinction is the whole reason this route exists: "the
+// meeting moved online" is a different message from "the meeting is booked".
+//
+// Re-issuing the invite is not optional. A calendar entry is exactly where the
+// link needs to land, and an email carrying an .ics is the only channel to it;
+// a link that appears only on the poll page helps nobody who is about to join
+// from their calendar.
+router.put('/:did/:rkey/meeting-link', requireAuth, validateMeetingLink, async (req, res, next) => {
+  try {
+    const { did, rkey } = req.params;
+
+    if (req.userDid !== did) {
+      return res.status(403).json({ error: 'Only the poll creator can change the meeting link' });
+    }
+
+    const { meetingUrl } = req.validatedBody;
+
+    const pds = await resolvePds(did);
+    const getUrl = `${pds}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(POLL_COLLECTION)}&rkey=${encodeURIComponent(rkey)}`;
+    const existing = await fetch(getUrl);
+    if (!existing.ok) return res.status(404).json({ error: 'Poll not found' });
+    const existingData = await existing.json();
+
+    // An unscheduled poll has no meeting to link to and no invite to update, so
+    // the link belongs on the finalize call instead.
+    if (!existingData.value.finalTime) {
+      return res.status(400).json({
+        error: 'This poll has no scheduled time yet. Set the meeting link when you schedule it.',
+      });
+    }
+
+    // No change, no write, no mail. An accidental save must be silent: the cost
+    // of getting this wrong is everyone's inbox, every time someone opens the
+    // field and closes it again.
+    const current = existingData.value.meetingUrl || null;
+    if (current === meetingUrl) {
+      return res.json({ ok: true, changed: false, meetingUrl });
+    }
+
+    const updatedRecord = { ...existingData.value };
+    if (meetingUrl === null) delete updatedRecord.meetingUrl;
+    else updatedRecord.meetingUrl = meetingUrl;
+
+    await xrpcCall(req.oauthSession, 'com.atproto.repo.putRecord', {
+      repo: did,
+      collection: POLL_COLLECTION,
+      rkey,
+      record: updatedRecord,
+      swapRecord: existingData.cid,
+    });
+
+    const url = pollUrl(did, rkey);
+    const pollResponses = await fetchPollResponses(did, rkey);
+    const participants = pollResponses.filter((r) => r.name).map((r) => r.name);
+
+    // Same UID as the original REQUEST, so this replaces the event already in
+    // people's calendars rather than adding a second one.
+    const icsContent = generateIcs({
+      poll: updatedRecord,
+      pollUrl: url,
+      did,
+      rkey,
+      participants,
+      method: 'REQUEST',
+    });
+    const icsBase64 = Buffer.from(icsContent).toString('base64');
+
+    const emailList = [...new Set(pollResponses.filter((r) => r.email).map((r) => r.email))];
+    if (emailList.length > 0) {
+      const whenStr = new Date(updatedRecord.finalTime).toLocaleString('en-US', {
+        dateStyle: 'full',
+        timeStyle: 'short',
+        timeZone: updatedRecord.timezone || 'UTC',
+      });
+      const added = current === null;
+      const removed = meetingUrl === null;
+      const composed = composeEmail({
+        heading: removed
+          ? `${updatedRecord.title} no longer has a meeting link`
+          : added
+            ? `${updatedRecord.title} now has a meeting link`
+            : `The meeting link for ${updatedRecord.title} changed`,
+        paragraphs: [
+          // Leading with "the time has not changed" stops this reading as a
+          // reschedule, which is exactly how a second "is scheduled" email
+          // would land.
+          `The time has not changed: still ${whenStr}, for ${updatedRecord.finalDuration} minutes.`,
+          removed ? 'The video link for this meeting was removed.' : `Join here: ${meetingUrl}`,
+          'An updated calendar invite is attached. It replaces the one you already have rather than adding a second entry.',
+        ],
+        action: removed ? { label: 'View the poll', url } : { label: 'Join the call', url: meetingUrl },
+        footer: 'You are receiving this because you answered this poll. The meeting time is unchanged.',
+      });
+      await Promise.allSettled(
+        emailList.map((email) =>
+          sendEmail({
+            to: email,
+            subject: removed
+              ? `${updatedRecord.title} — meeting link removed`
+              : `${updatedRecord.title} — meeting link${added ? '' : ' updated'}`,
+            ...composed,
+            attachments: [{ filename: 'invite.ics', content: icsBase64 }],
+          })
+        )
+      );
+    }
+
+    res.json({ ok: true, changed: true, meetingUrl, notified: emailList.length });
   } catch (err) {
     next(err);
   }
