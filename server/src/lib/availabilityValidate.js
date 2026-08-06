@@ -51,8 +51,13 @@ export function validateAvailability(body) {
     if (!scope || !SCOPE_TYPES.has(scope.type) || typeof scope.value !== 'string' || !scope.value) {
       return { valid: false, error: 'scope must be { type, value }' };
     }
-    // Phase 1 only publishes atproto-list scope.
-    if (scope.type !== 'atproto-list') return { valid: false, error: 'Phase 1 supports atproto-list scope only' };
+    // Both scope kinds publish. Membership is deliberately NOT verified here,
+    // for either kind: a standing offer scoped to a group you are not in is
+    // inert, since only that group's scheduler ever reads it — and the same is
+    // already true of a Bluesky list, which anyone can name without being on
+    // it. Consent to be booked lives in `trust` on the member's own record,
+    // not in who is allowed to write one.
+    if (!scope.value.trim()) return { valid: false, error: 'scope.value must not be blank' };
     if (scope.value.length > SCOPE_VALUE_MAX) {
       return { valid: false, error: `scope.value must be <= ${SCOPE_VALUE_MAX} chars` };
     }

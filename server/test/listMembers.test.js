@@ -15,12 +15,15 @@ function pdsDoc(pds) {
   };
 }
 
-function availabilityRecord(did, { scopeValue = LIST_URI, validUntil, createdAt, updatedAt, rkey = 'r1' } = {}) {
+function availabilityRecord(
+  did,
+  { scopeValue = LIST_URI, scopeType = 'atproto-list', validUntil, createdAt, updatedAt, rkey = 'r1' } = {}
+) {
   return {
     uri: `at://${did}/chat.avails.scheduling.availability/${rkey}`,
     cid: `cid-${rkey}`,
     value: {
-      scope: { type: 'atproto-list', value: scopeValue },
+      scope: { type: scopeType, value: scopeValue },
       pattern: { weekly: [{ day: 1, startTime: '09:00', endTime: '17:00' }] },
       timezone: 'UTC',
       trust: 'confirm',
@@ -456,5 +459,89 @@ describe('resolveAvailabilityForDids (#103 voter-scoped path)', () => {
 
   it('parseListUri is exported and returns the authority DID', () => {
     assert.equal(parseListUri(LIST_URI), 'did:plc:creator');
+  });
+});
+
+// A community-admin community as the group. This is the only scope kind with
+// no whole-group path — avails cannot read a community's roster — so every
+// test here goes through the DID-supplied route, which is what CA's
+// call-proposal trigger uses (my-community#49).
+describe('resolveAvailabilityForDids (ca-community scope)', () => {
+  const CA_SCOPE = { type: 'ca-community', value: 'cibc' };
+
+  function servePds(recordsByDid) {
+    fetchImpl = async (url) => {
+      const u = String(url);
+      if (u.includes('app.bsky.graph.getList')) throw new Error('must not enumerate a list for a community scope');
+      if (u.startsWith('https://plc.directory/')) {
+        return { ok: true, json: async () => pdsDoc('https://pds.example') };
+      }
+      if (u.includes('com.atproto.repo.listRecords')) {
+        const repo = new URL(u).searchParams.get('repo');
+        return { ok: true, json: async () => ({ records: recordsByDid[repo] || [] }) };
+      }
+      throw new Error(`Unexpected fetch: ${u}`);
+    };
+  }
+
+  it('resolves records scoped to the community', async () => {
+    servePds({
+      'did:plc:alice': [availabilityRecord('did:plc:alice', { scopeType: 'ca-community', scopeValue: 'cibc' })],
+      'did:plc:bob': [],
+    });
+
+    const result = await resolveAvailabilityForDids(['did:plc:alice', 'did:plc:bob'], CA_SCOPE);
+    assert.equal(result.length, 1);
+    assert.equal(result[0].did, 'did:plc:alice');
+  });
+
+  it('ignores a record published for a different community', async () => {
+    servePds({
+      'did:plc:alice': [availabilityRecord('did:plc:alice', { scopeType: 'ca-community', scopeValue: 'scenius' })],
+    });
+
+    assert.deepEqual(await resolveAvailabilityForDids(['did:plc:alice'], CA_SCOPE), []);
+  });
+
+  // The reason scopeMatches compares BOTH halves. With value-only matching, a
+  // list-scoped record whose URI happened to equal the community id would
+  // satisfy a community scope — someone booked into a group they never offered
+  // themselves to. Contrived by construction; the check costs nothing.
+  it('a record whose scope has the same value but a different type does not match', async () => {
+    servePds({
+      'did:plc:alice': [availabilityRecord('did:plc:alice', { scopeType: 'atproto-list', scopeValue: 'cibc' })],
+    });
+
+    assert.deepEqual(await resolveAvailabilityForDids(['did:plc:alice'], CA_SCOPE), []);
+  });
+
+  it('still honours validUntil', async () => {
+    servePds({
+      'did:plc:alice': [availabilityRecord('did:plc:alice', {
+        scopeType: 'ca-community',
+        scopeValue: 'cibc',
+        validUntil: new Date(Date.now() - 86400000).toISOString(),
+      })],
+    });
+
+    assert.deepEqual(await resolveAvailabilityForDids(['did:plc:alice'], CA_SCOPE), []);
+  });
+
+  it('throws on an empty community id rather than silently resolving nothing', async () => {
+    fetchImpl = async () => { throw new Error('should not fetch for a malformed scope'); };
+    await assert.rejects(
+      () => resolveAvailabilityForDids(['did:plc:alice'], { type: 'ca-community', value: '   ' }),
+      /non-empty community id/
+    );
+  });
+
+  // A community id is not an at:// URI, so treating a bare string as one is
+  // right for lists and wrong here. An object scope must name its type.
+  it('an object scope with no type is a caller bug, not shorthand', async () => {
+    fetchImpl = async () => { throw new Error('should not fetch'); };
+    await assert.rejects(
+      () => resolveAvailabilityForDids(['did:plc:alice'], { value: 'cibc' }),
+      /scope\.type is required/
+    );
   });
 });
