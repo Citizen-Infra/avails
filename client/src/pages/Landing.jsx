@@ -80,7 +80,7 @@ export default function Landing() {
           </a>
           <div className="flex items-center gap-3 sm:gap-6 min-w-0">
             {session?.did && (
-              <a href="/availability" className="hidden sm:block text-base text-[#6b6560] hover:text-[#1a1a1a] transition-colors">Availability</a>
+              <a href="/standing" className="hidden sm:block text-base text-[#6b6560] hover:text-[#1a1a1a] transition-colors">Availability</a>
             )}
             <a href="/about" className="hidden sm:block text-base text-[#6b6560] hover:text-[#1a1a1a] transition-colors">About</a>
             <AuthButton />
@@ -100,7 +100,7 @@ export default function Landing() {
             <div>
               <div className="flex items-center justify-between gap-3 mb-4">
                 <h2 className="text-xl font-semibold text-[#1a1a1a] tracking-tight">My polls</h2>
-                <a href="/availability" className="text-sm font-medium text-[#0d9488] hover:text-[#0f766e] transition-colors">
+                <a href="/standing" className="text-sm font-medium text-[#0d9488] hover:text-[#0f766e] transition-colors">
                   Set standing availability →
                 </a>
               </div>

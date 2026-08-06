@@ -1,4 +1,4 @@
-import { Routes, Route, Link } from 'react-router'
+import { Routes, Route, Link, Navigate } from 'react-router'
 import ErrorBoundary from './components/ErrorBoundary'
 import Landing from './pages/Landing'
 import PollView from './pages/PollView'
@@ -25,7 +25,14 @@ export default function App() {
         <Route path="/about" element={<About />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
-        <Route path="/availability" element={<ErrorBoundary><StandingAvailability /></ErrorBoundary>} />
+        <Route path="/standing" element={<ErrorBoundary><StandingAvailability /></ErrorBoundary>} />
+        {/* Everything in Avails is availability — the grid, a response, the
+            heatmap — so /availability named this page with the one word that
+            distinguishes it from nothing. /standing names what is actually
+            different about it: it outlives any single poll. Renamed before the
+            feature was announced, so no shared link could break; the redirect
+            is here for links already pasted somewhere internal. */}
+        <Route path="/availability" element={<Navigate to="/standing" replace />} />
         <Route path="/p/:did/:rkey" element={<ErrorBoundary><PollView /></ErrorBoundary>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
