@@ -30,15 +30,51 @@ test('rejects unknown trust value and strips unknown fields', () => {
   assert.equal(ok.value.injected, undefined);
 });
 
-test('rejects ca-community scope in Phase 1', () => {
+test('accepts a ca-community scope', () => {
   const r = validateAvailability({
-    scope: { type: 'ca-community', value: 'community-123' },
+    scope: { type: 'ca-community', value: 'cibc' },
+    pattern: { weekly: [{ day: 1, startTime: '09:00', endTime: '12:00' }] },
+    timezone: 'UTC',
+    trust: 'confirm',
+  });
+  assert.equal(r.valid, true);
+  assert.deepEqual(r.value.scope, { type: 'ca-community', value: 'cibc' });
+});
+
+// Membership is deliberately not checked, for either scope kind: an offer
+// scoped to a group you are not in is inert, because only that group's
+// scheduler reads it. Asserting it here so the omission reads as a decision
+// rather than a gap someone later "fixes" into a broken dependency on
+// community-admin from a pure validation function.
+test('does not require the caller to be a member of the community', () => {
+  const r = validateAvailability({
+    scope: { type: 'ca-community', value: 'a-community-the-caller-is-not-in' },
+    pattern: { weekly: [{ day: 1, startTime: '09:00', endTime: '12:00' }] },
+    timezone: 'UTC',
+    trust: 'confirm',
+  });
+  assert.equal(r.valid, true);
+});
+
+test('rejects a blank scope value', () => {
+  const r = validateAvailability({
+    scope: { type: 'ca-community', value: '   ' },
     pattern: { weekly: [{ day: 1, startTime: '09:00', endTime: '12:00' }] },
     timezone: 'UTC',
     trust: 'confirm',
   });
   assert.equal(r.valid, false);
-  assert.match(r.error, /Phase 1/);
+  assert.match(r.error, /must not be blank/);
+});
+
+test('still rejects an unknown scope type', () => {
+  const r = validateAvailability({
+    scope: { type: 'telepathy', value: 'x' },
+    pattern: { weekly: [{ day: 1, startTime: '09:00', endTime: '12:00' }] },
+    timezone: 'UTC',
+    trust: 'confirm',
+  });
+  assert.equal(r.valid, false);
 });
 
 test('rejects startTime >= endTime', () => {

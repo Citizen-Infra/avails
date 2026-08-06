@@ -7,6 +7,7 @@ import { computeBestSlots } from './overlap.js';
 import { sendTelegramMessage } from './telegram.js';
 import { assertMembership } from '../lib/membership.js';
 import { resolveListAvailability, resolveAvailabilityForDids } from './listMembers.js';
+import { normalizeScope } from './scope.js';
 import { bestCallSlots } from './availabilityOverlap.js';
 import { fetchCommunityConfig } from '../lib/communityConfig.js';
 import { pollUrl } from '../lib/pollUrl.js';
@@ -331,13 +332,13 @@ const TOOL_DEFINITIONS = [
   {
     name: 'schedule_call',
     description:
-      'Book a call directly from a group\'s standing availability — no poll. Resolves the members\' standing-availability records for the given scope, finds the best overlapping slot in the requested window, and books it if coverage is sufficient (at least 2 members with records, and at least 2 free at the chosen slot). Members whose record has trust:auto are auto-booked; trust:confirm members are returned separately and are NOT silently committed. If coverage is too thin, returns a fallback signal instead of booking — it does not create a poll itself. Only atproto-list scopes are supported (ca-community scopes are Phase 3 and are rejected). Pass voterDids to book for a specific subset (the people who voted/liked) rather than the whole list.',
+      'Book a call directly from a group\'s standing availability — no poll. Resolves the members\' standing-availability records for the given scope, finds the best overlapping slot in the requested window, and books it if coverage is sufficient (at least 2 members with records, and at least 2 free at the chosen slot). Members whose record has trust:auto are auto-booked; trust:confirm members are returned separately and are NOT silently committed. If coverage is too thin, returns a fallback signal instead of booking — it does not create a poll itself. Pass voterDids to book for a specific subset (the people who voted/liked) rather than the whole group. Two scope kinds: an atproto-list scope can be resolved whole (avails reads the list from the AppView) or subset; a ca-community scope REQUIRES voterDids and an authorized service credential, because a community\'s membership lives in community-admin and cannot be read from ATProto.',
     inputSchema: {
       type: 'object',
       properties: {
         scope: {
           description:
-            'Scope to resolve standing availability from. Either an at://<did>/app.bsky.graph.list/<rkey> list URI string (Phase 1 shorthand), or an explicit { type, value } object. type "ca-community" is Phase 3 and will be rejected.',
+            'Scope to resolve standing availability from. Either an at://<did>/app.bsky.graph.list/<rkey> list URI string (shorthand for an atproto-list scope), or an explicit { type, value } object. For type "ca-community", value is the community-admin community id and voterDids is required.',
           oneOf: [
             {
               type: 'string',
@@ -979,35 +980,8 @@ async function listCommunities() {
   return JSON.stringify(communities, null, 2);
 }
 
-// Accepts either a bare list-URI string or an explicit { type, value } scope
-// object (mirrors the availability record's own #scope shape — see
-// lexicons/chat/avails/scheduling/availability.json). Does not itself
-// validate that `value` is a well-formed at:// URI — resolveListAvailability
-// does that for the atproto-list path.
-const SCOPE_TYPES = ['atproto-list', 'ca-community'];
-
-function normalizeScope(scope) {
-  // A bare string is unambiguous shorthand — there is only one kind of URI a
-  // caller can pass — so it still defaults.
-  if (typeof scope === 'string') {
-    return { type: 'atproto-list', value: scope };
-  }
-  if (scope && typeof scope === 'object' && typeof scope.value === 'string') {
-    // An object that names no type is a caller bug, not shorthand: defaulting
-    // it silently sent a mistyped ca-community scope down the list path, where
-    // it failed later with an unrelated error about the URI shape.
-    if (scope.type === undefined) {
-      throw new Error(`scope.type is required when scope is an object: one of ${SCOPE_TYPES.join(', ')}`);
-    }
-    if (!SCOPE_TYPES.includes(scope.type)) {
-      throw new Error(`Unknown scope.type "${scope.type}": expected one of ${SCOPE_TYPES.join(', ')}`);
-    }
-    return { type: scope.type, value: scope.value };
-  }
-  throw new Error(
-    'scope is required: either an at://<did>/app.bsky.graph.list/<rkey> URI string, or { type, value }'
-  );
-}
+// normalizeScope moved to scope.js, shared with listMembers.js: normalizing
+// what a caller sent and matching a record against it must never disagree.
 
 // Minimal at:// URI parse, duplicated locally rather than imported from
 // listMembers.js — matches the existing pattern in this codebase of small
@@ -1038,10 +1012,23 @@ function parseAtUri(uri) {
 // pointing at the OAuth metadata — signing in genuinely is the fix for them.
 // A signed-in non-owner gets a plain error instead: another OAuth round trip
 // would not help, and sending them back through one would be a lie.
-function assertMayScheduleFor(listUri, authContext) {
+function assertMayScheduleFor(scope, authContext) {
   if (!authContext) throw new Error('AUTH_REQUIRED');
   if (authContext.service) return;
-  const owner = String(listUri).slice('at://'.length).split('/')[0];
+
+  // A ca-community scope has no owner to compare a caller against: membership
+  // lives in community-admin and is not readable from ATProto at all, so there
+  // is nothing avails holds that a signed-in user could prove ownership with.
+  // The service credential is therefore the only route, and saying so is
+  // better than falling through to a list-shaped check that would report the
+  // community id as "not your list".
+  if (scope.type === 'ca-community') {
+    throw new Error(
+      'A ca-community scope can only be scheduled by an authorized service (community-admin), because community membership is not readable from ATProto.'
+    );
+  }
+
+  const owner = String(scope.value).slice('at://'.length).split('/')[0];
   if (authContext.did && authContext.did === owner) return;
   throw new Error(
     'Not your list. schedule_call books a call and emails the people it books, so it is limited to the list owner or an authorized service.'
@@ -1051,18 +1038,8 @@ function assertMayScheduleFor(listUri, authContext) {
 async function scheduleCall({ scope, durationMinutes, window, title, voterDids }, authContext) {
   const normalizedScope = normalizeScope(scope);
 
-  if (normalizedScope.type === 'ca-community') {
-    throw new Error(
-      'ca-community scope is not supported in Phase 1. Use an atproto-list scope (a list URI) instead — ca-community scoping is Phase 3.'
-    );
-  }
-  if (normalizedScope.type !== 'atproto-list') {
-    throw new Error(`Unsupported scope type "${normalizedScope.type}". Phase 1 only supports "atproto-list".`);
-  }
-
-  // After the scope is known to be a list (so there is an owner to compare
-  // against) and before anything reads records or sends mail.
-  assertMayScheduleFor(normalizedScope.value, authContext);
+  // Before anything reads records or sends mail.
+  assertMayScheduleFor(normalizedScope, authContext);
   if (!Number.isInteger(durationMinutes) || durationMinutes <= 0) {
     throw new Error('durationMinutes must be a positive integer');
   }
@@ -1088,8 +1065,21 @@ async function scheduleCall({ scope, durationMinutes, window, title, voterDids }
     }
   }
 
+  // A ca-community scope has no whole-group path: avails can read a Bluesky
+  // list's membership from the AppView, but a community's roster lives in
+  // community-admin. The caller that HAS the DIDs supplies them — which is
+  // what the call-proposal trigger already does, since it counts likers.
+  // Fail loudly rather than resolving zero members, which would be reported
+  // as "nobody has published availability" and read as a coverage problem
+  // instead of a missing argument.
+  if (!voterDids && normalizedScope.type === 'ca-community') {
+    throw new Error(
+      'A ca-community scope requires voterDids: avails cannot enumerate a community\'s members from ATProto, so the caller must supply the DIDs of the people who opted in. Whole-community scheduling would need community-admin\'s GET /api/members, which is not wired here yet.'
+    );
+  }
+
   const members = voterDids
-    ? await resolveAvailabilityForDids(voterDids, normalizedScope.value)
+    ? await resolveAvailabilityForDids(voterDids, normalizedScope)
     : await resolveListAvailability(normalizedScope.value);
   const withRecords = members.length;
 

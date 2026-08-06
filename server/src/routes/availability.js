@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { createHash } from 'node:crypto';
 import { requireAuth } from '../middleware/auth.js';
 import { validateAvailability } from '../lib/availabilityValidate.js';
+import { scopeMatches } from '../mcp/scope.js';
 
 const router = Router();
 
@@ -95,7 +96,11 @@ router.post('/', requireAuth, validateAvailabilityBody, async (req, res, next) =
     const rkey = rkeyForScope(scope);
 
     const existing = await listAvailabilityRecords(did, pds);
-    const sameScope = existing.filter((r) => r.value?.scope?.value === scope.value);
+    // Both halves, matching scope.js: rkeyForScope hashes type AND value, so a
+    // value-only filter here would sweep a same-value record of the OTHER type
+    // as though it were a stale duplicate of this one — deleting a real record
+    // for a different group.
+    const sameScope = existing.filter((r) => scopeMatches(r.value?.scope, scope));
     const prior = sameScope.find((r) => r.uri.split('/').pop() === rkey);
     // Records written before the deterministic scheme carry a TID rkey, as can
     // a duplicate the old non-atomic path produced. Either would linger as a

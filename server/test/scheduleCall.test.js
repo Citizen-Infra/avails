@@ -263,18 +263,77 @@ describe('schedule_call', () => {
     assert.equal(result.booked, true);
   });
 
-  it('(e) a ca-community scope is rejected with a clear Phase 1 error, before touching resolveListAvailability', async () => {
+  // A ca-community scope has no whole-group path — avails cannot read a
+  // community's roster — so it is the caller's DIDs or nothing. The failure
+  // must name the missing argument: resolving zero members instead would be
+  // reported as "nobody has published availability", sending the organizer to
+  // chase a coverage problem that does not exist.
+  it('(e) a ca-community scope without voterDids fails naming the missing argument, before touching resolveListAvailability', async () => {
     resetHooks();
     // resolveListAvailabilityImpl left as the "should not be called" throw.
 
     await assert.rejects(
       () => callTool('schedule_call', {
-        scope: { type: 'ca-community', value: 'some-community-id' },
+        scope: { type: 'ca-community', value: 'cibc' },
         durationMinutes: 60,
         window: WINDOW,
         title: 'Weekly sync',
       }, SERVICE),
-      /Phase 1/
+      /requires voterDids/
+    );
+    assert.deepEqual(fetchCalls, []);
+  });
+
+  it('(e2) a ca-community scope WITH voterDids books, and the scope object reaches the resolver intact', async () => {
+    resetHooks();
+    let listCalled = false;
+    resolveListAvailabilityImpl = async () => { listCalled = true; return []; };
+    resolveAvailabilityForDidsImpl = async (dids, scope) => {
+      // The whole point of the ca-community arm: the community id travels as a
+      // typed scope, not flattened to a bare string that would normalize back
+      // to atproto-list and match nothing.
+      assert.deepEqual(scope, { type: 'ca-community', value: 'cibc' });
+      assert.deepEqual([...dids].sort(), ['did:plc:alice', 'did:plc:bob']);
+      return [member('did:plc:alice', 'auto'), member('did:plc:bob', 'auto')];
+    };
+    bestCallSlotsImpl = () => [
+      { slot: '2026-07-21T14:00', participants: ['did:plc:alice', 'did:plc:bob'], count: 2 },
+    ];
+
+    const result = JSON.parse(await callTool('schedule_call', {
+      scope: { type: 'ca-community', value: 'cibc' },
+      durationMinutes: 60, window: WINDOW, title: 'Season 3 kickoff',
+      voterDids: ['did:plc:alice', 'did:plc:bob'],
+    }, SERVICE));
+
+    assert.equal(result.booked, true);
+    assert.equal(listCalled, false);
+  });
+
+  // Authorization for a community cannot fall back to the list-owner check:
+  // there is no owner DID in "cibc" to compare against, and slicing at:// off a
+  // community id yields garbage that would never match — accidentally safe, but
+  // for the wrong reason and with a nonsense message. Only the service may.
+  //
+  // Assert the REASON, not just the refusal. Deleting the community branch
+  // still rejects, because slicing "at://" off "cibc" yields "" which matches
+  // no DID — so a test that only checked "it threw", or matched the words
+  // "authorized service" (present in BOTH messages), passes against the bug.
+  // Mutation-checked: this is the assertion that fails when the branch goes.
+  it('(e3) a ca-community scope is refused for a signed-in non-service caller, before any read', async () => {
+    resetHooks();
+
+    await assert.rejects(
+      () => callTool('schedule_call', {
+        scope: { type: 'ca-community', value: 'cibc' },
+        durationMinutes: 60, window: WINDOW, title: 'Weekly sync',
+        voterDids: ['did:plc:alice', 'did:plc:bob'],
+      }, OWNER),
+      (err) => {
+        assert.match(err.message, /not readable from ATProto/);
+        assert.doesNotMatch(err.message, /Not your list/, 'must not fall through to the list-owner check');
+        return true;
+      }
     );
     assert.deepEqual(fetchCalls, []);
   });
@@ -283,8 +342,8 @@ describe('schedule_call', () => {
     resetHooks();
     let listCalled = false;
     resolveListAvailabilityImpl = async () => { listCalled = true; return []; };
-    resolveAvailabilityForDidsImpl = async (dids, listUri) => {
-      assert.equal(listUri, LIST_URI);
+    resolveAvailabilityForDidsImpl = async (dids, scope) => {
+      assert.deepEqual(scope, { type: 'atproto-list', value: LIST_URI });
       assert.deepEqual([...dids].sort(), ['did:plc:alice', 'did:plc:bob']);
       return [member('did:plc:alice', 'auto'), member('did:plc:bob', 'auto')];
     };

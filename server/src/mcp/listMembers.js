@@ -1,16 +1,25 @@
-// Resolve a Bluesky list -> its members -> their standing-availability records.
+// Resolve a group -> its members' DIDs -> their standing-availability records.
 //
-// Feeds the schedule_call tool (Task 8): given a list URI, page the public
-// AppView for member DIDs, then pull each member's standing-availability
-// record scoped to that list from their own PDS.
+// Feeds the schedule_call tool (Task 8). Two group kinds, per the availability
+// record's own #scope: a Bluesky list, whose membership avails can read from
+// the public AppView, and a community-admin community, whose membership avails
+// cannot read at all — CA supplies those DIDs instead (my-community#49).
+//
+// Scope semantics live in scope.js, shared with tools.js: this module decides
+// whether a record MATCHES a scope and that module normalizes what a caller
+// SENT, and those two answers must never disagree.
 //
 // Mirrors the resolvePds + listRecords idioms already used in tools.js /
-// routes/availability.js — this file is not wired into those (no shared
-// helper module exists yet), so the small helpers are duplicated here on
-// purpose, matching the existing pattern in this codebase.
+// routes/availability.js — the small fetch helpers are still duplicated here
+// on purpose, matching the existing pattern in this codebase.
+
+import { normalizeScope, assertResolvableScope, scopeMatches, parseListUri } from './scope.js';
+
+// Re-exported for existing importers (and its own tests), which knew this file
+// as parseListUri's home before scope.js existed.
+export { parseListUri };
 
 const AVAILABILITY_COLLECTION = 'chat.avails.scheduling.availability';
-const LIST_COLLECTION = 'app.bsky.graph.list';
 const BSKY_APPVIEW = 'https://public.api.bsky.app';
 
 // ---------------------------------------------------------------------------
@@ -38,22 +47,6 @@ async function resolvePds(did) {
   return svc?.serviceEndpoint || 'https://bsky.social';
 }
 
-// Validates `at://<did>/app.bsky.graph.list/<rkey>` shape and returns the
-// authority DID, which is the list's owner — a record can only live in its
-// own creator's repo, so this holds without trusting any API response shape.
-// Throws otherwise.
-export function parseListUri(listUri) {
-  if (typeof listUri !== 'string' || !listUri.startsWith('at://')) {
-    throw new Error(`Invalid list URI: ${listUri}`);
-  }
-  const segments = listUri.slice('at://'.length).split('/');
-  const [did, collection, rkey] = segments;
-  if (!did || collection !== LIST_COLLECTION || !rkey) {
-    throw new Error(`Not an ${LIST_COLLECTION} URI: ${listUri}`);
-  }
-  return did;
-}
-
 // Pages app.bsky.graph.getList on the public AppView until the cursor is
 // exhausted, returning every member's DID.
 async function fetchListMemberDids(listUri) {
@@ -77,8 +70,8 @@ async function fetchListMemberDids(listUri) {
 }
 
 // Fetches one member's availability records and returns the latest one
-// scoped to this list and not expired, or null if they have none.
-async function resolveMemberRecord(did, listUri) {
+// scoped to this group and not expired, or null if they have none.
+async function resolveMemberRecord(did, scope) {
   const pds = await resolvePds(did);
 
   const res = await fetchWithTimeout(
@@ -92,7 +85,7 @@ async function resolveMemberRecord(did, listUri) {
   const now = Date.now();
   const matching = (data.records || []).filter((record) => {
     const value = record?.value;
-    if (!value || value.scope?.value !== listUri) return false;
+    if (!value || !scopeMatches(value.scope, scope)) return false;
     if (value.validUntil && new Date(value.validUntil).getTime() <= now) return false;
     return true;
   });
@@ -113,19 +106,23 @@ async function resolveMemberRecord(did, listUri) {
 // ---------------------------------------------------------------------------
 
 // Resolves the standing-availability records a given set of DIDs have published
-// for a specific list scope. Per-DID failures (PDS resolution / listRecords) are
-// non-fatal — that DID is skipped, not the whole call. DIDs are deduped. The
-// list URI is validated up front so a malformed scope throws loudly rather than
-// resolving to an empty set (which would masquerade as thin coverage).
+// for a specific group scope. Per-DID failures (PDS resolution / listRecords)
+// are non-fatal — that DID is skipped, not the whole call. DIDs are deduped.
+// The scope is validated up front (see assertResolvableScope).
+//
+// Takes either scope shape. This is the ONLY path that works for a
+// ca-community scope: avails cannot enumerate a community's members, so the
+// caller — community-admin, which can — supplies the DIDs.
 //
 // Shared by resolveListAvailability (the whole list) and schedule_call's
 // voter-scoped path (an explicit subset who opted into a proposal) — #103/#119.
-export async function resolveAvailabilityForDids(dids, listUri) {
-  parseListUri(listUri); // throws on a malformed at:// list URI
+export async function resolveAvailabilityForDids(dids, scope) {
+  const normalized = normalizeScope(scope);
+  assertResolvableScope(normalized);
   const unique = [...new Set(dids)];
 
   const outcomes = await Promise.allSettled(
-    unique.map((did) => resolveMemberRecord(did, listUri))
+    unique.map((did) => resolveMemberRecord(did, normalized))
   );
 
   const results = [];
@@ -150,5 +147,5 @@ export async function resolveAvailabilityForDids(dids, listUri) {
 export async function resolveListAvailability(listUri) {
   const ownerDid = parseListUri(listUri);
   const dids = [ownerDid, ...(await fetchListMemberDids(listUri))];
-  return resolveAvailabilityForDids(dids, listUri);
+  return resolveAvailabilityForDids(dids, { type: 'atproto-list', value: listUri });
 }
