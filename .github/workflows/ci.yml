@@ -22,9 +22,22 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          # Read from .node-version rather than repeating 22 here. The file
+          # already existed and this duplicated it, which is one edit away from
+          # CI and local dev building on different Node without anyone noticing.
+          node-version-file: .node-version
+          # Both workspaces — each has its own lockfile, and caching only one
+          # would silently leave the other reinstalling from the network.
+          cache: npm
+          cache-dependency-path: |
+            client/package-lock.json
+            server/package-lock.json
+      # npm ci, not npm install (#123). It installs exactly the lockfile, so a
+      # transitive bump cannot quietly make CI test something other than what
+      # deploys, and it FAILS on lockfile drift rather than papering over it —
+      # which is the point, not a side effect.
       - name: Install client dependencies
-        run: cd client && npm install
+        run: cd client && npm ci
       - name: Build client
         run: cd client && npm run build
       - name: Install server dependencies
