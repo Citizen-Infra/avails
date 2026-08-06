@@ -142,6 +142,12 @@ A finalized poll can carry a `meetingUrl` — a video call link, on the poll rec
 
 **Unfinalize clears it**, alongside `finalTime`/`finalDuration`/`openmeetEventSlug`/`googleEventId`. The link belongs to the meeting, not to the poll; leaving it behind would hand the next finalize a stale room from a decision that was reversed.
 
+**Two places set it, and they are different routes on purpose.** At schedule time the link rides along on `PUT /:did/:rkey/finalize`, so the first invite already carries it. Afterwards it goes through **`PUT /:did/:rkey/meeting-link`** (`validateMeetingLink`, creator-only, 400 on a poll with no `finalTime`). Reusing finalize for the second case would work mechanically — it re-sends, and the frozen UID means calendars update in place — but would mail everyone an announcement of a scheduling they already received. "The meeting moved online" is a different message from "the meeting is booked", so it gets different copy, a different subject, and a body that leads with *the time has not changed*.
+
+That route re-issues the invite rather than only writing the record, because a calendar entry is exactly where the link needs to land and an email carrying an `.ics` is the only channel to it. **An unchanged value writes nothing and sends nothing** — without that guard, opening the editor and closing it again would mail the whole group.
+
+**Client:** `components/MeetingLinkField.jsx` is shared by both surfaces so validation, affordances and copy cannot drift. The Jitsi room (`https://meet.jit.si/avails-<rkey>`, deterministic from the rkey) is **offered, never pre-filled** — a room needs no account so suggesting one is nearly free, but assuming one presumes the meeting is online, and plenty of community meetings are in a room with chairs. On the finalized card, Join sits directly under the time in Confirmed Green (teal there would be a second brand voice inside a green card), with the host shown as a quiet non-underlined suffix and the full URL on the anchor. The field renders *below* the teal scheduling bar rather than inside it: white on Gather Teal measures 3.75:1, fine for that bar's large text and buttons, under AA for a field label and an error message.
+
 ## Client architecture
 
 ### Pages

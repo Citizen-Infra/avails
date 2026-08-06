@@ -21,7 +21,11 @@ export async function createPoll(data) { return apiFetch('/api/polls', { method:
 export async function getPoll(did, rkey) { return apiFetch(`/api/polls/${did}/${rkey}`); }
 export async function submitResponse(did, rkey, data) { return apiFetch(`/api/polls/${did}/${rkey}/responses`, { method: 'POST', body: JSON.stringify(data) }); }
 export async function updateResponse(did, rkey, responseRkey, data) { return apiFetch(`/api/polls/${did}/${rkey}/responses/${responseRkey}`, { method: 'PUT', body: JSON.stringify(data) }); }
-export async function finalizePoll(did, rkey, finalTime, finalDuration, notifyEmails) { return apiFetch(`/api/polls/${did}/${rkey}/finalize`, { method: 'PUT', body: JSON.stringify({ finalTime, finalDuration, notifyEmails }) }); }
+export async function finalizePoll(did, rkey, finalTime, finalDuration, notifyEmails, meetingUrl) { return apiFetch(`/api/polls/${did}/${rkey}/finalize`, { method: 'PUT', body: JSON.stringify({ finalTime, finalDuration, notifyEmails, ...(meetingUrl !== undefined ? { meetingUrl } : {}) }) }); }
+// Changing the link on an already-scheduled poll re-issues the calendar invite,
+// which is why it is not just another finalize: the server sends "the link
+// changed", not "the meeting is booked". Unchanged values send nothing at all.
+export async function setMeetingLink(did, rkey, meetingUrl) { return apiFetch(`/api/polls/${did}/${rkey}/meeting-link`, { method: 'PUT', body: JSON.stringify({ meetingUrl }) }); }
 export async function unfinalizePoll(did, rkey) { return apiFetch(`/api/polls/${did}/${rkey}/finalize`, { method: 'DELETE' }); }
 export async function updatePoll(did, rkey, data) { return apiFetch(`/api/polls/${did}/${rkey}`, { method: 'PUT', body: JSON.stringify(data) }); }
 export async function getCommunities() { return apiFetch('/api/communities'); }
