@@ -74,10 +74,10 @@ export const $safeValidate = /*#__PURE__*/ main.safeValidate.bind(main)
 
 type Scope = {
   $type?: 'chat.avails.scheduling.availability#scope'
-  type: 'atproto-list' | 'ca-community' | l.UnknownString
+  type: 'atproto-list' | 'ca-community' | 'ca-event' | l.UnknownString
 
   /**
-   * For atproto-list: an at:// URI of an app.bsky.graph.list. For ca-community (Phase 3): the community-admin community id.
+   * For atproto-list: an at:// URI of an app.bsky.graph.list. For ca-community: the community-admin community id. For ca-event: the stable event DID.
    */
   value: string
 }
@@ -89,7 +89,7 @@ const scope = /*#__PURE__*/ l.typedObject<Scope>(
   'scope',
   /*#__PURE__*/ l.object({
     type: /*#__PURE__*/ l.string<{
-      knownValues: ['atproto-list', 'ca-community']
+      knownValues: ['atproto-list', 'ca-community', 'ca-event']
     }>(),
     value: /*#__PURE__*/ l.string(),
   }),

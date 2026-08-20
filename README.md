@@ -161,6 +161,9 @@ TypeScript types are generated with `npx @atproto/lex build`.
 | PUT | `/api/polls/:did/:rkey/responses/:rkey` | — | Update response |
 | DELETE | `/api/polls/:did/:rkey/responses/:rkey` | — | Delete response |
 | GET | `/api/communities` | — | List communities |
+| POST | `/api/availability` | ATProto | Publish standing availability; `ca-event` writes require an active Community Admin event grant |
+| GET | `/api/availability/mine` | ATProto | List your standing-availability records |
+| DELETE | `/api/availability/:rkey` | ATProto | Delete your standing-availability record |
 
 ### MCP endpoint
 
@@ -176,6 +179,7 @@ TypeScript types are generated with `npx @atproto/lex build`.
 | `schedule` | ATProto | Pick the best time, close poll, send calendar invites |
 | `share_poll` | ATProto | Post poll link to a community's Telegram group or channel |
 | `publish_to_openmeet` | ATProto | Create OpenMeet event from finalized poll |
+| `evaluate_availability_overlap` | service | Read-only event-scoped overlap evaluation; no booking or invitation side effects |
 
 **Authentication:** Standard OAuth 2.0 with ATProto — Claude Code handles the flow automatically via `/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server` discovery. Granular scopes (only poll and response record access, not full account).
 

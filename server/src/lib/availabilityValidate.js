@@ -1,5 +1,7 @@
+import { isDid } from '../mcp/scope.js';
+
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
-const SCOPE_TYPES = new Set(['atproto-list', 'ca-community']);
+const SCOPE_TYPES = new Set(['atproto-list', 'ca-community', 'ca-event']);
 const TRUST = new Set(['confirm', 'auto']);
 const TIMEZONE_MAX = 64;
 const SCOPE_VALUE_MAX = 512;
@@ -51,13 +53,14 @@ export function validateAvailability(body) {
     if (!scope || !SCOPE_TYPES.has(scope.type) || typeof scope.value !== 'string' || !scope.value) {
       return { valid: false, error: 'scope must be { type, value }' };
     }
-    // Both scope kinds publish. Membership is deliberately NOT verified here,
-    // for either kind: a standing offer scoped to a group you are not in is
-    // inert, since only that group's scheduler ever reads it — and the same is
-    // already true of a Bluesky list, which anyone can name without being on
-    // it. Consent to be booked lives in `trust` on the member's own record,
-    // not in who is allowed to write one.
+    // List and community membership are deliberately not verified here: those
+    // offers are inert unless the matching scheduler reads them. ca-event is
+    // different: its DID shape is validated here, then the route introspects
+    // Community Admin online before every create or replacement.
     if (!scope.value.trim()) return { valid: false, error: 'scope.value must not be blank' };
+    if (scope.type === 'ca-event' && !isDid(scope.value)) {
+      return { valid: false, error: 'ca-event scope.value must be a DID' };
+    }
     if (scope.value.length > SCOPE_VALUE_MAX) {
       return { valid: false, error: `scope.value must be <= ${SCOPE_VALUE_MAX} chars` };
     }

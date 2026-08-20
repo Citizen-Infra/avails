@@ -41,6 +41,28 @@ test('accepts a ca-community scope', () => {
   assert.deepEqual(r.value.scope, { type: 'ca-community', value: 'cibc' });
 });
 
+test('accepts a ca-event scope keyed by event DID', () => {
+  const r = validateAvailability({
+    scope: { type: 'ca-event', value: 'did:plc:mzvqnxye3oejamuwmfl4qvou' },
+    pattern: { weekly: [{ day: 1, startTime: '09:00', endTime: '12:00' }] },
+    timezone: 'UTC',
+    trust: 'confirm',
+  });
+  assert.equal(r.valid, true);
+  assert.deepEqual(r.value.scope, { type: 'ca-event', value: 'did:plc:mzvqnxye3oejamuwmfl4qvou' });
+});
+
+test('rejects a ca-event scope that is not keyed by a DID', () => {
+  const r = validateAvailability({
+    scope: { type: 'ca-event', value: 'siu' },
+    pattern: { weekly: [{ day: 1, startTime: '09:00', endTime: '12:00' }] },
+    timezone: 'UTC',
+    trust: 'confirm',
+  });
+  assert.equal(r.valid, false);
+  assert.match(r.error, /must be a DID/);
+});
+
 // Membership is deliberately not checked, for either scope kind: an offer
 // scoped to a group you are not in is inert, because only that group's
 // scheduler reads it. Asserting it here so the omission reads as a decision

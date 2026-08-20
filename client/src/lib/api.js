@@ -38,4 +38,5 @@ export async function publishToCommunityFeed(did, rkey, published = true) { retu
 export async function getOpenMeetAvailability(startTime, endTime) { return apiFetch('/api/openmeet/availability', { method: 'POST', body: JSON.stringify({ startTime, endTime }) }); }
 export async function createAvailability(data) { return apiFetch('/api/availability', { method: 'POST', body: JSON.stringify(data) }); }
 export async function getMyAvailability() { return apiFetch('/api/availability/mine'); }
+export async function getEventAvailabilityGrant(eventDid) { return apiFetch(`/api/availability/event-grant/${encodeURIComponent(eventDid)}`); }
 export async function deleteAvailability(rkey) { return apiFetch(`/api/availability/${rkey}`, { method: 'DELETE' }); }
