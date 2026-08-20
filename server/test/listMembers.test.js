@@ -545,3 +545,46 @@ describe('resolveAvailabilityForDids (ca-community scope)', () => {
     );
   });
 });
+
+describe('resolveAvailabilityForDids (ca-event scope)', () => {
+  const EVENT_SCOPE = { type: 'ca-event', value: 'did:plc:mzvqnxye3oejamuwmfl4qvou' };
+
+  it('reads only exact event-scoped records and never calls a Bluesky graph or list endpoint', async () => {
+    const requested = [];
+    fetchImpl = async (url) => {
+      const u = String(url);
+      requested.push(u);
+      if (/app\.bsky\.graph|getList|getFollowers|getRelationships/.test(u)) {
+        throw new Error(`event readiness must not query the social graph: ${u}`);
+      }
+      if (u.startsWith('https://plc.directory/')) {
+        return { ok: true, json: async () => pdsDoc('https://pds.example') };
+      }
+      if (u.includes('com.atproto.repo.listRecords')) {
+        const repo = new URL(u).searchParams.get('repo');
+        return {
+          ok: true,
+          json: async () => ({
+            records: [availabilityRecord(repo, {
+              scopeType: 'ca-event',
+              scopeValue: repo === 'did:plc:alice' ? EVENT_SCOPE.value : 'did:plc:another-event',
+            })],
+          }),
+        };
+      }
+      throw new Error(`Unexpected fetch: ${u}`);
+    };
+
+    const result = await resolveAvailabilityForDids(['did:plc:alice', 'did:plc:bob'], EVENT_SCOPE);
+    assert.deepEqual(result.map((member) => member.did), ['did:plc:alice']);
+    assert.equal(requested.some((url) => /app\.bsky\.graph|getList|getFollowers|getRelationships/.test(url)), false);
+  });
+
+  it('rejects a mutable handle or local event id instead of resolving it', async () => {
+    fetchImpl = async () => { throw new Error('must validate before fetching'); };
+    await assert.rejects(
+      () => resolveAvailabilityForDids(['did:plc:alice'], { type: 'ca-event', value: 'siu' }),
+      /event DID/
+    );
+  });
+});

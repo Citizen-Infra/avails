@@ -63,8 +63,15 @@ const mockFetchHandler = async (pathname, opts) => {
 
 // Mock fetch globally for resolvePds + listRecords calls
 let mockListRecordsData = { records: [] };
+let eventGrantResponse = null;
+let fetchCalls = [];
 const originalFetch = globalThis.fetch;
 globalThis.fetch = async (url, opts) => {
+  fetchCalls.push({ url: String(url), opts });
+  if (typeof url === 'string' && url.includes('/internal/event-participant-grants/introspect')) {
+    if (eventGrantResponse instanceof Error) throw eventGrantResponse;
+    return eventGrantResponse;
+  }
   if (typeof url === 'string' && url.includes('plc.directory')) {
     return {
       ok: true,
@@ -118,6 +125,8 @@ const validBody = {
   timezone: 'Europe/Berlin',
   trust: 'confirm',
 };
+const eventDid = 'did:plc:mzvqnxye3oejamuwmfl4qvou';
+const eventBody = { ...validBody, scope: { type: 'ca-event', value: eventDid } };
 
 const sessionCookie = 'avails_session=creator-session';
 
@@ -128,6 +137,10 @@ describe('POST /api/availability', () => {
     xrpcCalls = [];
     failDeletes = false;
     mockListRecordsData = { records: [] };
+    eventGrantResponse = null;
+    fetchCalls = [];
+    delete process.env.CA_MEMBERSHIP_URL;
+    delete process.env.CA_CONFIG_SECRET;
     mockSessions.set('creator-session', {
       did,
       handle: 'caller.test',
@@ -285,6 +298,80 @@ describe('POST /api/availability', () => {
     assert.equal(res.status, 200);
     assert.ok(xrpcCalls.find((c) => c.method === 'com.atproto.repo.putRecord'));
     assert.equal(res.body.staleRemaining, 1);
+  });
+
+  it('introspects an active ca-event grant on every write before writing to the PDS', async () => {
+    process.env.CA_MEMBERSHIP_URL = 'https://community-admin.test/';
+    process.env.CA_CONFIG_SECRET = 'shared-secret';
+    eventGrantResponse = {
+      ok: true,
+      json: async () => ({
+        relationship: 'event-participant',
+        event_did: eventDid,
+        subject_did: did,
+        capability: 'publish-standing-availability',
+        active: true,
+        reason: 'active',
+      }),
+    };
+
+    const app = createApp();
+    assert.equal((await request(app, 'POST', '/api/availability', eventBody, sessionCookie)).status, 201);
+    assert.equal((await request(app, 'POST', '/api/availability', eventBody, sessionCookie)).status, 201);
+
+    const introspections = fetchCalls.filter((call) => call.url.includes('/internal/event-participant-grants/introspect'));
+    assert.equal(introspections.length, 2, 'an active decision must not be cached across writes');
+    assert.deepEqual(JSON.parse(introspections[0].opts.body), {
+      event_did: eventDid,
+      subject_did: did,
+      capability: 'publish-standing-availability',
+    });
+    assert.equal(introspections[0].opts.headers.Authorization, 'Bearer shared-secret');
+    assert.ok(xrpcCalls.some((call) => call.method === 'com.atproto.repo.putRecord'));
+  });
+
+  it('returns the inactive reason and performs no PDS write or graph/list fallback', async () => {
+    process.env.CA_MEMBERSHIP_URL = 'https://community-admin.test';
+    process.env.CA_CONFIG_SECRET = 'shared-secret';
+    eventGrantResponse = {
+      ok: true,
+      json: async () => ({
+        relationship: 'event-participant',
+        event_did: eventDid,
+        subject_did: did,
+        capability: 'publish-standing-availability',
+        active: false,
+        reason: 'excluded',
+      }),
+    };
+
+    const res = await request(createApp(), 'POST', '/api/availability', eventBody, sessionCookie);
+    assert.equal(res.status, 403);
+    assert.equal(res.body.reason, 'excluded');
+    assert.equal(xrpcCalls.length, 0);
+    assert.equal(fetchCalls.some((call) => /app\.bsky\.graph|getList|getFollowers/.test(call.url)), false);
+    assert.equal(fetchCalls.some((call) => call.url.includes('plc.directory')), false);
+  });
+
+  it('fails closed with 503 when Community Admin is unavailable, without graph authorization fallback', async () => {
+    process.env.CA_MEMBERSHIP_URL = 'https://community-admin.test';
+    process.env.CA_CONFIG_SECRET = 'shared-secret';
+    eventGrantResponse = new Error('outage');
+
+    const res = await request(createApp(), 'POST', '/api/availability', eventBody, sessionCookie);
+    assert.equal(res.status, 503);
+    assert.equal(res.body.retryable, true);
+    assert.equal(xrpcCalls.length, 0);
+    assert.equal(fetchCalls.length, 1, 'only online introspection may be attempted');
+    assert.match(fetchCalls[0].url, /event-participant-grants\/introspect/);
+  });
+
+  it('fails closed with 503 when event introspection is not configured', async () => {
+    const res = await request(createApp(), 'POST', '/api/availability', eventBody, sessionCookie);
+    assert.equal(res.status, 503);
+    assert.equal(res.body.retryable, true);
+    assert.equal(fetchCalls.length, 0);
+    assert.equal(xrpcCalls.length, 0);
   });
 });
 

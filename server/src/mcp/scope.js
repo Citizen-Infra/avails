@@ -13,7 +13,11 @@
 
 const LIST_COLLECTION = 'app.bsky.graph.list';
 
-export const SCOPE_TYPES = ['atproto-list', 'ca-community'];
+export const SCOPE_TYPES = ['atproto-list', 'ca-community', 'ca-event'];
+
+export function isDid(value) {
+  return typeof value === 'string' && /^did:[a-z0-9]+:[A-Za-z0-9._:%-]+(?::[A-Za-z0-9._:%-]+)*$/.test(value);
+}
 
 // Validates `at://<did>/app.bsky.graph.list/<rkey>` shape and returns the
 // authority DID, which is the list's owner — a record can only live in its
@@ -69,6 +73,12 @@ export function assertResolvableScope(scope) {
   if (scope.type === 'ca-community') {
     if (!scope.value.trim()) {
       throw new Error('ca-community scope requires a non-empty community id');
+    }
+    return;
+  }
+  if (scope.type === 'ca-event') {
+    if (!isDid(scope.value)) {
+      throw new Error('ca-event scope requires an event DID');
     }
     return;
   }

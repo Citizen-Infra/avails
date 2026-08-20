@@ -15,10 +15,11 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog'
-import { getSession, getMyAvailability, createAvailability, deleteAvailability } from '@/lib/api'
+import { getSession, getMyAvailability, getEventAvailabilityGrant, createAvailability, deleteAvailability } from '@/lib/api'
 import { resolveList } from '@/lib/atproto'
 
 const BROWSER_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone
+const SIU_EVENT_DID = 'did:plc:mzvqnxye3oejamuwmfl4qvou'
 const TIMEZONE_OPTIONS = (() => {
   try {
     return typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : null
@@ -94,7 +95,7 @@ function shortenAtUri(uri) {
   return `${shortAuthority}/${rkey}`
 }
 
-function emptyFormState() {
+function emptyFormState(eventDid = null) {
   return {
     editingRkey: null,
     // The scope.value the record had when Edit was clicked. Needed because
@@ -104,7 +105,7 @@ function emptyFormState() {
     // fix-pass notes).
     editingOriginalScope: null,
     scopeInput: '',
-    resolvedScope: null, // { uri, name } | null
+    resolvedScope: eventDid ? { type: 'ca-event', uri: eventDid, name: 'Social Internet Unconference' } : null,
     weekly: [],
     timezone: BROWSER_TIMEZONE,
     trust: 'confirm',
@@ -113,6 +114,9 @@ function emptyFormState() {
 }
 
 export default function StandingAvailability() {
+  const requestedEventDid = new URLSearchParams(window.location.search).get('event')
+  const eventDid = requestedEventDid === SIU_EVENT_DID ? requestedEventDid : null
+  const isEventMode = Boolean(eventDid)
   // All hooks declared unconditionally up top — no hooks after early returns
   // (React #310), matching the project's AvailGrid/SchedulingGrid convention.
   const [session, setSession] = useState(null)
@@ -120,7 +124,8 @@ export default function StandingAvailability() {
   const [records, setRecords] = useState([])
   const [recordsLoading, setRecordsLoading] = useState(false)
 
-  const [form, setForm] = useState(emptyFormState)
+  const [form, setForm] = useState(() => emptyFormState(eventDid))
+  const [eventGrant, setEventGrant] = useState(null)
   const [resolving, setResolving] = useState(false)
   const [resolveError, setResolveError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
@@ -152,6 +157,14 @@ export default function StandingAvailability() {
   useEffect(() => {
     if (session?.did) loadRecords()
   }, [session?.did])
+
+  useEffect(() => {
+    if (!session?.did || !eventDid) return
+    setEventGrant({ loading: true })
+    getEventAvailabilityGrant(eventDid)
+      .then((status) => setEventGrant(status))
+      .catch((err) => setEventGrant({ active: false, unavailable: true, error: err.message }))
+  }, [session?.did, eventDid])
 
   // Stable identity (setForm itself is guaranteed stable by React) so that
   // callbacks built on top of updateForm — like handleWeeklyChange below —
@@ -202,7 +215,7 @@ export default function StandingAvailability() {
       // Check List gates Publish again as normal. Not re-verifying on every
       // edit-open avoids a network round trip for the common "just tweak the
       // grid" case.
-      resolvedScope: { uri: record.scope.value, name: null },
+      resolvedScope: { type: record.scope.type, uri: record.scope.value, name: record.scope.type === 'ca-event' ? 'Social Internet Unconference' : null },
       weekly: record.pattern.weekly,
       timezone: record.timezone,
       trust: record.trust,
@@ -215,7 +228,7 @@ export default function StandingAvailability() {
   }
 
   function handleCancelEdit() {
-    setForm(emptyFormState())
+    setForm(emptyFormState(eventDid))
     setPublishError(null)
     setResolveError(null)
     // Cancelling abandons the edit that produced the warning, so it must go too
@@ -245,7 +258,7 @@ export default function StandingAvailability() {
     setSubmitting(true)
     try {
       const payload = {
-        scope: { type: 'atproto-list', value: form.resolvedScope.uri },
+        scope: { type: form.resolvedScope.type || 'atproto-list', value: form.resolvedScope.uri },
         pattern: { weekly: form.weekly },
         timezone: form.timezone,
         trust: form.trust,
@@ -282,7 +295,7 @@ export default function StandingAvailability() {
         }
       }
 
-      setForm(emptyFormState())
+      setForm(emptyFormState(eventDid))
       await loadRecords()
     } catch (err) {
       setPublishError(err.message || 'Failed to publish.')
@@ -298,7 +311,7 @@ export default function StandingAvailability() {
     try {
       await deleteAvailability(deleteTarget.rkey)
       setDeleteTarget(null)
-      if (form.editingRkey === deleteTarget.rkey) setForm(emptyFormState())
+      if (form.editingRkey === deleteTarget.rkey) setForm(emptyFormState(eventDid))
       await loadRecords()
     } catch (err) {
       setDeleteError(err.message || 'Failed to delete.')
@@ -307,7 +320,11 @@ export default function StandingAvailability() {
     }
   }
 
+  const visibleRecords = records.filter((record) => isEventMode
+    ? record.scope?.type === 'ca-event' && record.scope.value === eventDid
+    : record.scope?.type !== 'ca-event')
   const canPublish = Boolean(form.resolvedScope) && form.weekly.length > 0 && !submitting
+    && (!isEventMode || eventGrant?.active)
 
   return (
     <div className="min-h-screen bg-[#faf9f6]">
@@ -336,8 +353,9 @@ export default function StandingAvailability() {
           <div className="py-16 max-w-lg space-y-6">
             <h1 className="text-3xl font-semibold text-[#1a1a1a] tracking-tight">Standing availability</h1>
             <p className="text-lg text-[#6b6560] leading-relaxed">
-              Publish the times you're usually free to a Bluesky list, once, instead of filling out
-              a new poll every time. Sign in with Bluesky to set it up.
+               {isEventMode
+                 ? 'Share the times you are usually free for the Social Internet Unconference. Sign in with Bluesky to continue.'
+                 : "Publish the times you're usually free to a Bluesky list, once, instead of filling out a new poll every time. Sign in with Bluesky to set it up."}
             </p>
             <AuthButton />
           </div>
@@ -346,9 +364,26 @@ export default function StandingAvailability() {
             <div>
               <h1 className="text-3xl font-semibold text-[#1a1a1a] tracking-tight">Standing availability</h1>
               <p className="text-lg text-[#6b6560] mt-1">
-                Tell a group the times you're usually free, once, instead of answering a new poll every time.
-              </p>
-            </div>
+                 {isEventMode
+                   ? 'Set the times you are usually free for the Social Internet Unconference, once.'
+                   : "Tell a group the times you're usually free, once, instead of answering a new poll every time."}
+               </p>
+             </div>
+
+             {isEventMode && eventGrant && !eventGrant.loading && (
+               <div className="rounded-lg border border-[#d8d4cf] bg-[#f5f3ef] px-4 py-3">
+                 <p className="font-medium text-[#1a1a1a]">
+                   {eventGrant.active ? 'Your SIU participation is active' : 'SIU participation is not active'}
+                 </p>
+                 <p className="mt-1 text-sm text-[#6b6560]">
+                   {eventGrant.active
+                     ? 'Your availability can count toward finding a shared time for supported topics.'
+                     : eventGrant.unavailable
+                       ? 'We could not verify participation right now. Try again before publishing.'
+                       : 'Follow the SIU Bluesky profile, then return here after verification refreshes.'}
+                 </p>
+               </div>
+             )}
 
             {cleanupWarning && (
               <p className="text-sm text-red-600">{cleanupWarning}</p>
@@ -360,11 +395,11 @@ export default function StandingAvailability() {
                 <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[#a09a94] border-t-transparent" />
                 Loading…
               </div>
-            ) : records.length > 0 && (
+            ) : visibleRecords.length > 0 && (
               <div className="space-y-4">
                 <h2 className="text-xl font-semibold text-[#1a1a1a] tracking-tight">Published</h2>
                 <div className="space-y-3">
-                  {records.map((record) => {
+                  {visibleRecords.map((record) => {
                     const groups = groupWeeklyByDay(record.pattern.weekly)
                     return (
                       <div
@@ -421,7 +456,7 @@ export default function StandingAvailability() {
             <div id="standing-availability-form" className="space-y-8 scroll-mt-6">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-xl font-semibold text-[#1a1a1a] tracking-tight">
-                  {form.editingRkey ? 'Edit standing availability' : 'Add a list'}
+                   {form.editingRkey ? 'Edit standing availability' : isEventMode ? 'Your SIU availability' : 'Add a list'}
                 </h2>
                 {form.editingRkey && (
                   <button
@@ -436,50 +471,57 @@ export default function StandingAvailability() {
 
               <form onSubmit={handlePublish} className="space-y-8">
                 {/* Scope picker */}
-                <div className="space-y-2">
-                  <Label htmlFor="scope-input" className="text-base font-medium text-[#1a1a1a]">
-                    Bluesky list <span className="text-red-500">*</span>
-                  </Label>
-                  <p className="text-sm text-[#8a8580]">
-                    Paste a list URL (bsky.app/profile/…/lists/…) or an at:// list URI. Only people on this list can see the times below.
-                  </p>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <Input
-                      id="scope-input"
-                      placeholder="https://bsky.app/profile/yourhandle.bsky.social/lists/…"
-                      value={form.scopeInput}
-                      onChange={handleScopeInputChange}
-                      onKeyDown={(e) => {
-                        // Enter here means "check the list", not "submit the form"
-                        if (e.key === 'Enter') {
-                          e.preventDefault()
-                          handleCheckList(e)
-                        }
-                      }}
-                      className="border-[#e8e5df] bg-white text-[#1a1a1a] placeholder:text-[#a09a94] focus-visible:ring-[#0d9488]"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleCheckList}
-                      disabled={resolving || !form.scopeInput.trim()}
-                      className="border-[#e8e5df] text-[#1a1a1a] hover:bg-[#f0eeea] shrink-0 h-8 sm:h-auto"
-                    >
-                      {resolving ? 'Checking…' : 'Check list'}
-                    </Button>
-                  </div>
-                  {form.resolvedScope && (
-                    <p className="text-sm text-[#0d9488] flex items-center gap-1.5">
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M3 8.5L6.5 12L13 4" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                      {form.resolvedScope.name
-                        ? <>Verified: &ldquo;{form.resolvedScope.name}&rdquo;</>
-                        : <>Currently published to this list</>}
-                    </p>
-                  )}
-                  {resolveError && <p className="text-sm text-red-600">{resolveError}</p>}
-                </div>
+                 {!isEventMode ? (
+                   <div className="space-y-2">
+                     <Label htmlFor="scope-input" className="text-base font-medium text-[#1a1a1a]">
+                       Bluesky list <span className="text-red-500">*</span>
+                     </Label>
+                     <p className="text-sm text-[#8a8580]">
+                       Paste a list URL (bsky.app/profile/…/lists/…) or an at:// list URI. Only people on this list can see the times below.
+                     </p>
+                     <div className="flex flex-col sm:flex-row gap-2">
+                       <Input
+                         id="scope-input"
+                         placeholder="https://bsky.app/profile/yourhandle.bsky.social/lists/…"
+                         value={form.scopeInput}
+                         onChange={handleScopeInputChange}
+                         onKeyDown={(e) => {
+                           if (e.key === 'Enter') {
+                             e.preventDefault()
+                             handleCheckList(e)
+                           }
+                         }}
+                         className="border-[#e8e5df] bg-white text-[#1a1a1a] placeholder:text-[#a09a94] focus-visible:ring-[#0d9488]"
+                       />
+                       <Button
+                         type="button"
+                         variant="outline"
+                         onClick={handleCheckList}
+                         disabled={resolving || !form.scopeInput.trim()}
+                         className="border-[#e8e5df] text-[#1a1a1a] hover:bg-[#f0eeea] shrink-0 h-8 sm:h-auto"
+                       >
+                         {resolving ? 'Checking…' : 'Check list'}
+                       </Button>
+                     </div>
+                     {form.resolvedScope && (
+                       <p className="text-sm text-[#0d9488] flex items-center gap-1.5">
+                         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                           <path d="M3 8.5L6.5 12L13 4" strokeLinecap="round" strokeLinejoin="round" />
+                         </svg>
+                         {form.resolvedScope.name
+                           ? <>Verified: &ldquo;{form.resolvedScope.name}&rdquo;</>
+                           : <>Currently published to this list</>}
+                       </p>
+                     )}
+                     {resolveError && <p className="text-sm text-red-600">{resolveError}</p>}
+                   </div>
+                 ) : (
+                   <div className="space-y-2">
+                     <Label className="text-base font-medium text-[#1a1a1a]">Event</Label>
+                     <p className="text-base text-[#1a1a1a]">Social Internet Unconference</p>
+                     <p className="break-all text-sm text-[#8a8580]">{eventDid}</p>
+                   </div>
+                 )}
 
                 <div className="border-t border-[#e8e5df]" />
 
@@ -533,7 +575,7 @@ export default function StandingAvailability() {
                 </div>
 
                 {/* Trust */}
-                <div className="space-y-3">
+                 {!isEventMode && <div className="space-y-3">
                   <Label className="text-base font-medium text-[#1a1a1a]">When someone wants this time</Label>
                   <RadioGroup
                     value={form.trust}
@@ -555,13 +597,13 @@ export default function StandingAvailability() {
                       </span>
                     </label>
                   </RadioGroup>
-                </div>
+                 </div>}
 
                 <div className="border-t border-[#e8e5df]" />
 
                 {/* Honest disclosure */}
                 <p className="text-sm text-[#8a8580] leading-relaxed">
-                  Publishing writes a public record to your PDS. Anyone can read it, it appears on the
+                   Publishing writes a public record to your PDS. {isEventMode ? 'It is used to calculate aggregate SIU readiness and does not schedule or invite anyone. ' : ''}Anyone can read it, it appears on the
                   AT Protocol firehose, and it stays there until you delete it. Deleting removes the
                   record, but a public network means it may already have been copied elsewhere.
                 </p>
@@ -600,7 +642,7 @@ export default function StandingAvailability() {
             <DialogTitle className="text-[#1a1a1a]">Delete this standing availability?</DialogTitle>
           </DialogHeader>
           <p className="text-base text-[#6b6560]">
-            This removes the record from your PDS. People on this list will no longer see these times.
+            This removes the record from your PDS. It will no longer be available for overlap checks.
           </p>
           {deleteError && <p className="text-sm text-red-600">{deleteError}</p>}
           <DialogFooter>

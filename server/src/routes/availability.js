@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { requireAuth } from '../middleware/auth.js';
 import { validateAvailability } from '../lib/availabilityValidate.js';
 import { scopeMatches } from '../mcp/scope.js';
+import { assertEventAvailabilityGrant, EventGrantError } from '../lib/eventGrant.js';
 
 const router = Router();
 
@@ -90,9 +91,23 @@ function validateAvailabilityBody(req, res, next) {
 router.post('/', requireAuth, validateAvailabilityBody, async (req, res, next) => {
   try {
     const did = req.userDid;
-    const pds = await resolvePds(did);
-
     const scope = req.validatedBody.scope;
+    if (scope.type === 'ca-event') {
+      try {
+        await assertEventAvailabilityGrant(scope.value, did);
+      } catch (err) {
+        if (err instanceof EventGrantError) {
+          return res.status(err.status).json({
+            error: err.message,
+            ...(err.reason && { reason: err.reason }),
+            ...(err.retryable && { retryable: true }),
+          });
+        }
+        throw err;
+      }
+    }
+
+    const pds = await resolvePds(did);
     const rkey = rkeyForScope(scope);
 
     const existing = await listAvailabilityRecords(did, pds);
@@ -180,6 +195,21 @@ router.get('/mine', requireAuth, async (req, res, next) => {
 
     res.json({ records: availability });
   } catch (err) {
+    next(err);
+  }
+});
+
+// Participant-facing status for an event-scoped editor. This remains an online
+// CA decision; the browser never receives the service credential.
+router.get('/event-grant/:eventDid', requireAuth, async (req, res, next) => {
+  try {
+    const decision = await assertEventAvailabilityGrant(req.params.eventDid, req.userDid);
+    res.json({ active: true, reason: decision.reason });
+  } catch (err) {
+    if (err instanceof EventGrantError) {
+      if (err.status === 403) return res.json({ active: false, reason: err.reason });
+      return res.status(err.status).json({ error: err.message, retryable: err.retryable });
+    }
     next(err);
   }
 });

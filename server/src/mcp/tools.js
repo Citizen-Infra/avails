@@ -9,6 +9,7 @@ import { assertMembership } from '../lib/membership.js';
 import { resolveListAvailability, resolveAvailabilityForDids } from './listMembers.js';
 import { normalizeScope } from './scope.js';
 import { bestCallSlots } from './availabilityOverlap.js';
+import { evaluateAvailabilityOverlap } from './evaluateAvailability.js';
 import { fetchCommunityConfig } from '../lib/communityConfig.js';
 import { pollUrl } from '../lib/pollUrl.js';
 import { normalizeMeetingUrl } from '../lib/meetingUrl.js';
@@ -338,6 +339,36 @@ const TOOL_DEFINITIONS = [
     inputSchema: {
       type: 'object',
       properties: {},
+    },
+  },
+  {
+    name: 'evaluate_availability_overlap',
+    description:
+      'Read-only service operation for evaluating whether eligible supporters with availability scoped to an exact Community Admin event DID share a slot. It never books, emails, creates an invite, or creates a poll.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        scope: {
+          type: 'object',
+          properties: {
+            type: { type: 'string', enum: ['ca-event'] },
+            value: { type: 'string', description: 'Stable event DID' },
+          },
+          required: ['type', 'value'],
+        },
+        eligibleDids: { type: 'array', items: { type: 'string' } },
+        window: {
+          type: 'object',
+          properties: {
+            start: { type: 'string', description: 'YYYY-MM-DD' },
+            end: { type: 'string', description: 'YYYY-MM-DD' },
+          },
+          required: ['start', 'end'],
+        },
+        durationMinutes: { type: 'integer', minimum: 1 },
+        threshold: { type: 'integer', minimum: 3 },
+      },
+      required: ['scope', 'eligibleDids', 'window', 'durationMinutes', 'threshold'],
     },
   },
   {
@@ -1068,6 +1099,12 @@ async function scheduleCall(
 ) {
   const normalizedScope = normalizeScope(scope);
 
+  if (normalizedScope.type === 'ca-event') {
+    throw new Error(
+      'ca-event availability is read-only here. Use evaluate_availability_overlap; schedule_call can create invitations and is not authorized for event grants.'
+    );
+  }
+
   // Before anything reads records or sends mail.
   assertMayScheduleFor(normalizedScope, authContext);
   if (!Number.isInteger(durationMinutes) || durationMinutes <= 0) {
@@ -1343,6 +1380,8 @@ export async function callTool(name, args, authContext) {
       return listCommunities();
     case 'schedule_call':
       return scheduleCall(args, authContext);
+    case 'evaluate_availability_overlap':
+      return evaluateAvailabilityOverlap(args, authContext);
     default:
       throw new Error(`Unknown tool: ${name}`);
   }
