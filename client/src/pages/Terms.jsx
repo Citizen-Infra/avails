@@ -57,7 +57,7 @@ export default function Terms() {
 
           <section className="space-y-3">
             <h2 className="text-xl font-semibold">Contact</h2>
-            <p>Questions about these terms? Open an issue on <a href="https://github.com/Citizen-Infra/avails/issues" className="text-[#0d9488] underline underline-offset-2" target="_blank" rel="noopener noreferrer">GitHub</a> or contact hello@zhgnv.com.</p>
+            <p>Questions about these terms? Open an issue on <a href="https://github.com/Citizen-Infra/avails/issues" className="text-[#0d9488] underline underline-offset-2" target="_blank" rel="noopener noreferrer">GitHub</a> or contact hello@citizeninfra.org.</p>
           </section>
         </div>
       </main>
