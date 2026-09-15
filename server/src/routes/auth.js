@@ -3,6 +3,7 @@ import { NodeOAuthClient } from '@atproto/oauth-client-node';
 import { JoseKey } from '@atproto/jwk-jose';
 import { createSession, deleteSession, getSession, sessions } from '../lib/sessionStore.js';
 import { registerStore, markDirty } from '../lib/persistence.js';
+import { redirectMcpClient } from '../lib/mcpCallbackRedirect.js';
 import { tryMcpCallback } from '../mcp/oauth.js';
 
 const router = Router();
@@ -181,22 +182,7 @@ router.get('/callback', async (req, res, next) => {
     const mcpRedirect = (await tryMcpCallback(resultState, session, did, handle))
       || (await tryMcpCallback(callbackState, session, did, handle));
     if (mcpRedirect) {
-      return res.type('html').send(`<!DOCTYPE html>
-<html>
-<head><title>Avails — Connected</title>
-<meta http-equiv="refresh" content="2;url=${mcpRedirect.replace(/"/g, '&quot;')}">
-<style>body{font-family:system-ui;max-width:400px;margin:100px auto;padding:20px;text-align:center}
-.check{font-size:48px;margin-bottom:16px}
-h2{color:#1a1a1a;margin-bottom:8px}
-p{color:#6b6560}</style>
-</head>
-<body>
-<div class="check">&#x2705;</div>
-<h2>Connected to Avails</h2>
-<p>Signed in as <strong>${handle}</strong></p>
-<p>Redirecting back to your AI assistant...</p>
-</body>
-</html>`);
+      return redirectMcpClient(res, mcpRedirect);
     }
 
     const isProduction = process.env.NODE_ENV === 'production';
