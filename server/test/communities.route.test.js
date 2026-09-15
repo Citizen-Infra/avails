@@ -34,7 +34,11 @@ async function request(app, path, cookie) {
     const res = await originalFetch(`http://localhost:${port}${path}`, {
       headers: cookie ? { Cookie: cookie } : {},
     });
-    return { status: res.status, body: await res.json().catch(() => null) };
+    return {
+      status: res.status,
+      headers: Object.fromEntries(res.headers),
+      body: await res.json().catch(() => null),
+    };
   } finally {
     server.close();
   }
@@ -58,6 +62,7 @@ describe('GET /api/communities', () => {
     assert.match(captured.url, /^https:\/\/ca\.test\/api\/config$/);
     assert.equal(captured.auth, 'Bearer svc-secret');
     assert.ok(Array.isArray(res.body), 'body must be an array the client Select can map');
+    assert.equal(res.headers['cache-control'], 'private, no-store');
     // Private community must NOT leak to the unauthenticated web route.
     assert.deepEqual(res.body, [{ id: 'cibc', name: 'Citizen Infra Builders' }]);
   });
@@ -82,6 +87,7 @@ describe('GET /api/communities', () => {
     const res = await request(createApp(), '/api/communities', 'avails_session=creator-session');
 
     assert.equal(res.status, 200);
+    assert.equal(res.headers['cache-control'], 'private, no-store');
     assert.deepEqual(res.body, [
       { id: 'cibc', name: 'Citizen Infra Builders' },
       { id: 'sen-response-group', name: 'SEN Response Group' },

@@ -13,6 +13,9 @@ const router = Router();
 // /api/config. Reading the DID does not restore OAuth because this route makes no
 // authenticated ATProto request.
 router.get('/', async (req, res) => {
+  // This URL now varies by the caller's session. Never let a browser or shared
+  // intermediary reuse a response containing private community names.
+  res.set('Cache-Control', 'private, no-store');
   try {
     const sessionId = req.cookies?.avails_session;
     const did = sessionId ? getSession(sessionId)?.did : null;
