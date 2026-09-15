@@ -123,7 +123,8 @@ app.use('/api/availability', availabilityRoutes);
 // Communities proxy
 app.use('/api/communities', communityRoutes);
 
-// OpenMeet integration
+// Retired OpenMeet endpoints return 410; dormant handlers remain behind that
+// tombstone for low-risk rollback (#186).
 app.use('/api/openmeet', openmeetRoutes);
 
 // MCP well-known endpoints (mounted at root level)

@@ -5,6 +5,18 @@ const router = Router();
 
 const OPENMEET_API = process.env.OPENMEET_API_URL || 'https://api.openmeet.net';
 
+// OpenMeet was retired in #186. Keep the implementation below temporarily for
+// read compatibility and a low-risk rollback, but make every legacy endpoint
+// inert so old clients cannot create events or query calendars.
+export function retireOpenMeet(_req, res) {
+  res.status(410).json({
+    error: 'openmeet-retired',
+    message: 'The OpenMeet integration is no longer supported by Avails.',
+  });
+}
+
+router.use(retireOpenMeet);
+
 // Resolve a DID's PDS endpoint via PLC. Mirrors polls.js — kept local
 // rather than shared to avoid a circular import between the two routes.
 async function resolvePdsForDid(did) {
@@ -130,9 +142,8 @@ const OPENMEET_DID = 'did:web:api.openmeet.net';
 
 /**
  * Delete an OpenMeet event by slug using the user's service-auth token.
- * Best-effort: returns true on 200/204, false on any error (caller decides
- * whether that's fatal). Used from unfinalize flow so unscheduling a poll
- * also removes the downstream OpenMeet event.
+ * Dormant rollback code retained by #186. No active route or scheduling path
+ * calls this helper.
  */
 export async function deleteOpenMeetEvent(oauthSession, slug) {
   if (!slug) return false;

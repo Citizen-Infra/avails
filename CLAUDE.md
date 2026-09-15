@@ -64,7 +64,7 @@ Railway (single service, Nixpacks builder). Custom domain: **avails.citizeninfra
 - `Procfile`: `web: cd server && node src/index.js`
 
 ### Environment variables
-- `ATPROTO_CLIENT_ID` — URL to client-metadata.json endpoint (currently `/api/auth/client-metadata-v4.json` — bumped for the standing-availability scope; bump the version + deploy the serving code together, Railway auto-deploys on push, see [architecture.md OAuth](docs/architecture.md#oauth) for the deploy-ordering caveat)
+- `ATPROTO_CLIENT_ID` — URL to client-metadata.json endpoint (currently `/api/auth/client-metadata-v4.json` — bumped for the standing-availability scope). Scope additions require a version bump + serving-code deploy; #186's scope removal deliberately kept v4 because requesting less access needs no re-consent. See [architecture.md OAuth](docs/architecture.md#oauth).
 - `ATPROTO_REDIRECT_URI` — OAuth callback URL
 - `ATPROTO_PRIVATE_KEY` — base64-encoded ES256 JWK (Railway mangles raw JSON)
 - `SESSION_SECRET` — cookie signing

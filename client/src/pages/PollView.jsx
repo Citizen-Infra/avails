@@ -1,7 +1,7 @@
 import Logo from '@/components/Logo'
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useParams } from 'react-router'
-import { getPoll, getSession, submitResponse, updateResponse, finalizePoll, unfinalizePoll, deleteResponse, publishToOpenMeet, publishToCommunityFeed, getOpenMeetAvailability, setGoogleCalendarEvent, getCommunities, updatePoll, setMeetingLink } from '@/lib/api'
+import { getPoll, getSession, submitResponse, updateResponse, finalizePoll, unfinalizePoll, deleteResponse, publishToCommunityFeed, setGoogleCalendarEvent, getCommunities, updatePoll, setMeetingLink } from '@/lib/api'
 import {
   isGoogleConfigured,
   requestGoogleAccess,
@@ -93,9 +93,6 @@ export default function PollView() {
   const [editingMeetingUrl, setEditingMeetingUrl] = useState(false)
   const [meetingUrlSaving, setMeetingUrlSaving] = useState(false)
   const [meetingUrlError, setMeetingUrlError] = useState(null)
-  const [openmeetUrl, setOpenmeetUrl] = useState(null)
-  const [publishingToOpenMeet, setPublishingToOpenMeet] = useState(false)
-  const [openmeetError, setOpenmeetError] = useState(null)
   // Community-feed publish (#5 sub-project F). feedPublished starts null and
   // derives from the loaded record; a toggle sets it explicitly.
   const [publishingToFeed, setPublishingToFeed] = useState(false)
@@ -114,7 +111,6 @@ export default function PollView() {
   const [busySlots, setBusySlots] = useState(new Set())
   const [slotEvents, setSlotEvents] = useState({})
   const [calendarConnected, setCalendarConnected] = useState(false)
-  const [calendarSource, setCalendarSource] = useState(null) // 'openmeet' | 'google' | null
   const [connectingCalendar, setConnectingCalendar] = useState(false)
 
   // New: calendar-write feature
@@ -125,59 +121,7 @@ export default function PollView() {
   const [calendarInsertError, setCalendarInsertError] = useState(null)
   const [retryingCalendar, setRetryingCalendar] = useState(false)
 
-  // Convert OpenMeet events to busySlots + slotEvents format
-  function processCalendarEvents(events) {
-    const busy = new Set()
-    const slots = {}
-    for (const event of events) {
-      const start = new Date(event.start)
-      const end = new Date(event.end)
-      let current = new Date(start)
-      const name = event.summary || 'Busy'
-      let isFirst = true
-      while (current < end) {
-        const year = current.getFullYear()
-        const month = String(current.getMonth() + 1).padStart(2, '0')
-        const day = String(current.getDate()).padStart(2, '0')
-        const hours = String(current.getHours()).padStart(2, '0')
-        const mins = String(current.getMinutes()).padStart(2, '0')
-        const key = `${year}-${month}-${day}T${hours}:${mins}`
-        busy.add(key)
-        if (!slots[key]) slots[key] = name
-        current = new Date(current.getTime() + 30 * 60 * 1000)
-      }
-    }
-    return { busySlots: busy, slotEvents: slots }
-  }
-
-  // Try OpenMeet calendar for signed-in users
-  async function tryOpenMeetCalendar(dates) {
-    try {
-      const sortedDates = [...dates].sort()
-      const startTime = new Date(`${sortedDates[0]}T00:00:00`).toISOString()
-      const endTime = new Date(`${sortedDates[sortedDates.length - 1]}T23:59:59`).toISOString()
-      const result = await getOpenMeetAvailability(startTime, endTime)
-      if (result.available && result.events.length > 0) {
-        const { busySlots: busy, slotEvents: slots } = processCalendarEvents(result.events)
-        setBusySlots(busy)
-        setSlotEvents(slots)
-        setCalendarConnected(true)
-        setCalendarSource('openmeet')
-        return true
-      }
-      // available=true but no events — calendar connected but no conflicts
-      if (result.available) {
-        setCalendarConnected(true)
-        setCalendarSource('openmeet')
-        return true
-      }
-      return false // no OpenMeet account or no calendar
-    } catch {
-      return false
-    }
-  }
-
-  // Fallback: Google Calendar
+  // Google Calendar
   async function connectGoogleCalendar({ forEvent = false } = {}) {
     setConnectingCalendar(true)
     try {
@@ -188,7 +132,6 @@ export default function PollView() {
       setBusySlots(result.busySlots)
       setSlotEvents(result.slotEvents)
       setCalendarConnected(true)
-      setCalendarSource('google')
       // Fetch writable calendars for the picker
       try {
         const cals = await listWritableCalendars(token)
@@ -294,13 +237,6 @@ export default function PollView() {
       setResponseRkey(null)
     }
   }, [responseRkey, responses, submitted, editing, participant, poll?.timezone])
-
-  // Auto-fetch calendar from OpenMeet for signed-in users
-  useEffect(() => {
-    if (session?.did && poll?.dates && !calendarConnected) {
-      tryOpenMeetCalendar(poll.dates)
-    }
-  }, [session?.did, poll?.dates, calendarConnected])
 
   // Compute which grid slots fall within the scheduled time
   // Must be before early returns to maintain stable hook order
@@ -571,8 +507,6 @@ export default function PollView() {
     const googleCalendarId = poll?.googleCalendarId
 
     await unfinalizePoll(did, rkey)
-    setOpenmeetUrl(null)
-    setOpenmeetError(null)
 
     // Best-effort: remove the Google Calendar event. Failure here doesn't roll back the unschedule.
     if (googleEventId && googleCalendarId) {
@@ -593,36 +527,6 @@ export default function PollView() {
     }
 
     fetchData()
-  }
-
-  async function handlePublishToOpenMeet() {
-    if (!poll?.finalTime) return
-    setPublishingToOpenMeet(true)
-    setOpenmeetError(null)
-    try {
-      const endDate = poll.finalDuration
-        ? new Date(new Date(poll.finalTime).getTime() + poll.finalDuration * 60 * 1000).toISOString()
-        : undefined
-      const pollUrl = `${window.location.origin}/p/${did}/${rkey}`
-      const result = await publishToOpenMeet({
-        title: poll.title,
-        description: poll.description,
-        startDate: poll.finalTime,
-        endDate,
-        timezone: poll.timezone,
-        pollUrl,
-        did,
-        rkey,
-      })
-      if (result.eventUrl) {
-        setOpenmeetUrl(result.eventUrl)
-      }
-    } catch (err) {
-      console.error('OpenMeet publish error:', err)
-      setOpenmeetError(err.message || 'Failed to publish to OpenMeet')
-    } finally {
-      setPublishingToOpenMeet(false)
-    }
   }
 
   async function handlePublishToCommunityFeed(next) {
@@ -804,7 +708,7 @@ export default function PollView() {
 
             {/* Join, directly under the time. It is the one line someone opens
                 this page to find five minutes before the call, so it sits above
-                the calendar and OpenMeet rows rather than among them.
+                the calendar row rather than among secondary controls.
                 Confirmed Green, not Gather Teal: teal inside this green card
                 would put two brand voices in one component. */}
             {poll.meetingUrl && !editingMeetingUrl && (
@@ -898,27 +802,6 @@ export default function PollView() {
               </div>
             )}
 
-            <div className="flex items-center gap-3 pt-2 flex-wrap">
-              {isCreator && !openmeetUrl && (
-                <Button variant="outline" size="sm" onClick={handlePublishToOpenMeet} disabled={publishingToOpenMeet}
-                  className="border-[#15803d] text-[#15803d] hover:bg-[#dcfce7]">
-                  {publishingToOpenMeet ? 'Publishing...' : 'Publish to OpenMeet'}
-                </Button>
-              )}
-              {openmeetUrl && (
-                <a
-                  href={openmeetUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-[#15803d] hover:text-[#166534] underline underline-offset-2"
-                >
-                  View on OpenMeet
-                </a>
-              )}
-              {openmeetError && (
-                <p className="text-sm text-red-600">{openmeetError}</p>
-              )}
-            </div>
           </div>
         )}
 
@@ -1018,21 +901,9 @@ export default function PollView() {
                   </p>
                 )}
 
-                {/* OpenMeet fallback link for signed-in users who haven't connected a calendar */}
-                {mySlots.size > 0 && !calendarConnected && session?.did && (
-                  <a
-                    href="https://platform.openmeet.net"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-[#6b6560] hover:text-[#1a1a1a] underline underline-offset-2"
-                  >
-                    Or connect via OpenMeet
-                  </a>
-                )}
-
                 {calendarConnected && (
                   <p className="text-sm text-[#0d9488]">
-                    Calendar connected{calendarSource === 'openmeet' ? ' via OpenMeet' : ''} — busy times shown in pink
+                    Calendar connected — busy times shown in pink
                   </p>
                 )}
               </div>
@@ -1138,7 +1009,6 @@ export default function PollView() {
         open={showUnschedule}
         onOpenChange={setShowUnschedule}
         onConfirm={confirmUnschedule}
-        published={!!poll?.openmeetEventSlug || !!openmeetUrl}
         hasGoogleEvent={!!poll?.googleEventId && !!poll?.googleCalendarId}
       />
 
