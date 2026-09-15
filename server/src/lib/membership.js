@@ -4,7 +4,7 @@
 // DID is a member of the target community. FAILS CLOSED: any error → deny.
 // See community-admin/docs/plans/2026-06-29-s4-idp-design.md.
 
-export async function assertMembership(did, community) {
+export async function fetchMemberships(did) {
   // Strip a trailing slash so a mis-set env var doesn't produce `//api/...` (404 → denies every member).
   const base = process.env.CA_MEMBERSHIP_URL?.replace(/\/$/, '');
   const secret = process.env.CA_CONFIG_SECRET;
@@ -19,6 +19,18 @@ export async function assertMembership(did, community) {
     if (!res.ok) throw new Error(`membership lookup failed (${res.status})`);
     data = await res.json();
   } catch {
+    throw new Error('Could not verify community memberships right now. Please try again.');
+  }
+
+  return Array.isArray(data?.memberships) ? data.memberships : [];
+}
+
+export async function assertMembership(did, community) {
+  let memberships;
+  try {
+    memberships = await fetchMemberships(did);
+  } catch (err) {
+    if (err.message.includes('not configured')) throw err;
     // Fail closed — never allow a share when membership can't be verified.
     throw new Error(`Could not verify your membership of "${community}" right now. Please try again.`);
   }
@@ -26,7 +38,6 @@ export async function assertMembership(did, community) {
   // `community` is a slug (e.g. "cibc") and must equal community-admin's
   // `community_id` (a lowercased slug). Both are lowercase for current
   // communities; keep them aligned so a member is never silently denied.
-  const memberships = Array.isArray(data?.memberships) ? data.memberships : [];
   if (!memberships.some((m) => m.community_id === community)) {
     throw new Error(`You're not a member of "${community}". Ask a community admin to add your Bluesky handle in community-admin.`);
   }
