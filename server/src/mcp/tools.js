@@ -1,4 +1,4 @@
-import { indexPoll, updatePollStatus, updatePollPublished, listByCommunity, removePoll } from '../lib/pollIndex.js';
+import { indexPoll, updatePollStatus, updatePollCommunity, updatePollPublished, listByCommunity, removePoll } from '../lib/pollIndex.js';
 import { generateIcs } from '../lib/ical.js';
 import { sendEmail } from '../lib/email.js';
 import { composeEmail } from '../lib/email-template.js';
@@ -217,6 +217,10 @@ const TOOL_DEFINITIONS = [
         hideResponsesUntilSubmit: {
           type: 'boolean',
           description: 'If true, respondents see no other responses on the grid until they submit their own',
+        },
+        community: {
+          type: 'string',
+          description: 'Community slug to link this poll to. Pass an empty string to unlink it.',
         },
       },
       required: ['rkey'],
@@ -522,7 +526,7 @@ async function updatePoll(args, authContext) {
   if (!authContext) throw new Error('AUTH_REQUIRED');
   if (!authContext.oauthSession) throw new Error('AUTH_REQUIRED');
 
-  const { rkey, title, description, dates, timeRange, slotMinutes, hideResponsesUntilSubmit } = args;
+  const { rkey, title, description, dates, timeRange, slotMinutes, hideResponsesUntilSubmit, community } = args;
   if (!rkey) throw new Error('rkey is required');
 
   const did = authContext.did;
@@ -546,6 +550,7 @@ async function updatePoll(args, authContext) {
     ...(timeRange !== undefined && { timeRange }),
     ...(slotMinutes !== undefined && { slotMinutes }),
     ...(hideResponsesUntilSubmit !== undefined && { hideResponsesUntilSubmit }),
+    ...(community !== undefined && { community }),
   };
 
   // Remove old field names that aren't in the lexicon schema
@@ -569,6 +574,8 @@ async function updatePoll(args, authContext) {
       responseCount: 0,
       createdAt: updatedRecord.createdAt,
     });
+  } else if (community !== undefined) {
+    updatePollCommunity(did, rkey, updatedRecord.community);
   }
 
   return JSON.stringify({ ok: true, poll: updatedRecord, url: pollUrl(did, rkey) });
