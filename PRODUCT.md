@@ -17,7 +17,7 @@ Two distinct roles, with sharply different contexts:
 
 ## Product Purpose
 
-Avails finds a time a group can meet. It is an open-source, ATProto-backed alternative to LettuceMeet/Doodle: polls are stored in the creator's own PDS, responders mark availability on a grid, and the organizer schedules the winning slot (optionally pushing it to Google Calendar / OpenMeet).
+Avails finds a time a group can meet. It is an open-source, ATProto-backed alternative to LettuceMeet/Doodle: polls are stored in the creator's own PDS, responders mark availability on a grid, and the organizer schedules the winning slot (optionally pushing it to Google Calendar).
 
 Scope is deliberately narrow: **time-finding, not event management.** It is not an RSVP system, not a calendar app, not an events platform. Success = a group converges on a time with the fewest possible taps, and the responder never has to make an account.
 
@@ -36,13 +36,13 @@ Sovereignty is the mechanism, never the pitch. A user does not need to know any 
 
 - A poll's life is a **shared link**. The organizer creates, pastes the URL into a group chat, and responders arrive cold from that one link, usually on a phone, often without ever visiting the site again.
 - Groups are **cross-timezone by default**. The grid renders in each viewer's local time.
-- The organizer's downstream tools are where the answer has to land: an `.ics` in email, Google Calendar, OpenMeet, a Telegram channel, or a community dashboard.
+- The organizer's downstream tools are where the answer has to land: an `.ics` in email, Google Calendar, a Telegram channel, or a community dashboard.
 - Avails is one tool in the **Citizen Infrastructure** ecosystem and is read by its siblings — My Community and Dear Neighbors surface community-scoped polls; community-admin gates community membership; agents drive it through an MCP endpoint.
 - **Adoption is the live constraint, not capability.** Features ship to a small real user base, so a new capability's usage data does not exist until someone tells people it is there.
 
 ## Capabilities and Constraints
 
-**Confirmed capabilities.** Drag-to-paint availability grid (mouse, touch, keyboard); anonymous responding with no account; heatmap overlap ranking; finalize with `.ics` invites by email; Google Calendar busy-time overlay and event insert/cancel; OpenMeet publish and availability; community-scoped polls and a community feed; creator notification thresholds; standing availability (participant-owned records, per group, so a call can be booked with no poll at all); meeting links on a scheduled poll; an MCP endpoint exposing eleven tools for agent-driven use.
+**Confirmed capabilities.** Drag-to-paint availability grid (mouse, touch, keyboard); anonymous responding with no account; heatmap overlap ranking; finalize with `.ics` invites by email; Google Calendar busy-time overlay and event insert/cancel; community-scoped polls and a community feed; creator notification thresholds; standing availability (participant-owned records, per group, so a call can be booked with no poll at all); meeting links on a scheduled poll; an MCP endpoint for agent-driven use.
 
 **Constraints.**
 
@@ -51,6 +51,7 @@ Sovereignty is the mechanism, never the pitch. A user does not need to know any 
 - **The responder must never be required to sign in.** This is a hard product constraint, not a default.
 - **AGPL-3.0**, so a hosted derivative owes its source back.
 - **Self-hosting is real but undocumented.** The stack runs standalone; nobody has written the guide. Future work may say it is self-hostable and must not imply that doing so is currently easy or supported.
+- **OpenMeet is frozen and being hidden** (#186). It is no longer a supported product direction or dependency. Keep the existing backend implementation temporarily as dormant compatibility code for old records, but do not add OpenMeet features or route new user, agent, calendar, or OAuth flows through it.
 
 **Terminology.** A *poll* finds a time. A *response* is one person's availability on one poll. *Standing availability* is a person's general availability for a group, published once, independent of any poll. *Finalize* / *schedule* means picking the winning slot; *unschedule* reverses it.
 
