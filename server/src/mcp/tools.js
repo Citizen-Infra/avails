@@ -12,6 +12,7 @@ import { bestCallSlots } from './availabilityOverlap.js';
 import { evaluateAvailabilityOverlap } from './evaluateAvailability.js';
 import { fetchCommunityConfig } from '../lib/communityConfig.js';
 import { pollUrl } from '../lib/pollUrl.js';
+import { fetchPollResponses } from '../lib/responseReads.js';
 import { normalizeMeetingUrl } from '../lib/meetingUrl.js';
 import {
   recallBooking,
@@ -447,16 +448,7 @@ async function getPoll({ did, rkey }) {
   }
   const poll = await pollRes.json();
 
-  const responsesRes = await fetch(
-    `${pds}/xrpc/com.atproto.repo.listRecords?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(RESPONSE_COLLECTION)}&limit=100`
-  );
-  let responses = [];
-  if (responsesRes.ok) {
-    const data = await responsesRes.json();
-    responses = (data.records || [])
-      .filter((r) => r.value?.pollUri && r.value.pollUri.includes(`/${rkey}`))
-      .map((r) => ({ ...r.value, uri: r.uri, cid: r.cid }));
-  }
+  const responses = await fetchPollResponses(did, rkey);
 
   const bestSlots = computeBestSlots(responses);
 
