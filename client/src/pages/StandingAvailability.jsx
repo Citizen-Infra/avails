@@ -289,7 +289,7 @@ export default function StandingAvailability() {
           await deleteAvailability(form.editingRkey)
         } catch (cleanupErr) {
           setCleanupWarning(
-            `Published to the new list, but couldn't remove the old public record for ${form.editingOriginalScope}. ` +
+            `Saved availability for the new list, but couldn't remove the old public record for ${form.editingOriginalScope}. ` +
             `${cleanupErr.message || 'Delete it from the list below.'}`
           )
         }
@@ -355,7 +355,7 @@ export default function StandingAvailability() {
             <p className="text-lg text-[#6b6560] leading-relaxed">
                {isEventMode
                  ? 'Share the times you are usually free for the Social Internet Unconference. Sign in with Bluesky to continue.'
-                 : "Publish the times you're usually free to a Bluesky list, once, instead of filling out a new poll every time. Sign in with Bluesky to set it up."}
+                  : "Publish the times you're usually free for a Bluesky list, once, instead of filling out a new poll every time. Sign in with Bluesky to set it up."}
             </p>
             <AuthButton />
           </div>
@@ -476,8 +476,8 @@ export default function StandingAvailability() {
                      <Label htmlFor="scope-input" className="text-base font-medium text-[#1a1a1a]">
                        Bluesky list <span className="text-red-500">*</span>
                      </Label>
-                     <p className="text-sm text-[#8a8580]">
-                       Paste a list URL (bsky.app/profile/…/lists/…) or an at:// list URI. Only people on this list can see the times below.
+                      <p className="text-sm text-[#6b6560]">
+                        Paste a list URL (bsky.app/profile/…/lists/…) or an at:// list URI. The list identifies who this availability is for; it does not make the record private.
                      </p>
                      <div className="flex flex-col sm:flex-row gap-2">
                        <Input
@@ -510,7 +510,7 @@ export default function StandingAvailability() {
                          </svg>
                          {form.resolvedScope.name
                            ? <>Verified: &ldquo;{form.resolvedScope.name}&rdquo;</>
-                           : <>Currently published to this list</>}
+                            : <>Availability is for this list</>}
                        </p>
                      )}
                      {resolveError && <p className="text-sm text-red-600">{resolveError}</p>}
@@ -602,10 +602,10 @@ export default function StandingAvailability() {
                 <div className="border-t border-[#e8e5df]" />
 
                 {/* Honest disclosure */}
-                <p className="text-sm text-[#8a8580] leading-relaxed">
-                   Publishing writes a public record to your PDS. {isEventMode ? 'It is used to calculate aggregate SIU readiness and does not schedule or invite anyone. ' : ''}Anyone can read it, it appears on the
-                  AT Protocol firehose, and it stays there until you delete it. Deleting removes the
-                  record, but a public network means it may already have been copied elsewhere.
+                <p className="text-sm text-[#6b6560] leading-relaxed">
+                  {isEventMode
+                    ? 'Publishing saves a public availability record to your Bluesky account. Anyone can read it through AT Protocol. It is used to calculate aggregate SIU readiness and does not schedule or invite anyone. It remains public until you delete it, and copies may remain elsewhere afterward.'
+                    : 'Publishing saves a public availability record to your Bluesky account. Anyone can read it through AT Protocol. The Bluesky list identifies who the availability is for; it does not restrict access. The record remains public until you delete it, and copies may remain elsewhere afterward.'}
                 </p>
 
                 {publishError && <p className="text-sm text-red-600">{publishError}</p>}
@@ -616,7 +616,7 @@ export default function StandingAvailability() {
                     disabled={!canPublish}
                     className="bg-[#0d9488] text-white hover:bg-[#0f766e] text-lg px-6 py-4 rounded-lg h-auto font-semibold transition-colors disabled:opacity-50"
                   >
-                    {submitting ? 'Publishing…' : form.editingRkey ? 'Save changes' : 'Publish'}
+                    {submitting ? 'Publishing…' : form.editingRkey ? 'Save changes' : 'Publish publicly'}
                   </Button>
                   {form.editingRkey && (
                     <Button
