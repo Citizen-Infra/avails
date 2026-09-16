@@ -137,7 +137,7 @@ router.get('/:did/:rkey', async (req, res, next) => {
     const poll = await pollRes.json();
 
     // Response records: creator repo (legacy) + service repo (new), merged (#42).
-    const responses = await fetchPollResponses(did, rkey);
+    const responses = await fetchPollResponses(did, rkey, poll.value);
 
     res.json({ poll: poll.value, uri: poll.uri, cid: poll.cid, responses });
   } catch (err) {
@@ -272,7 +272,7 @@ router.put('/:did/:rkey/finalize', requireAuth, validateFinalize, async (req, re
 
     // Fetch responses for participant names and emails (creator + service, #42)
     const url = pollUrl(did, rkey);
-    const pollResponses = await fetchPollResponses(did, rkey);
+    const pollResponses = await fetchPollResponses(did, rkey, updatedRecord);
 
     const participants = pollResponses.filter((r) => r.name).map((r) => r.name);
     const icsContent = generateIcs({
@@ -389,7 +389,7 @@ router.put('/:did/:rkey/meeting-link', requireAuth, validateMeetingLink, async (
     });
 
     const url = pollUrl(did, rkey);
-    const pollResponses = await fetchPollResponses(did, rkey);
+    const pollResponses = await fetchPollResponses(did, rkey, updatedRecord);
     const participants = pollResponses.filter((r) => r.name).map((r) => r.name);
 
     // Same UID as the original REQUEST, so this replaces the event already in
@@ -496,7 +496,7 @@ router.delete('/:did/:rkey/finalize', requireAuth, async (req, res, next) => {
 
     // Best-effort: send cancellation emails with METHOD:CANCEL .ics
     const url = pollUrl(did, rkey);
-    const pollResponses = await fetchPollResponses(did, rkey);
+    const pollResponses = await fetchPollResponses(did, rkey, updatedRecord);
 
     const participants = pollResponses.filter((r) => r.name).map((r) => r.name);
     const emailList = [...new Set(pollResponses.filter((r) => r.email).map((r) => r.email))];
