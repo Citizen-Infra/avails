@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { ATPROTO_SCOPE } from '../lib/oauthScopes.js';
 import { NodeOAuthClient } from '@atproto/oauth-client-node';
 import { JoseKey } from '@atproto/jwk-jose';
 import { createSession, deleteSession, getSession, sessions } from '../lib/sessionStore.js';
@@ -79,7 +80,7 @@ export async function getClient() {
       token_endpoint_auth_method: 'private_key_jwt',
       token_endpoint_auth_signing_alg: 'ES256',
       dpop_bound_access_tokens: true,
-      scope: 'atproto repo:chat.avails.scheduling.poll repo:chat.avails.scheduling.response repo:chat.avails.scheduling.availability rpc:net.openmeet.auth?aud=*',
+      scope: ATPROTO_SCOPE,
       jwks_uri: `${clientUri}/api/auth/jwks.json`,
     },
 
@@ -140,7 +141,7 @@ router.get('/login', async (req, res, next) => {
 
     const url = await client.authorize(handle, {
       signal: ac.signal,
-      scope: 'atproto repo:chat.avails.scheduling.poll repo:chat.avails.scheduling.response repo:chat.avails.scheduling.availability rpc:net.openmeet.auth?aud=*',
+      scope: ATPROTO_SCOPE,
     });
 
     res.redirect(url.toString());

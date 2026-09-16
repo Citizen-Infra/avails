@@ -8,6 +8,7 @@ import { registerClient, getClient, bindClientDid } from './clients.js';
 import { signToken } from './jwt.js';
 import { getExternalBase } from './issuers.js';
 import { saveNow } from '../lib/persistence.js';
+import { ATPROTO_SCOPE, ATPROTO_SCOPES } from '../lib/oauthScopes.js';
 
 const router = Router();
 
@@ -46,7 +47,7 @@ router.get('/.well-known/oauth-authorization-server', (req, res) => {
     grant_types_supported: ['authorization_code', 'refresh_token'],
     token_endpoint_auth_methods_supported: ['none'],
     code_challenge_methods_supported: ['S256'],
-    scopes_supported: ['atproto', 'repo:chat.avails.scheduling.poll', 'repo:chat.avails.scheduling.response', 'repo:chat.avails.scheduling.availability', 'rpc:net.openmeet.auth?aud=*'],
+    scopes_supported: ATPROTO_SCOPES,
   });
 });
 
@@ -141,7 +142,7 @@ router.get('/authorize', async (req, res) => {
 
     const authUrl = await oauthClient.authorize(handle, {
       state: internalState,
-      scope: 'atproto repo:chat.avails.scheduling.poll repo:chat.avails.scheduling.response repo:chat.avails.scheduling.availability rpc:net.openmeet.auth?aud=*',
+      scope: ATPROTO_SCOPE,
     });
 
     res.redirect(authUrl.toString());

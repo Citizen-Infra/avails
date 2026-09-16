@@ -10,9 +10,9 @@ import {
 import { Button } from '@/components/ui/button'
 
 // Replaces the multi-paragraph window.confirm() for unscheduling a meeting (#51).
-// Copy preserved from the original confirm; `published` / `hasGoogleEvent` gate
-// the consequence lines.
-export default function UnscheduleDialog({ open, onOpenChange, onConfirm, published, hasGoogleEvent }) {
+// Copy preserved from the original confirm; `hasGoogleEvent` gates the
+// provider-specific consequence line.
+export default function UnscheduleDialog({ open, onOpenChange, onConfirm, hasGoogleEvent }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
@@ -36,7 +36,6 @@ export default function UnscheduleDialog({ open, onOpenChange, onConfirm, publis
         </DialogHeader>
         <div className="space-y-2 text-base text-[#6b6560]">
           <p>Participants with emails will get a calendar-cancel message so the event disappears from their calendars.</p>
-          {published && <p>The OpenMeet event will also be deleted.</p>}
           {hasGoogleEvent && <p>The Google Calendar event will also be removed.</p>}
           <p>The poll will reopen and you can pick a different time.</p>
         </div>

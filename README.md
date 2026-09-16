@@ -40,7 +40,6 @@ You don't need to know or care about any of this to use avails. It works like an
 - **Edit and delete** — participants can edit or delete their availability after submitting
 - **Timezone support** — grid auto-converts to each viewer's local timezone. Creator in Budapest, participant in New York — everyone sees their own local times
 - **Mobile-native grid** — touch drag to paint availability, tap any slot to see who's available. Responsive layout with pagination for many dates.
-- **OpenMeet integration** — publish scheduled meetings as [OpenMeet](https://platform.openmeet.net) events and fetch calendar availability. Busy times from your OpenMeet calendar overlay the grid as you pick availability; when a meeting is scheduled you can publish it as an OpenMeet event in one click.
 
 ## Connect your AI assistant
 
@@ -59,7 +58,7 @@ Then just ask:
 
 You authenticate with your own Bluesky account — polls are created under your identity, stored in your PDS. No API keys, no shared accounts.
 
-**Available tools:** `create_poll`, `get_poll`, `list_polls`, `list_my_polls`, `schedule`, `share_poll`, `list_communities`, `publish_to_openmeet`
+**Available tools:** `create_poll`, `get_poll`, `list_polls`, `list_my_polls`, `update_poll`, `delete_poll`, `schedule`, `share_poll`, `publish_to_community_feed`, `list_communities`, `evaluate_availability_overlap`, `schedule_call`
 
 ## Stack
 
@@ -176,10 +175,13 @@ TypeScript types are generated with `npx @atproto/lex build`.
 | `list_communities` | — | All communities with named topics |
 | `create_poll` | ATProto | Create a new scheduling poll |
 | `list_my_polls` | ATProto | List your polls |
+| `update_poll` | ATProto | Update one of your open polls |
+| `delete_poll` | ATProto | Delete one of your polls |
 | `schedule` | ATProto | Pick the best time, close poll, send calendar invites |
 | `share_poll` | ATProto | Post poll link to a community's Telegram group or channel |
-| `publish_to_openmeet` | ATProto | Create OpenMeet event from finalized poll |
+| `publish_to_community_feed` | ATProto | Publish or unpublish a poll on its community dashboard |
 | `evaluate_availability_overlap` | service | Read-only event-scoped overlap evaluation; no booking or invitation side effects |
+| `schedule_call` | ATProto or service | Book directly from standing availability when coverage is sufficient |
 
 **Authentication:** Standard OAuth 2.0 with ATProto — Claude Code handles the flow automatically via `/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server` discovery. Granular scopes (only poll and response record access, not full account).
 
@@ -194,12 +196,8 @@ Avails is part of the [Citizen Infrastructure](https://github.com/Citizen-Infra)
 
 ### Roadmap
 
-**Shipped:**
-- [OpenMeet as calendar layer](https://github.com/Citizen-Infra/avails/issues/32) — busy times from your OpenMeet calendar overlay the grid
-- [OpenMeet event publishing](https://github.com/Citizen-Infra/avails/issues/31) — one-click publish of a scheduled meeting as an OpenMeet event
-
 **Next — calendar integrations:**
-- [Server-side calendar OAuth](https://github.com/Citizen-Infra/avails/issues/6) as fallback for users without OpenMeet
+- [Server-side calendar OAuth](https://github.com/Citizen-Infra/avails/issues/6)
 - [Create calendar events directly](https://github.com/Citizen-Infra/avails/issues/7) via API on finalize (not just .ics email)
 
 **Next — polish and ecosystem:**

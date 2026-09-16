@@ -64,25 +64,29 @@ avails has its own ATProto account (a `did:plc`, app-password auth — **not** O
 - **Finalize endpoint collects emails server-side** — the PUT finalize route fetches responses from PDS to get participant names and emails, rather than relying solely on the client. Both MCP `schedule` tool and REST endpoint follow this pattern.
 - **Date formatting must use local time** — never use `toISOString().slice(0, 10)` for dates. It converts to UTC which shifts dates for UTC+ timezones. Use `getFullYear()`/`getMonth()`/`getDate()` or the `formatDateLocal()` helper.
 
-## OpenMeet integration
+## Legacy OpenMeet compatibility
 
-[OpenMeet](https://github.com/OpenMeet-Team/openmeet-api) is an open-source event platform on ATProto. Two integration points + groups exploration:
+OpenMeet was frozen and hidden in #186. It is not a supported dependency or
+product surface:
 
-1. **Event publishing** (`POST /api/openmeet/publish` + MCP `publish_to_openmeet`): creates an OpenMeet event from a finalized poll. Uses `POST /api/events` (not `/api/integration/events`) with ATProto service auth.
+- the browser does not query OpenMeet calendars or offer event publishing;
+- MCP does not advertise `publish_to_openmeet`, and direct calls fail with
+  `OPENMEET_RETIRED` before authentication or network work;
+- `/api/openmeet/*` returns HTTP 410 before reaching the retained handlers;
+- new browser and MCP authorizations do not request an OpenMeet RPC scope; and
+- unscheduling clears an old `openmeetEventSlug` but does not contact OpenMeet.
 
-2. **Calendar availability** (`POST /api/openmeet/availability`): fetches calendar events. Response shape: `{ events: [...], totalCount, dateRange }` — access `.events` array.
+The legacy route implementation, service-auth helper, tenant setting, and
+`openmeetEventSlug` schema field remain temporarily for old-record read
+compatibility and low-risk rollback. Existing poll records containing the field
+continue to load. Removal requires a separate approved change after #186 has
+run through a release cycle without a rollback request.
 
-Both use ATProto service auth flow:
-   - Call `com.atproto.server.getServiceAuth` on user's PDS with `aud: did:web:api.openmeet.net`, `lxm: net.openmeet.auth`
-   - PDS signs a JWT → exchange at OpenMeet's `POST /api/v1/auth/atproto/service-auth`
-   - Requires `rpc:net.openmeet.auth?aud=*` in OAuth scopes. The pinned DID form (`aud=did:web:api.openmeet.net`) was silently dropped from the consent grant by bsky; the wildcard form is what OpenMeet's own documentation recommends.
-   - **#49 gotcha** — ATProto OAuth doesn't re-prompt for upgraded scopes on existing grants. Rotate the `client_id` (client-metadata URL version bump) to force re-consent for every user with the current scope set.
-
-3. **Groups** (#50): OpenMeet has ATProto-native group management ("Groups you organize" / "Groups you're part of"). Could serve as shared community layer for poll scoping — explore once scope issue is resolved.
-
-Calendar priority chain: OpenMeet (auto for signed-in users) → Google Calendar (manual connect fallback) → nothing (anonymous).
-
-**OpenMeet tenant ID**: The public instance uses `lsdfaopkljdfs` (not `1`). Set via `OPENMEET_TENANT_ID` env var, defaults to this value.
+The OAuth client ID stays on the existing versioned metadata URL when dropping
+the scope. Removing a requested scope does not require users to consent again;
+existing grants may retain the old permission until they expire or are revoked,
+but no Avails path uses it, while all new authorization requests use the smaller
+shared scope list.
 
 ## Standing availability
 
@@ -183,7 +187,7 @@ Embedded `POST /mcp` JSON-RPC endpoint with ATProto OAuth (Smoke Signal pattern)
 
 `GET /mcp` returns **405** with `Allow: POST, DELETE`. A client may GET the endpoint to open a server-to-client SSE stream, and the Streamable HTTP spec allows only two answers: `Content-Type: text/event-stream`, or 405 to say there is no stream here. Avails never initiates messages, so 405 is the accurate one. Without that route the request fell through to the SPA fallback and returned `200 text/html`, which is neither — a client reads that as a stream that opened and closed instantly, and reconnects forever (#164).
 
-Nine tools:
+Twelve tools:
 
 | Tool | Auth | Description |
 |------|------|-------------|
@@ -192,18 +196,21 @@ Nine tools:
 | `list_communities` | No | All communities with named topics |
 | `create_poll` | Yes | Create scheduling poll |
 | `list_my_polls` | Yes | User's polls from PDS |
+| `update_poll` | Yes | Update one of the user's open polls |
+| `delete_poll` | Yes | Delete one of the user's polls |
 | `schedule` | Yes | Set time, close poll, send invites |
 | `share_poll` | Yes | Post to Telegram channel or group topic |
-| `publish_to_openmeet` | Yes | Create OpenMeet event from finalized poll |
+| `publish_to_community_feed` | Yes | Publish or unpublish a poll on its community dashboard |
+| `evaluate_availability_overlap` | Service | Read-only event-scoped overlap evaluation |
 | `schedule_call` | Yes (owner or service) | Book a call from members' standing availability — no poll. Resolves a Bluesky-list scope → members' records → best UTC overlap; coverage fallback to a poll + trust split. Takes an optional `idempotencyKey` so a retry returns the first booking rather than making a second. |
 
 ### OAuth
 
-Standard OAuth 2.0 discovery (RFC 9728 + 8414) with PKCE S256 — Claude Code handles auth automatically. Granular ATProto scopes: `repo:chat.avails.scheduling.poll`, `repo:chat.avails.scheduling.response`, `repo:chat.avails.scheduling.availability`, `rpc:net.openmeet.auth?aud=*`.
+Standard OAuth 2.0 discovery (RFC 9728 + 8414) with PKCE S256 — Claude Code handles auth automatically. Granular ATProto scopes: `repo:chat.avails.scheduling.poll`, `repo:chat.avails.scheduling.response`, and `repo:chat.avails.scheduling.availability`.
 
 MCP OAuth flow piggybacks on the web UI's ATProto OAuth — `/api/auth/callback` detects MCP flows via `tryMcpCallback()` (exported from `mcp/oauth.js`) and redirects to the MCP client instead of the homepage.
 
-The client-metadata route is versioned — `repo:chat.avails.scheduling.availability` bumped it from `/api/auth/client-metadata-v3.json` to `-v4.json` — because ATProto caches OAuth grants per `client_id` and never re-prompts an existing user for an upgraded scope set (#49); rotating the URL is the only way to force fresh consent.
+The client-metadata route is versioned — `repo:chat.avails.scheduling.availability` bumped it from `/api/auth/client-metadata-v3.json` to `-v4.json` — because ATProto caches OAuth grants per `client_id` and never re-prompts an existing user for an upgraded scope set (#49); rotating the URL is the only way to force fresh consent for added access. Removing the OpenMeet scope in #186 kept v4 because new requests can safely ask for less access without re-consent or an identity rotation.
 
 **DEPLOY-ORDERING caveat:** Railway redeploys on a push **and** on an env-var change, so a naive rotation deploys twice and breaks sign-in in the gap — either direction. Env pointing at a `-v4.json` route the old code doesn't serve yet, or new code that's dropped `-v3.json` while env still points there: both are a real outage for the length of a build, not a blip. Note the env var can't literally travel "in the same push" — it isn't in the repo.
 
@@ -247,7 +254,7 @@ Boots used to log `Failed to restore OAuth session … invalid_client_metadata` 
 ## Known architectural debts
 
 - ~~**Response storage coupled to creator session** (#42)~~ — RESOLVED (Stage 1) by the service identity: new responses write to avails' own repo, reads merge creator+service (see [Service identity](#service-identity)). Remaining: Stage 2 (authenticated respondents own their responses in their own PDS) and private-scope responses.
-- **OAuth scope upgrade doesn't re-prompt** (#49) — ATProto OAuth caches grants; adding new scopes (like the OpenMeet RPC scope) doesn't trigger re-consent. Use admin clear-sessions endpoint + wait for bsky.social propagation (up to 15 min).
+- **OAuth scope upgrades don't re-prompt** (#49) — ATProto OAuth caches grants, so adding a future scope may require a versioned client metadata URL. Scope removal for #186 deliberately kept the existing client ID: no re-consent is needed to request less access.
 - **No OG metadata** (#46) — poll links show no preview in Telegram/Slack/social media.
 - **ATProto DID URLs** (#45) — poll URLs contain long DIDs; slug-based URLs planned.
 - ~~**No persistent availability** (#47)~~ — RESOLVED by the standing-availability feature (`chat.avails.scheduling.availability` — see [Standing availability](#standing-availability)). Participants publish availability once per group; `schedule_call` books from it directly. Both scope kinds resolve; `ca-community` requires the caller to supply `voterDids`.

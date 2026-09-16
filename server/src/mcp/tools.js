@@ -2,7 +2,6 @@ import { indexPoll, updatePollStatus, updatePollCommunity, updatePollPublished, 
 import { generateIcs } from '../lib/ical.js';
 import { sendEmail } from '../lib/email.js';
 import { composeEmail } from '../lib/email-template.js';
-import { getOpenMeetToken } from '../routes/openmeet.js';
 import { computeBestSlots } from './overlap.js';
 import { sendTelegramMessage } from './telegram.js';
 import { assertMembership } from '../lib/membership.js';
@@ -302,25 +301,6 @@ const TOOL_DEFINITIONS = [
         },
       },
       required: ['did', 'rkey', 'community'],
-    },
-  },
-  {
-    name: 'publish_to_openmeet',
-    description:
-      'Publish a finalized poll as an OpenMeet event. The poll must be scheduled (have finalTime set). Requires authentication.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        did: {
-          type: 'string',
-          description: 'DID of the poll creator',
-        },
-        rkey: {
-          type: 'string',
-          description: 'Record key of the poll',
-        },
-      },
-      required: ['did', 'rkey'],
     },
   },
   {
@@ -869,120 +849,11 @@ async function sharePoll({ did, rkey, community, topic, message }, authContext) 
   });
 }
 
-async function publishToOpenmeet({ did, rkey }, authContext) {
-  if (!authContext) throw new Error('AUTH_REQUIRED');
-  if (!authContext.oauthSession) throw new Error('AUTH_REQUIRED');
-  const auth = authContext;
-  if (auth.did !== did) throw new Error('Only the poll creator can publish to OpenMeet');
-
-  // Fetch poll from PDS
-  const pds = await resolvePds(did);
-  const pollRes = await fetch(
-    `${pds}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(did)}&collection=${encodeURIComponent(POLL_COLLECTION)}&rkey=${encodeURIComponent(rkey)}`
-  );
-  if (!pollRes.ok) throw new Error(`Poll not found: ${pollRes.status}`);
-  const pollData = await pollRes.json();
-  const poll = pollData.value;
-
-  if (!poll.finalTime) {
-    throw new Error('Poll must be scheduled (have finalTime) before publishing to OpenMeet');
-  }
-
-  // Get OpenMeet token via ATProto service auth
-  const tokenResult = await getOpenMeetToken(auth.oauthSession);
-  if (tokenResult.error === 'scope-missing') {
-    throw new Error('Your Bluesky session is missing the OpenMeet permission. Sign out and sign back in via the Avails web UI to grant it.');
-  }
-  if (!tokenResult.token) {
-    throw new Error('Could not authenticate with OpenMeet. Do you have an OpenMeet account linked to your Bluesky?');
-  }
-  const token = tokenResult.token;
-
-  const url = pollUrl(did, rkey);
-  const OPENMEET_API = process.env.OPENMEET_API_URL || 'https://api.openmeet.net';
-
-  const endDate = poll.finalDuration
-    ? new Date(new Date(poll.finalTime).getTime() + poll.finalDuration * 60 * 1000).toISOString()
-    : new Date(new Date(poll.finalTime).getTime() + 60 * 60 * 1000).toISOString();
-
-  const eventPayload = {
-    name: poll.title,
-    description: poll.description
-      ? `${poll.description}\n\nScheduled via Avails: ${url}`
-      : `Scheduled via Avails: ${url}`,
-    startDate: poll.finalTime,
-    endDate,
-    type: 'online',
-    status: 'published',
-    visibility: 'public',
-    timeZone: poll.timezone || 'UTC',
-    maxAttendees: 0,
-    categories: [],
-    location: 'Online (scheduled via Avails)',
-    locationOnline: url,
-    source: {
-      type: 'bluesky',
-      id: auth.did,
-      url,
-      handle: auth.handle,
-    },
-  };
-
-  const response = await fetch(`${OPENMEET_API}/api/events`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-      'x-tenant-id': process.env.OPENMEET_TENANT_ID || 'lsdfaopkljdfs',
-    },
-    body: JSON.stringify(eventPayload),
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`OpenMeet API error: ${response.status} ${text}`);
-  }
-
-  const result = await response.json();
-  const eventUrl = result.slug
-    ? `https://platform.openmeet.net/events/${result.slug}`
-    : undefined;
-
-  // Persist slug on the poll record so unscheduling can delete the OpenMeet
-  // event later. Best-effort — if the PUT fails the publish still succeeded.
-  if (result.slug) {
-    try {
-      await auth.oauthSession.fetchHandler('/xrpc/com.atproto.repo.putRecord', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          repo: did,
-          collection: POLL_COLLECTION,
-          rkey,
-          record: { ...poll, openmeetEventSlug: result.slug },
-          swapRecord: pollData.cid,
-        }),
-      });
-    } catch (err) {
-      console.log('[openmeet-mcp] Failed to persist slug (non-fatal):', err.message);
-    }
-  }
-
-  return JSON.stringify({
-    published: true,
-    eventId: result.id,
-    eventUrl,
-    title: poll.title,
-    startDate: poll.finalTime,
-    endDate,
-  }, null, 2);
-}
-
 // Publish (published !== false) or unpublish (published === false) a poll to
 // its community's dashboard feed in My Community (#5 sub-project F). Creator-only,
 // gated on the poll's community membership (the same assertMembership gate as
 // share_poll, fails closed). The PDS record's communityFeedPublishedAt is the
-// source of truth (openmeetEventSlug convention: presence = published); the
+// source of truth (communityFeedPublishedAt presence = published); the
 // in-memory index mirror is what the public list endpoint filters on, so it is
 // updated only AFTER the authoritative record write succeeds. Shared by the MCP
 // tool and the HTTP route (POST /api/polls/:did/:rkey/publish-community).
@@ -1372,7 +1243,7 @@ export async function callTool(name, args, authContext) {
     case 'share_poll':
       return sharePoll(args, authContext);
     case 'publish_to_openmeet':
-      return publishToOpenmeet(args, authContext);
+      throw new Error('OPENMEET_RETIRED: Avails no longer publishes events to OpenMeet');
     case 'publish_to_community_feed':
       return publishToCommunityFeed(args, authContext);
     case 'list_communities':

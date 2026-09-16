@@ -5,7 +5,6 @@ import { indexPoll, updatePollStatus, updatePollCommunity, removePoll, listByCom
 import { generateIcs } from '../lib/ical.js';
 import { sendEmail } from '../lib/email.js';
 import { composeEmail } from '../lib/email-template.js';
-import { deleteOpenMeetEvent } from './openmeet.js';
 import { fetchPollResponses } from '../lib/responseReads.js';
 import { pollUrl } from '../lib/pollUrl.js';
 import { publishToCommunityFeed } from '../mcp/tools.js';
@@ -452,9 +451,10 @@ router.put('/:did/:rkey/meeting-link', requireAuth, validateMeetingLink, async (
 });
 
 // DELETE /:did/:rkey/finalize — unschedule a scheduled poll.
-// Clears finalTime + finalDuration + openmeetEventSlug, reverts status to 'open',
-// deletes the OpenMeet event if one was published, and sends METHOD:CANCEL .ics
-// emails so participants' calendars auto-remove the previously-imported invite.
+// Clears finalTime + finalDuration + legacy openmeetEventSlug, reverts status to
+// 'open', and sends METHOD:CANCEL .ics emails so participants' calendars
+// auto-remove the previously-imported invite. OpenMeet is retired (#186), so
+// this path deliberately makes no request to its API.
 router.delete('/:did/:rkey/finalize', requireAuth, async (req, res, next) => {
   try {
     const { did, rkey } = req.params;
@@ -473,8 +473,6 @@ router.delete('/:did/:rkey/finalize', requireAuth, async (req, res, next) => {
     if (!existingValue.finalTime) {
       return res.status(400).json({ error: 'Poll is not scheduled' });
     }
-
-    const openmeetSlug = existingValue.openmeetEventSlug;
 
     // Snapshot for the cancellation email — needs title + finalTime/Duration pre-clear
     const snapshot = { ...existingValue };
@@ -495,12 +493,6 @@ router.delete('/:did/:rkey/finalize', requireAuth, async (req, res, next) => {
     });
 
     updatePollStatus(did, rkey, 'open');
-
-    // Best-effort: delete the OpenMeet event
-    let openmeetDeleted = false;
-    if (openmeetSlug) {
-      openmeetDeleted = await deleteOpenMeetEvent(req.oauthSession, openmeetSlug);
-    }
 
     // Best-effort: send cancellation emails with METHOD:CANCEL .ics
     const url = pollUrl(did, rkey);
@@ -557,7 +549,7 @@ router.delete('/:did/:rkey/finalize', requireAuth, async (req, res, next) => {
 
     res.json({
       ok: true,
-      openmeetDeleted,
+      openmeetDeleted: false,
       emailsSent: emailList.length,
     });
   } catch (err) {
