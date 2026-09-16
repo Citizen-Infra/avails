@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import { cn } from '@/lib/utils'
+import { paginateDates } from '@/lib/datePagination'
 import MeetingLinkField from './MeetingLinkField'
 import '../styles/avail-grid.css'
 
@@ -99,19 +100,15 @@ export default function SchedulingGrid({
   const kbAnchor = useRef(null) // keyboard block-selection anchor
   const gridRef = useRef(null)
 
-  // Date pagination — mirror AvailGrid: show max 7 dates at a time with arrows.
-  // Without this the grid renders every day in one row and overflows the viewport
-  // on mobile (issue #82). Selection persists across pages because slot keys are
-  // absolute (date+time), not page-relative.
-  const MAX_VISIBLE = 7
+  // Date pagination mirrors AvailGrid. Pages are balanced while staying at seven
+  // dates or fewer; selection persists because slot keys are page-independent.
   const [page, setPage] = useState(0)
-  const totalPages = Math.ceil(dates.length / MAX_VISIBLE)
-  const visibleDates = useMemo(
-    () => dates.slice(page * MAX_VISIBLE, page * MAX_VISIBLE + MAX_VISIBLE),
-    [dates, page]
-  )
-  const hasLeft = page > 0
-  const hasRight = page < totalPages - 1
+  const datePages = useMemo(() => paginateDates(dates), [dates])
+  const totalPages = datePages.length
+  const pageIndex = Math.min(page, Math.max(0, totalPages - 1))
+  const visibleDates = datePages[pageIndex] || []
+  const hasLeft = pageIndex > 0
+  const hasRight = pageIndex < totalPages - 1
 
   const computePendingKeys = useCallback((down, cur) => {
     // Constrain to same column (single day)
@@ -277,22 +274,27 @@ export default function SchedulingGrid({
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       {/* Pagination arrows + month-range header — mirrors AvailGrid */}
-      {dates.length > MAX_VISIBLE && (
+      {totalPages > 1 && (
         <div className="flex items-center justify-between px-1">
           <button
-            onClick={() => setPage((p) => p - 1)}
+            type="button"
+            aria-label="Show previous dates"
+            onClick={() => setPage(pageIndex - 1)}
             disabled={!hasLeft}
-            className={cn('p-1.5 rounded-lg transition-colors', hasLeft ? 'text-[#1a1a1a] hover:bg-[#f0eeea]' : 'text-[#d8d4cf] cursor-default')}
+            className={cn('inline-flex h-11 w-11 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0d9488] focus-visible:ring-offset-2', hasLeft ? 'text-[#1a1a1a] hover:bg-[#f0eeea]' : 'text-[#d8d4cf] cursor-default')}
           >
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 4l-6 6 6 6" /></svg>
           </button>
-          <span className="text-sm font-medium text-[#6b6560]">
-            {formatDate(visibleDates[0]).monthDay} — {formatDate(visibleDates[visibleDates.length - 1]).monthDay}
-          </span>
+          <div className="text-center text-sm font-medium text-[#6b6560]">
+            <span>{formatDate(visibleDates[0]).monthDay} — {formatDate(visibleDates[visibleDates.length - 1]).monthDay}</span>
+            <span className="ml-2 text-[#8a8580]">Page {pageIndex + 1} of {totalPages}</span>
+          </div>
           <button
-            onClick={() => setPage((p) => p + 1)}
+            type="button"
+            aria-label="Show next dates"
+            onClick={() => setPage(pageIndex + 1)}
             disabled={!hasRight}
-            className={cn('p-1.5 rounded-lg transition-colors', hasRight ? 'text-[#1a1a1a] hover:bg-[#f0eeea]' : 'text-[#d8d4cf] cursor-default')}
+            className={cn('inline-flex h-11 w-11 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0d9488] focus-visible:ring-offset-2', hasRight ? 'text-[#1a1a1a] hover:bg-[#f0eeea]' : 'text-[#d8d4cf] cursor-default')}
           >
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 4l6 6-6 6" /></svg>
           </button>

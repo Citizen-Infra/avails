@@ -13,6 +13,7 @@ cd server && npm start                      # Production
 
 # Client (React 19, Vite 7, Tailwind v4, shadcn/ui)
 cd client && npm install && npm run dev    # Vite dev server (localhost:5173, proxies /api to :3000)
+cd client && npm test                      # Client unit tests (Node built-in test runner)
 cd client && npm run build                 # Production build → dist/
 
 # Lexicon codegen (after editing lexicons/*.json)
@@ -30,7 +31,7 @@ Tests use Node's built-in test runner (`node:test` + `node:assert`). The `test` 
 
 **CI runs the full suite and asserts at least one test passed.** `node --test` exits 0 reporting `pass 0` when its glob matches nothing, so a pattern that quietly stops expanding would otherwise leave CI green having run nothing — the guard in `ci.yml` is what makes that fail loudly.
 
-The **client has no test runner** — `cd client && npm run build` is the only client-side gate.
+Client unit tests use Node's built-in test runner; `cd client && npm test` and `cd client && npm run build` are both client-side gates.
 
 ## Hard Constraints
 
