@@ -342,9 +342,9 @@ export default function AvailGrid({
             >
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 4l-6 6 6 6"/></svg>
             </button>
-            <div className="text-center text-sm font-medium text-[#6b6560]">
+            <div aria-live="polite" className="text-center text-sm font-medium text-[#6b6560]">
               <span>{formatDate(visibleDates[0]).monthDay} — {formatDate(visibleDates[visibleDates.length - 1]).monthDay}</span>
-              <span className="ml-2 text-[#8a8580]">Page {pageIndex + 1} of {totalPages}</span>
+              <span className="ml-2 font-normal">Page {pageIndex + 1} of {totalPages}</span>
             </div>
             <button
               type="button"
