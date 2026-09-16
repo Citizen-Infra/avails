@@ -616,7 +616,7 @@ export default function StandingAvailability() {
                     disabled={!canPublish}
                     className="bg-[#0d9488] text-white hover:bg-[#0f766e] text-lg px-6 py-4 rounded-lg h-auto font-semibold transition-colors disabled:opacity-50"
                   >
-                    {submitting ? 'Publishing…' : form.editingRkey ? 'Save changes' : 'Publish publicly'}
+                    {submitting ? 'Publishing…' : form.editingRkey ? 'Save changes' : 'Publish availability'}
                   </Button>
                   {form.editingRkey && (
                     <Button
