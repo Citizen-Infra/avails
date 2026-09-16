@@ -6,7 +6,7 @@ import { indexPoll, updatePollPublished, listByCommunity, backfillCommunityFeedP
 // listByCommunity returns entries by reference, so deleting publishedAt off a
 // returned object simulates a pre-migration entry (field strictly undefined).
 describe('community-feed backfill (grandfather open polls)', () => {
-  it('grandfathers open polls, leaves closed unpublished, and is idempotent', () => {
+  it('grandfathers open polls, leaves legacy closed records unpublished, and is idempotent', () => {
     indexPoll('did:plc:a', 'bf-open', { title: 'O', community: 'c-bf', status: 'open', createdAt: '2026-06-01T00:00:00Z' });
     indexPoll('did:plc:a', 'bf-closed', { title: 'C', community: 'c-bf', status: 'closed', createdAt: '2026-06-02T00:00:00Z' });
     delete listByCommunity('c-bf', 'open')[0].publishedAt;

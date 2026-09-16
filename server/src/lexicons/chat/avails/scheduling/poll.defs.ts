@@ -18,7 +18,7 @@ type Main = {
   slotMinutes: number
   timezone: string
   community?: string
-  status: 'open' | 'closed' | l.UnknownString
+  status: 'open' | 'finalized' | l.UnknownString
   finalTime?: string
   finalDuration?: number
 
@@ -74,7 +74,7 @@ const main = /*#__PURE__*/ l.record<'tid', Main>(
     community: /*#__PURE__*/ l.optional(
       /*#__PURE__*/ l.string({ maxLength: 100 }),
     ),
-    status: /*#__PURE__*/ l.string<{ knownValues: ['open', 'closed'] }>(),
+    status: /*#__PURE__*/ l.string<{ knownValues: ['open', 'finalized'] }>(),
     finalTime: /*#__PURE__*/ l.optional(/*#__PURE__*/ l.string()),
     finalDuration: /*#__PURE__*/ l.optional(
       /*#__PURE__*/ l.integer({ minimum: 15 }),

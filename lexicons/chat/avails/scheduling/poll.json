@@ -22,7 +22,7 @@
           "slotMinutes": { "type": "integer", "minimum": 15, "maximum": 120 },
           "timezone": { "type": "string", "maxLength": 100 },
           "community": { "type": "string", "maxLength": 100 },
-          "status": { "type": "string", "knownValues": ["open", "closed"] },
+          "status": { "type": "string", "knownValues": ["open", "finalized"] },
           "finalTime": { "type": "string" },
           "finalDuration": { "type": "integer", "minimum": 15 },
           "meetingUrl": { "type": "string", "maxLength": 500, "description": "Video call link for the scheduled meeting (Jitsi, Meet, Zoom, or any http(s) URL). Surfaced in the .ics invite and the finalized banner. Cleared on unschedule, since the link belongs to the meeting rather than the poll." },
