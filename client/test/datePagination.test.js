@@ -7,8 +7,19 @@ function dates(count) {
   return Array.from({ length: count }, (_, index) => `date-${index + 1}`)
 }
 
-test('balances eight dates across two equal pages', () => {
-  assert.deepEqual(paginateDates(dates(8)).map(page => page.length), [4, 4])
+test('keeps every date when an eight-date poll crosses a month boundary', () => {
+  const input = [
+    '2026-06-27',
+    '2026-06-28',
+    '2026-06-29',
+    '2026-06-30',
+    '2026-07-01',
+    '2026-07-02',
+    '2026-07-03',
+    '2026-07-04',
+  ]
+
+  assert.deepEqual(paginateDates(input), [input.slice(0, 4), input.slice(4)])
 })
 
 test('keeps pages ordered, balanced, and within the seven-date maximum', () => {
