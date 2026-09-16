@@ -2,6 +2,71 @@ import { isServiceConfigured, getServiceIdentity } from './serviceSession.js';
 
 const RESPONSE_COLLECTION = 'chat.avails.scheduling.response';
 const MAX_PAGES = 20; // 20 * 100 = 2000 records; warn if exceeded rather than truncate silently
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_RE = /^(\d{2}):(\d{2})$/;
+
+function timeToMinutes(value, { allowEndOfDay = false } = {}) {
+  const match = typeof value === 'string' ? TIME_RE.exec(value) : null;
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (minutes > 59 || hours > 24 || (hours === 24 && (!allowEndOfDay || minutes !== 0))) {
+    return null;
+  }
+  return hours * 60 + minutes;
+}
+
+/**
+ * Build the exact creator-timezone slot keys represented by a poll's current
+ * dates, time range, and interval. Legacy field names remain readable because
+ * old poll records still use them.
+ */
+export function currentPollSlots(poll) {
+  const valid = new Set();
+  if (!poll || !Array.isArray(poll.dates)) return valid;
+
+  const range = poll.timeRange || (
+    poll.earliestTime && poll.latestTime
+      ? { start: poll.earliestTime, end: poll.latestTime }
+      : null
+  );
+  const slotMinutes = Number(poll.slotMinutes ?? poll.slotDuration ?? 30);
+  const start = timeToMinutes(range?.start);
+  const end = timeToMinutes(range?.end, { allowEndOfDay: true });
+
+  if (
+    start === null || end === null || start >= end ||
+    !Number.isInteger(slotMinutes) || slotMinutes <= 0 || slotMinutes > 1440
+  ) {
+    return valid;
+  }
+
+  for (const date of poll.dates) {
+    if (typeof date !== 'string' || !DATE_RE.test(date)) continue;
+    for (let minute = start; minute < end; minute += slotMinutes) {
+      const hours = String(Math.floor(minute / 60)).padStart(2, '0');
+      const minutes = String(minute % 60).padStart(2, '0');
+      valid.add(`${date}T${hours}:${minutes}`);
+    }
+  }
+
+  return valid;
+}
+
+/**
+ * Keep response metadata intact while constraining every response to slots the
+ * current poll can actually render. Stored records remain untouched so edits do
+ * not rewrite participant data or require write access to legacy repositories.
+ */
+export function sanitizePollResponses(responses, poll) {
+  const validSlots = currentPollSlots(poll);
+  return (Array.isArray(responses) ? responses : []).map((response) => ({
+    ...response,
+    slots: Array.isArray(response?.slots)
+      ? response.slots.filter((slot) => validSlots.has(slot))
+      : [],
+  }));
+}
 
 async function resolvePds(did) {
   const res = await fetch(`https://plc.directory/${encodeURIComponent(did)}`);
@@ -33,8 +98,9 @@ async function pagedResponses(pds, repo, rkey, home) {
   return out;
 }
 
-// All responses for a poll, from the creator repo (legacy) + the service repo (new).
-export async function fetchPollResponses(creatorDid, rkey) {
+// All responses for a poll, from the creator repo (legacy) + the service repo
+// (new), constrained to the poll's current slot definition.
+export async function fetchPollResponses(creatorDid, rkey, poll) {
   const results = [];
   try {
     const creatorPds = await resolvePds(creatorDid);
@@ -50,5 +116,5 @@ export async function fetchPollResponses(creatorDid, rkey) {
       console.warn('[responseReads] service repo read failed:', err.message);
     }
   }
-  return results;
+  return sanitizePollResponses(results, poll);
 }

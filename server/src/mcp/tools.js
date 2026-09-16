@@ -428,7 +428,7 @@ async function getPoll({ did, rkey }) {
   }
   const poll = await pollRes.json();
 
-  const responses = await fetchPollResponses(did, rkey);
+  const responses = await fetchPollResponses(did, rkey, poll.value);
 
   const bestSlots = computeBestSlots(responses);
 

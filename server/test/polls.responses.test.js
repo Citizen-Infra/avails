@@ -1,15 +1,34 @@
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import express from 'express';
+import { sanitizePollResponses } from '../src/lib/responseReads.js?rest-sanitizer';
+
+let receivedPoll;
+const storedResponses = [
+  {
+    name: 'LegacyPerson',
+    slots: ['2026-07-21T09:00', '2026-07-20T09:00'],
+    uri: 'at://c/r/1',
+    cid: 'c1',
+    home: 'creator',
+  },
+  {
+    name: 'ServicePerson',
+    slots: ['2026-07-21T09:00', '2026-07-21T09:15'],
+    uri: 'at://s/r/2',
+    cid: 's2',
+    home: 'service',
+  },
+];
 
 // The read path should get its responses from the merged creator+service helper,
 // not from an inline creator-only listRecords.
 mock.module('../src/lib/responseReads.js', {
   namedExports: {
-    fetchPollResponses: async () => ([
-      { name: 'LegacyPerson', slots: ['2026-07-21T09:00'], uri: 'at://c/r/1', cid: 'c1', home: 'creator' },
-      { name: 'ServicePerson', slots: ['2026-07-21T09:00'], uri: 'at://s/r/2', cid: 's2', home: 'service' },
-    ]),
+    fetchPollResponses: async (_did, _rkey, poll) => {
+      receivedPoll = poll;
+      return sanitizePollResponses(storedResponses, poll);
+    },
   },
 });
 
@@ -17,7 +36,13 @@ const originalFetch = globalThis.fetch;
 globalThis.fetch = async (url) => {
   const u = String(url);
   if (u.includes('plc.directory')) return { ok: true, json: async () => ({ service: [{ id: '#atproto_pds', serviceEndpoint: 'https://creator.pds' }] }) };
-  if (u.includes('getRecord')) return { ok: true, json: async () => ({ value: { title: 'Test Poll', status: 'open' }, uri: 'at://did:plc:creator/p/poll1', cid: 'pcid' }) };
+  if (u.includes('getRecord')) return { ok: true, json: async () => ({ value: {
+    title: 'Test Poll',
+    status: 'open',
+    dates: ['2026-07-21'],
+    timeRange: { start: '09:00', end: '10:00' },
+    slotMinutes: 30,
+  }, uri: 'at://did:plc:creator/p/poll1', cid: 'pcid' }) };
   // Legacy inline read (pre-refactor) would hit this and get nothing → RED until the route uses the helper.
   if (u.includes('listRecords')) return { ok: true, json: async () => ({ records: [] }) };
   return originalFetch(url);
@@ -52,5 +77,10 @@ describe('GET /:did/:rkey merges creator + service responses', () => {
     assert.equal(res.status, 200);
     assert.equal(res.body.responses.length, 2);
     assert.deepEqual(res.body.responses.map((r) => r.home).sort(), ['creator', 'service']);
+    assert.deepEqual(res.body.responses.map((r) => r.slots), [
+      ['2026-07-21T09:00'],
+      ['2026-07-21T09:00'],
+    ]);
+    assert.deepEqual(receivedPoll, res.body.poll);
   });
 });
