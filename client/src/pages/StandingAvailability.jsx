@@ -642,7 +642,7 @@ export default function StandingAvailability() {
             <DialogTitle className="text-[#1a1a1a]">Delete this standing availability?</DialogTitle>
           </DialogHeader>
           <p className="text-base text-[#6b6560]">
-            This removes the record from your PDS. It will no longer be available for overlap checks.
+            This removes the record from your Bluesky account, so it will no longer be used for overlap checks. Copies already made elsewhere may remain.
           </p>
           {deleteError && <p className="text-sm text-red-600">{deleteError}</p>}
           <DialogFooter>
