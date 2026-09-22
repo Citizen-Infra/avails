@@ -75,7 +75,7 @@ describe('GET /api/communities', () => {
       if (String(url).includes('/api/memberships')) {
         return { ok: true, json: async () => ({ memberships: [
           { community_id: 'cibc', role: 'member', name: 'Citizen Infra Builders', status: 'active', visibility: 'public' },
-          { community_id: 'sen-response-group', role: 'admin', name: 'SEN Response Group', status: 'setup', visibility: 'private' },
+          { community_id: 'sen-response-group', role: 'admin', name: 'SENRI', status: 'setup', visibility: 'private' },
         ] }) };
       }
       return { ok: true, json: async () => ({ communities: {
@@ -90,7 +90,7 @@ describe('GET /api/communities', () => {
     assert.equal(res.headers['cache-control'], 'private, no-store');
     assert.deepEqual(res.body, [
       { id: 'cibc', name: 'Citizen Infra Builders' },
-      { id: 'sen-response-group', name: 'SEN Response Group' },
+      { id: 'sen-response-group', name: 'SENRI' },
     ]);
     const membershipCall = calls.find((call) => call.url.includes('/api/memberships'));
     assert.match(membershipCall.url, /subject=did%3Aplc%3Aart$/);
