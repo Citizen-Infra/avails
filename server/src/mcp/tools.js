@@ -10,6 +10,7 @@ import { normalizeScope } from './scope.js';
 import { bestCallSlots } from './availabilityOverlap.js';
 import { evaluateAvailabilityOverlap } from './evaluateAvailability.js';
 import { fetchCommunityConfig } from '../lib/communityConfig.js';
+import { mayListCommunityPolls } from '../lib/communityPollAccess.js';
 import { pollUrl } from '../lib/pollUrl.js';
 import { fetchPollResponses } from '../lib/responseReads.js';
 import { normalizeMeetingUrl } from '../lib/meetingUrl.js';
@@ -93,7 +94,7 @@ const TOOL_DEFINITIONS = [
   {
     name: 'list_polls',
     description:
-      'List polls indexed for a community. Returns polls sorted by creation date.',
+      'List polls indexed for a community. Private community polls require membership. Returns polls sorted by creation date.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -442,7 +443,10 @@ async function getPoll({ did, rkey }) {
   });
 }
 
-async function listPolls({ community, status }) {
+async function listPolls({ community, status }, authContext) {
+  if (!community || !(await mayListCommunityPolls(community, { did: authContext?.did }))) {
+    return JSON.stringify({ polls: [] });
+  }
   const polls = listByCommunity(community || '', status || 'open');
   return JSON.stringify({ polls });
 }
@@ -1229,7 +1233,7 @@ export async function callTool(name, args, authContext) {
     case 'get_poll':
       return getPoll(args);
     case 'list_polls':
-      return listPolls(args);
+      return listPolls(args, authContext);
     case 'create_poll':
       return createPoll(args, authContext);
     case 'update_poll':

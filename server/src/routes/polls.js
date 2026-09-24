@@ -8,6 +8,7 @@ import { composeEmail } from '../lib/email-template.js';
 import { fetchPollResponses } from '../lib/responseReads.js';
 import { pollUrl } from '../lib/pollUrl.js';
 import { publishToCommunityFeed } from '../mcp/tools.js';
+import { mayListCommunityPolls } from '../lib/communityPollAccess.js';
 
 const router = Router();
 
@@ -82,13 +83,26 @@ router.post('/', requireAuth, validatePollCreate, async (req, res, next) => {
 // GET / — list polls for a community from the in-memory index.
 // published=1 restricts to polls published to the community feed (#5 sub-project F);
 // omitting the param keeps the original behaviour (all matching polls).
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
+  // Public polls are cacheable only when every caller gets the same result.
+  res.set('Cache-Control', 'private, no-store');
   const { community, status, published } = req.query;
   if (!community) {
     return res.status(400).json({ error: 'community query param required' });
   }
-  const polls = listByCommunity(community, status || 'open', { publishedOnly: published === '1' });
-  res.json({ polls });
+  try {
+    const bearer = req.headers.authorization?.startsWith('Bearer ')
+      ? req.headers.authorization.slice(7) : null;
+    const allowed = await mayListCommunityPolls(community, {
+      bearer, sessionId: req.cookies?.avails_session,
+    });
+    if (!allowed) return res.status(404).json({ error: 'Community polls not found' });
+    const polls = listByCommunity(community, status || 'open', { publishedOnly: published === '1' });
+    res.json({ polls });
+  } catch {
+    // A failed config read must never fall back to the index: visibility unknown.
+    res.status(503).json({ error: 'Community discovery unavailable' });
+  }
 });
 
 // GET /my — list authenticated user's polls from their PDS

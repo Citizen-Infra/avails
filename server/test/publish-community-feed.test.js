@@ -9,6 +9,7 @@ let membershipOk = true;
 import { mock } from 'node:test';
 mock.module('../src/lib/membership.js', {
   namedExports: {
+    fetchMemberships: async () => [],
     assertMembership: async (_did, community) => {
       if (!membershipOk) throw new Error(`You're not a member of "${community}".`);
     },
