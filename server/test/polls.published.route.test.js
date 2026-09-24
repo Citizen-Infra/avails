@@ -4,6 +4,11 @@ import express from 'express';
 import { indexPoll, updatePollPublished } from '../src/lib/pollIndex.js';
 
 const originalFetch = globalThis.fetch;
+process.env.CA_MEMBERSHIP_URL = 'https://ca.test';
+process.env.CA_CONFIG_SECRET = 'test-secret';
+globalThis.fetch = async () => ({ ok: true, json: async () => ({ communities: {
+  'c-route': { visibility: 'public' },
+} }) });
 const { default: pollRoutes } = await import('../src/routes/polls.js');
 
 function createApp() {

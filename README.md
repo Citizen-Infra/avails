@@ -152,7 +152,7 @@ TypeScript types are generated with `npx @atproto/lex build`.
 | GET | `/api/auth/session` | cookie | Current user |
 | POST | `/api/polls` | ATProto | Create poll |
 | GET | `/api/polls/:did/:rkey` | — | Get poll + responses |
-| GET | `/api/polls?community=X` | — | List community polls |
+| GET | `/api/polls?community=X` | — for public; member for private | List community polls (private community membership verified via Community Admin JWT or Avails sign-in) |
 | PUT | `/api/polls/:did/:rkey` | ATProto | Update poll (creator only) |
 | DELETE | `/api/polls/:did/:rkey` | ATProto | Delete poll (creator only) |
 | PUT | `/api/polls/:did/:rkey/finalize` | ATProto | Pick a time, send invites |
@@ -164,6 +164,8 @@ TypeScript types are generated with `npx @atproto/lex build`.
 | GET | `/api/availability/mine` | ATProto | List your standing-availability records |
 | DELETE | `/api/availability/:rkey` | ATProto | Delete your standing-availability record |
 
+Private-community gating protects poll *discovery* through Avails' REST and MCP lists, not a poll's direct link or its world-readable ATProto PDS record. The My Community dashboard supplies its Community Admin member token when requesting a private feed; Avails verifies it against Community Admin's public signing keys.
+
 ### MCP endpoint
 
 `POST /mcp` — see [Connect your AI assistant](#connect-your-ai-assistant) above for setup and usage. Full tool reference:
@@ -171,7 +173,7 @@ TypeScript types are generated with `npx @atproto/lex build`.
 | Tool | Auth | Description |
 |------|------|-------------|
 | `get_poll` | — | Get poll details + responses + best available time slots |
-| `list_polls` | — | List polls by community and/or status |
+| `list_polls` | — for public; member for private | List polls by community and/or status |
 | `list_communities` | — | All communities with named topics |
 | `create_poll` | ATProto | Create a new scheduling poll |
 | `list_my_polls` | ATProto | List your polls |
