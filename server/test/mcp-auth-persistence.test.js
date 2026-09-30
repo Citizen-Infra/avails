@@ -12,6 +12,7 @@ let saveNowCalls = 0;
 mock.module('../src/lib/persistence.js', {
   namedExports: {
     saveNow: async () => { saveNowCalls++; },
+    saveStoreNow: async () => {},
     registerStore: () => {},
     markDirty: () => {},
     startPersistence: async () => {},
