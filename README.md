@@ -187,6 +187,11 @@ Private-community gating protects poll *discovery* through Avails' REST and MCP 
 
 **Authentication:** Standard OAuth 2.0 with ATProto — Claude Code handles the flow automatically via `/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server` discovery. Granular scopes (only poll and response record access, not full account).
 
+MCP access tokens last 24 hours. After sign-in, the client receives a rotating refresh token
+(90-day inactivity window); Avails stores only its hash on the server volume. Clients that
+signed in before refresh tokens were added have no refresh token and need **one new OAuth
+sign-in** after deployment. Merely reconnecting the MCP transport does not renew identity.
+
 ## Part of Citizen Infrastructure
 
 Avails is part of the [Citizen Infrastructure](https://github.com/Citizen-Infra) ecosystem — community tools built on open protocols.

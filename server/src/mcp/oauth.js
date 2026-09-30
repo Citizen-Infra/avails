@@ -7,7 +7,7 @@ import { createSession } from '../lib/sessionStore.js';
 import { registerClient, getClient, bindClientDid } from './clients.js';
 import { signToken } from './jwt.js';
 import { getExternalBase } from './issuers.js';
-import { saveNow } from '../lib/persistence.js';
+import { markDirty, saveNow, saveStoreNow } from '../lib/persistence.js';
 import { ATPROTO_SCOPE, ATPROTO_SCOPES } from '../lib/oauthScopes.js';
 
 const router = Router();
@@ -17,6 +17,44 @@ const pendingAuths = new Map();
 
 // Issued auth codes: code → { mcpClientId, did, handle, codeChallenge, redirectUri, createdAt }
 const authCodes = new Map();
+const refreshingClients = new Set();
+const REFRESH_LIFETIME_MS = 90 * 24 * 60 * 60 * 1000;
+
+function refreshHash(token) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+function mintAccessToken({ did, handle, clientId }) {
+  const base = getExternalBase();
+  return signToken(getJwtSecret(), {
+    sub: did, iss: base, aud: base, client_id: clientId,
+    mcp_client_id: clientId, handle,
+  }, 24 * 60 * 60);
+}
+
+async function issueTokens(client, { did, handle }) {
+  const refreshToken = crypto.randomBytes(32).toString('base64url');
+  const previousHash = client.refreshTokenHash;
+  const previousExpiry = client.refreshTokenExpiresAt;
+  client.refreshTokenHash = refreshHash(refreshToken);
+  client.refreshTokenExpiresAt = Date.now() + REFRESH_LIFETIME_MS;
+  markDirty('mcp-clients');
+  try {
+    // Never send a refresh token unless its verifier survives a restart.
+    await saveStoreNow('mcp-clients');
+  } catch (error) {
+    client.refreshTokenHash = previousHash;
+    client.refreshTokenExpiresAt = previousExpiry;
+    markDirty('mcp-clients');
+    throw error;
+  }
+  return {
+    access_token: mintAccessToken({ did, handle, clientId: client.client_id }),
+    token_type: 'Bearer',
+    expires_in: 24 * 60 * 60,
+    refresh_token: refreshToken,
+  };
+}
 
 function getJwtSecret() {
   return process.env.MCP_JWT_SECRET || process.env.SESSION_SECRET;
@@ -162,8 +200,23 @@ router.post('/token', express.urlencoded({ extended: false }), async (req, res) 
     const { grant_type, code, client_id, redirect_uri, code_verifier, resource, refresh_token } = req.body;
 
     if (grant_type === 'refresh_token') {
-      // TODO: implement refresh token support
-      return res.status(400).json({ error: 'unsupported_grant_type', error_description: 'refresh_token grant not yet implemented' });
+      const client = typeof client_id === 'string' && getClient(client_id);
+      if (!client || !client.did || typeof refresh_token !== 'string' || !refresh_token
+        || !client.refreshTokenHash || !Number.isFinite(client.refreshTokenExpiresAt)
+        || client.refreshTokenExpiresAt <= Date.now()
+        || refreshingClients.has(client_id)) {
+        return res.status(400).json({ error: 'invalid_grant' });
+      }
+      const presented = refreshHash(refresh_token);
+      if (!crypto.timingSafeEqual(Buffer.from(presented, 'hex'), Buffer.from(client.refreshTokenHash, 'hex'))) {
+        return res.status(400).json({ error: 'invalid_grant' });
+      }
+      refreshingClients.add(client_id);
+      try {
+        return res.json(await issueTokens(client, { did: client.did, handle: client.handle }));
+      } finally {
+        refreshingClients.delete(client_id);
+      }
     }
 
     if (grant_type !== 'authorization_code') {
@@ -196,22 +249,12 @@ router.post('/token', express.urlencoded({ extended: false }), async (req, res) 
       return res.status(400).json({ error: 'invalid_grant', error_description: 'PKCE verification failed' });
     }
 
-    const base = getExternalBase();
-    const secret = getJwtSecret();
-    const token = signToken(secret, {
-      sub: authCode.did,
-      iss: base,
-      aud: base,
-      client_id: client_id,
-      mcp_client_id: client_id,
-      handle: authCode.handle,
-    }, 24 * 60 * 60); // 24 hour expiry
-
-    res.json({
-      access_token: token,
-      token_type: 'Bearer',
-      expires_in: 24 * 60 * 60,
-    });
+    const client = getClient(client_id);
+    if (!client || client.did !== authCode.did) {
+      return res.status(400).json({ error: 'invalid_grant' });
+    }
+    client.handle = authCode.handle;
+    return res.json(await issueTokens(client, { did: authCode.did, handle: authCode.handle }));
   } catch (err) {
     console.error('MCP token error:', err);
     res.status(500).json({ error: 'server_error', error_description: err.message });
