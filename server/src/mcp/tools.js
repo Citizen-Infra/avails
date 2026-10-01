@@ -1145,7 +1145,7 @@ async function performBooking({ normalizedScope, durationMinutes, window, title,
     pollUrl: url,
     did: listOwnerDid,
     rkey: icsRkey,
-    participants: [...autoBooked, ...needsConfirm],
+    participants: autoBooked,
     method: 'REQUEST',
   });
   const icsBase64 = Buffer.from(icsContent).toString('base64');
@@ -1185,9 +1185,10 @@ async function performBooking({ normalizedScope, durationMinutes, window, title,
 
   // Best-effort email: standing-availability records don't carry an email
   // field in the lexicon today, so this will usually send to nobody — but
-  // if a record does carry one, notify it, and never fail the booking on
-  // an email error.
-  const emailTargets = top.participants
+  // if an auto-booked record does carry one, notify it, and never fail the
+  // booking on an email error. needsConfirm members must be asked by the
+  // caller before receiving an invitation; availability is not consent.
+  const emailTargets = autoBooked
     .map((did) => byDid.get(did))
     .filter((m) => m?.record?.value?.email);
 
