@@ -5,6 +5,7 @@ import { JoseKey } from '@atproto/jwk-jose';
 import { createSession, deleteSession, getSession, sessions } from '../lib/sessionStore.js';
 import { registerStore, markDirty } from '../lib/persistence.js';
 import { redirectMcpClient } from '../lib/mcpCallbackRedirect.js';
+import { callLoginState, callLoginReturn } from '../lib/callLoginReturn.js';
 import { tryMcpCallback } from '../mcp/oauth.js';
 
 const router = Router();
@@ -142,6 +143,7 @@ router.get('/login', async (req, res, next) => {
     const url = await client.authorize(handle, {
       signal: ac.signal,
       scope: ATPROTO_SCOPE,
+      ...(callLoginState(req.query.call) ? { state: callLoginState(req.query.call) } : {}),
     });
 
     res.redirect(url.toString());
@@ -195,7 +197,9 @@ router.get('/callback', async (req, res, next) => {
     });
 
     const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-    res.redirect(clientUrl + '/');
+    // Application state is returned by the verified OAuth callback. Only this
+    // fixed route/UUID shape is allowed; never accept an arbitrary redirect URL.
+    res.redirect(clientUrl.replace(/\/$/, '') + callLoginReturn(resultState));
   } catch (err) {
     next(err);
   }

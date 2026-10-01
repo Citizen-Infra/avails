@@ -9,6 +9,7 @@ import authRoutes, { getClient, oauthSessionStore } from './routes/auth.js';
 import pollRoutes from './routes/polls.js';
 import responseRoutes from './routes/responses.js';
 import availabilityRoutes from './routes/availability.js';
+import callRoutes from './routes/calls.js';
 import communityRoutes from './routes/communities.js';
 import openmeetRoutes from './routes/openmeet.js';
 import { corsOriginCheck } from './lib/corsOrigins.js';
@@ -119,6 +120,10 @@ app.use('/api/polls', responseRoutes);
 // Standing-availability CRUD (writes to the caller's own PDS)
 app.post('/api/availability', availabilityCreateLimiter);
 app.use('/api/availability', availabilityRoutes);
+
+// Private standing-availability time confirmations (no poll/PDS record).
+app.post('/api/calls/:id/decision', responseLimiter);
+app.use('/api/calls', callRoutes);
 
 // Communities proxy
 app.use('/api/communities', communityRoutes);

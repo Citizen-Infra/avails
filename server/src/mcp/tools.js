@@ -1,5 +1,6 @@
 import { indexPoll, updatePollStatus, updatePollCommunity, updatePollPublished, listByCommunity, removePoll } from '../lib/pollIndex.js';
 import { generateIcs } from '../lib/ical.js';
+import { callBookingStore, callBookingResult, bookStandingCall } from '../lib/callBookings.js';
 import { sendEmail } from '../lib/email.js';
 import { composeEmail } from '../lib/email-template.js';
 import { computeBestSlots } from './overlap.js';
@@ -18,7 +19,6 @@ import {
   recallBooking,
   claimBooking,
   releaseBooking,
-  rememberBooking,
 } from './bookingLedger.js';
 
 const POLL_COLLECTION = 'chat.avails.scheduling.poll';
@@ -1011,8 +1011,8 @@ async function scheduleCall(
   if (window.end < window.start) {
     throw new Error(`window.end (${window.end}) is before window.start (${window.start})`);
   }
-  if (!title) {
-    throw new Error('title is required');
+  if (typeof title !== 'string' || !title.trim()) {
+    throw new Error('title must be a non-empty string');
   }
 
   // Optional voter-scoped booking (#103/#119): when the caller supplies an
@@ -1047,35 +1047,48 @@ async function scheduleCall(
     throw new Error('idempotencyKey, when provided, must be a non-empty string');
   }
   const key = idempotencyKey?.trim();
+  const caller = authContext.service ? 'service' : `did:${authContext.did}`;
+  const ownerDid = authContext.service ? null : authContext.did;
+
+  if (key) {
+    const existing = await callBookingStore.find(caller, key);
+    if (existing) {
+      if (existing.scope.type !== normalizedScope.type || existing.scope.value !== normalizedScope.value) {
+        throw new Error('This idempotencyKey already belongs to a different scope');
+      }
+      return JSON.stringify({ ...callBookingResult(existing), alreadyBooked: true });
+    }
+  }
 
   // No key means today's behaviour, unchanged: a lost response books again.
   // That is a choice a caller makes, not an oversight (#166 option 4) — and
   // it is the right one for a person asking once, interactively.
   if (!key) {
-    return performBooking({ normalizedScope, durationMinutes, window, title, voterDids, key: null });
+    return performBooking({ normalizedScope, durationMinutes, window, title, voterDids, key: null, caller, ownerDid });
   }
 
   const prior = recallBooking(key);
-  if (prior) {
+  if (prior && authContext.service) {
     // Option 3's shape: an agent can tell "I booked this" from "this was
     // already booked", which is a third answer community-admin's fire() can
     // record — distinct from both "avails declined" and "we could not ask".
     return JSON.stringify({ ...prior.result, alreadyBooked: true, bookedAt: prior.bookedAt });
   }
 
-  if (!claimBooking(key)) {
+  const claimKey = `${caller}:${key}`;
+  if (!claimBooking(claimKey)) {
     throw new Error(
       'A booking with this idempotencyKey is already in flight. Retry: once it completes you will get that booking back rather than a second one.'
     );
   }
   try {
-    return await performBooking({ normalizedScope, durationMinutes, window, title, voterDids, key });
+    return await performBooking({ normalizedScope, durationMinutes, window, title, voterDids, key, caller, ownerDid });
   } finally {
-    releaseBooking(key);
+    releaseBooking(claimKey);
   }
 }
 
-async function performBooking({ normalizedScope, durationMinutes, window, title, voterDids, key }) {
+async function performBooking({ normalizedScope, durationMinutes, window, title, voterDids, key, caller, ownerDid }) {
   const members = voterDids
     ? await resolveAvailabilityForDids(voterDids, normalizedScope)
     : await resolveListAvailability(normalizedScope.value);
@@ -1114,108 +1127,68 @@ async function performBooking({ normalizedScope, durationMinutes, window, title,
     });
   }
 
-  // Trust split at the chosen slot: support (does it clear the floor?) and
-  // trust (who gets auto-booked vs asked) are independent — the slot books
-  // regardless of the mix, per #103. Any trust value other than exactly
-  // 'auto' (including unrecognized/missing) is treated as needing
-  // confirmation — never silently committed.
+  // The persisted consent split also determines courtesy invitation recipients.
+  // Availability coverage alone never authorizes delivery.
   const byDid = new Map(members.map((m) => [m.did, m]));
-  const autoBooked = [];
-  const needsConfirm = [];
-  for (const did of top.participants) {
-    const trust = byDid.get(did)?.record?.value?.trust;
-    if (trust === 'auto') {
-      autoBooked.push(did);
-    } else {
-      needsConfirm.push(did);
-    }
-  }
 
-  // Build a synthetic poll-shaped record for generateIcs. There is no poll
-  // record in this flow (that's the point), so did/rkey for the ICS UID are
-  // derived from the list owner + chosen slot instead — stable and unique
-  // per (list, slot), not tied to any created record.
-  const { did: listOwnerDid, rkey: listRkey } = parseAtUri(normalizedScope.value);
-  const icsRkey = `call-${listRkey}-${top.slot.replace(/[^0-9]/g, '')}`;
-  const finalTime = `${top.slot}:00Z`;
-  const url = process.env.CLIENT_URL || 'http://localhost:5173';
-
-  const icsContent = generateIcs({
-    poll: { title, finalTime, finalDuration: durationMinutes },
-    pollUrl: url,
-    did: listOwnerDid,
-    rkey: icsRkey,
-    participants: autoBooked,
-    method: 'REQUEST',
-  });
-  const icsBase64 = Buffer.from(icsContent).toString('base64');
-
-  const result = {
-    booked: true,
-    slot: top.slot,
-    durationMinutes,
-    title,
-    participants: top.participants,
-    autoBooked,
-    needsConfirm,
+  // Persist the private time/consent resource before any courtesy delivery.
+  // Calendar UIDs name this booking, not the scope + slot: two distinct calls
+  // at the same time must not overwrite one another in a participant's calendar.
+  const { booking, created } = await bookStandingCall({
+    caller, ownerDid, idempotencyKey: key, scope: normalizedScope,
+    title, slot: top.slot, durationMinutes, participants: top.participants, members,
     coverage: {
-      withRecords,
-      membersFree: top.count,
-      // When voter-scoped, let the caller see how many of the people who voted
-      // actually had a usable record — so CA can message "3 of 5 voters haven't
-      // published availability" rather than guessing.
+      withRecords, membersFree: top.count,
       ...(voterDids ? { voters: voterDids.length, votersWithoutRecords: voterDids.length - withRecords } : {}),
     },
-  };
-
-  // Record the booking BEFORE the invitations go out, not after.
-  //
-  // A crash between booking and recording is the one sliver no ledger closes.
-  // Recording first puts that sliver on the side of a MISSED invitation rather
-  // than a duplicate one — which is the harm #166 exists to prevent, and which
-  // matches how this tool already treats email: a courtesy that must never fail
-  // a booking. Only successful bookings are remembered; a `booked: false`
-  // coverage answer is a legitimate "ask again later", since the group may
-  // publish more availability tomorrow.
-  //
-  // A write failure here is deliberately fatal. If the booking cannot be
-  // recorded, idempotency is not real, and failing before anyone is emailed
-  // leaves the caller free to retry with nothing duplicated.
-  if (key) await rememberBooking(key, result);
+  });
+  const result = callBookingResult(booking);
+  if (!created) return JSON.stringify({ ...result, alreadyBooked: true });
+  const finalTime = `${top.slot}:00Z`;
+  const url = result.bookingUrl;
 
   // Best-effort email: standing-availability records don't carry an email
   // field in the lexicon today, so this will usually send to nobody — but
   // if an auto-booked record does carry one, notify it, and never fail the
   // booking on an email error. needsConfirm members must be asked by the
   // caller before receiving an invitation; availability is not consent.
-  const emailTargets = autoBooked
+  const emailTargets = result.autoBooked
     .map((did) => byDid.get(did))
     .filter((m) => m?.record?.value?.email);
 
   if (emailTargets.length > 0) {
-    // No poll link here: schedule_call books from standing availability, so
-    // there is no poll page to send anyone to.
-    const composed = composeEmail({
-      heading: `${title} is scheduled`,
-      paragraphs: [
-        `${new Date(finalTime).toUTCString()}, for ${durationMinutes} minutes.`,
-        'This was booked against the availability you already shared, so there was no poll to answer.',
-        'A calendar invite is attached, so this should appear in your calendar automatically.',
-      ],
-      action: null,
-      footer:
-        'You are receiving this because your standing availability covered this time. No action is needed.',
-    });
-    await Promise.allSettled(
-      emailTargets.map((m) =>
-        sendEmail({
-          to: m.record.value.email,
-          subject: `${title} — call scheduled`,
-          ...composed,
-          attachments: [{ filename: 'invite.ics', content: icsBase64 }],
-        })
-      )
-    );
+    // Delivery is a courtesy, including calendar-file generation. It cannot
+    // undo the durable selection or block the private confirmation resource.
+    try {
+      const icsContent = generateIcs({
+        poll: { title, finalTime, finalDuration: durationMinutes }, pollUrl: url,
+        did: 'did:avails:call', rkey: booking.id,
+      });
+      const icsBase64 = Buffer.from(icsContent).toString('base64');
+      const composed = composeEmail({
+        heading: `${title} is scheduled`,
+        paragraphs: [
+          `${new Date(finalTime).toUTCString()}, for ${durationMinutes} minutes.`,
+          'This was booked against the availability you already shared, so there was no poll to answer.',
+          'A calendar file is attached. Open it in your calendar to add this time.',
+        ],
+        action: { label: 'Review your time', url },
+        footer:
+          'You allowed automatic booking in your standing availability. Sign in to review your time or download the calendar file again.',
+      });
+      await Promise.allSettled(
+        emailTargets.map((m) =>
+          sendEmail({
+            to: m.record.value.email,
+            subject: `${title} — call scheduled`,
+            ...composed,
+            attachments: [{ filename: 'invite.ics', content: icsBase64 }],
+          })
+        )
+      );
+    } catch {
+      console.warn('Call selected; courtesy calendar delivery was unavailable');
+    }
   }
 
   return JSON.stringify(result);
