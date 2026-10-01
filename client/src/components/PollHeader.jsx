@@ -7,6 +7,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { MoreHorizontal } from 'lucide-react'
+import { descriptionLinks } from '@/lib/descriptionLinks'
 
 export default function PollHeader({ poll, did, rkey, isCreator, onEditClick, onDeleteClick, onScheduleClick, onUnscheduleClick, schedulingMode, submitted, responseRkey, onEditResponse, onDeleteResponse, showCalendarConnect, onConnectGoogleCalendar, connectingCalendar }) {
   const [copied, setCopied] = useState(false)
@@ -44,7 +45,11 @@ export default function PollHeader({ poll, did, rkey, isCreator, onEditClick, on
 
       {/* Description */}
       {poll.description && (
-        <p className="text-lg text-[#6b6560] leading-relaxed">{poll.description}</p>
+        <p className="text-lg text-[#6b6560] leading-relaxed break-words">
+          {descriptionLinks(poll.description).map((part, index) => part.href
+            ? <a key={index} href={part.href} target="_blank" rel="noopener noreferrer" className="text-[#0f766e] underline underline-offset-2 hover:text-[#1a1a1a] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f766e]">{part.text}</a>
+            : part.text)}
+        </p>
       )}
 
       {/* Metadata row — informational only */}
