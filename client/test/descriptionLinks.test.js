@@ -13,6 +13,13 @@ test('links web URLs and leaves surrounding text and punctuation intact', () => 
   ])
 })
 
+test('links uppercase WWW addresses but not an incomplete www. prefix', () => {
+  assert.deepEqual(descriptionLinks('WWW.Example.org and www.'), [
+    { text: 'WWW.Example.org', href: 'https://www.example.org/' },
+    { text: ' and www.' },
+  ])
+})
+
 test('keeps balanced URL parentheses but not enclosing punctuation', () => {
   assert.deepEqual(descriptionLinks('(https://example.org/wiki/Meeting_(event)).'), [
     { text: '(' },

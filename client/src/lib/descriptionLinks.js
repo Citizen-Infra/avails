@@ -27,7 +27,8 @@ export function descriptionLinks(description) {
     const text = trimUrl(match[0])
     let href
     try {
-      const url = new URL(text.startsWith('www.') ? `https://${text}` : text)
+      if (/^www\.$/i.test(text)) continue
+      const url = new URL(/^www\./i.test(text) ? `https://${text}` : text)
       if (url.protocol === 'http:' || url.protocol === 'https:') href = url.href
     } catch {
       // A malformed URL remains plain text.
