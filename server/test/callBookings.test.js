@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, rm, readFile, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createCallBookingStore, bookStandingCall, callBookingResult, callParticipantView } from '../src/lib/callBookings.js';
@@ -106,10 +106,12 @@ test('passed times cannot be newly accepted and corrupt storage fails closed', a
 });
 
 test('failed durable creation does not publish an in-memory phantom booking', async (t) => {
-  const { dir } = await fixture(t);
-  const invalidDir = path.join(dir, 'not-a-directory');
-  await writeFile(invalidDir, 'file');
-  const store = createCallBookingStore({ dataDir: invalidDir, now: () => NOW });
-  await assert.rejects(bookStandingCall({ ...input, store }));
+  const { dir, store } = await fixture(t);
+  // Load valid empty storage first, then force the atomic replacement to fail.
+  // A parent that is a file reports ENOENT on Windows but ENOTDIR on Linux,
+  // which tests failed loading rather than failed durable creation there.
+  assert.equal(await store.find('service', input.idempotencyKey), undefined);
+  await mkdir(path.join(dir, 'private-call-bookings.json'));
+  await assert.rejects(bookStandingCall({ ...input, store }), { status: 503 });
   assert.equal(await store.find('service', input.idempotencyKey), undefined);
 });
