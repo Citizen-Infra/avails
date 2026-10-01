@@ -82,9 +82,11 @@ An authenticated community organizer can retrieve it through the proposal's
 `booking` endpoint, which asks Avails for current state. An unreachable Avails
 returns an explicitly stale stored snapshot, never a fabricated live result.
 
-Organizers receive the participant link and pending DIDs to distribute privately.
+Organizers receive the participant link and an authenticated organizer-handoff
+link to retrieve pending DIDs privately. Notices do not inline an unbounded roster.
 Public replies identify the selected time and aggregate consent counts at time
-selection; they include no roster and promise no email delivery. Calendar
+selection; the participant URL has a link facet so it is tappable in Bluesky.
+They include no roster and promise no email delivery. Calendar
 download works independently of an email field on standing-availability records.
 
 ## Release and acceptance
@@ -109,7 +111,7 @@ mobile-stacked controls, and 44–48px touch targets. No new image assets.
 **Verdict: source-ready for PR review; rendered verification pending.** No
 browser run, production build, full local suite, or live acceptance was performed.
 
-Local focused gates: nine private-store/consent/OAuth-return tests and three
+Local focused gates: nine private-store/consent/OAuth-return tests and five
 cross-service contract scenarios, plus 43 CA service/announcement tests using
 existing dependencies and a database-free focused configuration. Both changed
 JSX files passed a syntax-only transform; the design detector returned no findings.
