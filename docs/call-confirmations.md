@@ -8,6 +8,12 @@ the Avails and Community Admin PRs are reviewed, merged and deployed.
 **Mode:** Operate. A participant follows a shared link on a phone to confirm one
 selected time. This is not a new RSVP list, event page, or change to anonymous polls.
 
+**Approved implementation boundary:** #103's private confirmation/ICS flow,
+organizer handoff, truthful announcements, and focused tests. The user explicitly
+approved the small CA booking-helper extraction for testability. This does not
+authorize general app refactoring, poll/grid redesign, credential/config changes,
+or release operations. The implementation stops at two PRs ready for review.
+
 **THESIS:** One private decision about a fixed time; no roster or dashboard.
 **OWN-WORLD:** Inherit Avails' paper ground, Geist, warmed neutrals, hairline
 separators, and existing shadcn buttons. Teal identifies the primary decision.
