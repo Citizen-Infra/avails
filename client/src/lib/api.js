@@ -38,3 +38,5 @@ export async function createAvailability(data) { return apiFetch('/api/availabil
 export async function getMyAvailability() { return apiFetch('/api/availability/mine'); }
 export async function getEventAvailabilityGrant(eventDid) { return apiFetch(`/api/availability/event-grant/${encodeURIComponent(eventDid)}`); }
 export async function deleteAvailability(rkey) { return apiFetch(`/api/availability/${rkey}`, { method: 'DELETE' }); }
+export async function getCallBooking(id) { return apiFetch(`/api/calls/${encodeURIComponent(id)}`); }
+export async function decideCallBooking(id, decision) { return apiFetch(`/api/calls/${encodeURIComponent(id)}/decision`, { method: 'POST', body: JSON.stringify({ decision }) }); }

@@ -10,9 +10,9 @@
  * script, alongside responses.test.js / availability.route.test.js.
  */
 
-import { describe, it, mock } from 'node:test';
+import { describe, it, mock, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -86,14 +86,17 @@ globalThis.fetch = async (url, opts) => {
 // writes through it durably. Point DATA_DIR at a throwaway directory before
 // tools.js pulls the ledger in, so the suite never touches ./data.
 process.env.DATA_DIR = await mkdtemp(path.join(tmpdir(), 'avails-booking-'));
+after(() => rm(process.env.DATA_DIR, { recursive: true, force: true }));
 
 const { callTool } = await import('../src/mcp/tools.js');
 const { _resetBookingLedger } = await import('../src/mcp/bookingLedger.js');
+const { callBookingStore } = await import('../src/lib/callBookings.js');
 
 function resetHooks() {
   sendEmailCalls = [];
   fetchCalls = [];
   _resetBookingLedger();
+  callBookingStore.resetForTest();
   resolveListAvailabilityImpl = async () => {
     throw new Error('resolveListAvailability should not be called in this test');
   };
@@ -192,7 +195,7 @@ describe('schedule_call', () => {
     assert.deepEqual(fetchCalls, []);
   });
 
-  it('(d) trust split: only auto-booked members receive invitations and appear in the ICS', async () => {
+  it('(d) only auto-booked members receive invitations, with no roster in the ICS', async () => {
     resetHooks();
     const alice = member('did:plc:alice', 'auto');
     const bob = member('did:plc:bob', 'auto');
@@ -226,8 +229,7 @@ describe('schedule_call', () => {
     for (const email of sendEmailCalls) {
       const ics = Buffer.from(email.attachments[0].content, 'base64').toString('utf8');
       assert.match(ics, /BEGIN:VCALENDAR/);
-      assert.match(ics, /did:plc:alice/);
-      assert.match(ics, /did:plc:bob/);
+      assert.doesNotMatch(ics, /did:plc:alice|did:plc:bob/, 'calendar files do not disclose a roster');
       assert.doesNotMatch(ics, /did:plc:carol/);
     }
   });
@@ -669,10 +671,25 @@ describe('schedule_call idempotency (#166)', () => {
     // blind spot here: a container replaced immediately after booking would
     // otherwise come back with no memory of it.
     const onDisk = JSON.parse(
-      await readFile(path.join(process.env.DATA_DIR, 'call-bookings.json'), 'utf8')
+      await readFile(path.join(process.env.DATA_DIR, 'private-call-bookings.json'), 'utf8')
     );
-    assert.ok(onDisk['durable-1'], 'key is on disk before the call returns');
-    assert.equal(onDisk['durable-1'].result.slot, '2026-07-21T14:00');
+    const saved = onDisk.find((booking) => booking.idempotencyKey === 'durable-1');
+    assert.ok(saved, 'key is on disk before the call returns');
+    assert.equal(saved.slot, '2026-07-21T14:00');
+  });
+
+  it('service and list-owner idempotency namespaces cannot disclose or replay each other', async () => {
+    resetHooks();
+    bookable([mailedMember('did:plc:alice'), mailedMember('did:plc:bob')]);
+    const service = JSON.parse(await callTool('schedule_call', { ...BOOK_ARGS, idempotencyKey: 'shared-key' }, SERVICE));
+    const owner = JSON.parse(await callTool('schedule_call', { ...BOOK_ARGS, idempotencyKey: 'shared-key' }, OWNER));
+    assert.notEqual(owner.bookingId, service.bookingId);
+    assert.equal(owner.alreadyBooked, undefined);
+    assert.equal(sendEmailCalls.length, 4);
+    const replay = JSON.parse(await callTool('schedule_call', { ...BOOK_ARGS, idempotencyKey: 'shared-key' }, OWNER));
+    assert.equal(replay.bookingId, owner.bookingId);
+    assert.equal(replay.alreadyBooked, true);
+    assert.equal(sendEmailCalls.length, 4);
   });
 
   it('different keys are different bookings', async () => {

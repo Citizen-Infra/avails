@@ -6,6 +6,7 @@ import About from './pages/About'
 import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
 import StandingAvailability from './pages/StandingAvailability'
+import CallBooking from './pages/CallBooking'
 
 function NotFound() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/standing" element={<ErrorBoundary><StandingAvailability /></ErrorBoundary>} />
+        <Route path="/calls/:id" element={<ErrorBoundary><CallBooking /></ErrorBoundary>} />
         {/* Everything in Avails is availability — the grid, a response, the
             heatmap — so /availability named this page with the one word that
             distinguishes it from nothing. /standing names what is actually
