@@ -192,11 +192,14 @@ describe('schedule_call', () => {
     assert.deepEqual(fetchCalls, []);
   });
 
-  it('(d) trust split: 2 auto + 1 confirm all free at the top slot -> books, splits correctly', async () => {
+  it('(d) trust split: only auto-booked members receive invitations and appear in the ICS', async () => {
     resetHooks();
     const alice = member('did:plc:alice', 'auto');
     const bob = member('did:plc:bob', 'auto');
     const carol = member('did:plc:carol', 'confirm');
+    alice.record.value.email = 'alice@example.test';
+    bob.record.value.email = 'bob@example.test';
+    carol.record.value.email = 'carol@example.test';
     resolveListAvailabilityImpl = async () => [alice, bob, carol];
     bestCallSlotsImpl = () => [
       { slot: '2026-07-21T14:00', participants: ['did:plc:alice', 'did:plc:bob', 'did:plc:carol'], count: 3 },
@@ -217,6 +220,66 @@ describe('schedule_call', () => {
     // records decide when; trust only decides who's auto vs needs-confirm.
     assert.equal(result.coverage.membersFree, 3);
     assert.deepEqual(fetchCalls, []);
+    assert.deepEqual(sendEmailCalls.map((email) => email.to).sort(), [
+      'alice@example.test', 'bob@example.test',
+    ]);
+    for (const email of sendEmailCalls) {
+      const ics = Buffer.from(email.attachments[0].content, 'base64').toString('utf8');
+      assert.match(ics, /BEGIN:VCALENDAR/);
+      assert.match(ics, /did:plc:alice/);
+      assert.match(ics, /did:plc:bob/);
+      assert.doesNotMatch(ics, /did:plc:carol/);
+    }
+  });
+
+  it('does not send invitations when every free member requires confirmation', async () => {
+    resetHooks();
+    const alice = member('did:plc:alice', 'confirm');
+    const bob = member('did:plc:bob', 'confirm');
+    alice.record.value.email = 'alice@example.test';
+    bob.record.value.email = 'bob@example.test';
+    resolveListAvailabilityImpl = async () => [alice, bob];
+    bestCallSlotsImpl = () => [
+      { slot: '2026-07-21T14:00', participants: [alice.did, bob.did], count: 2 },
+    ];
+
+    const result = JSON.parse(await callTool('schedule_call', {
+      scope: LIST_URI, durationMinutes: 30, window: WINDOW, title: 'Planning call',
+    }, SERVICE));
+
+    assert.equal(result.booked, true, 'coverage/booking semantics stay unchanged');
+    assert.deepEqual(result.autoBooked, []);
+    assert.deepEqual(result.needsConfirm, [alice.did, bob.did]);
+    assert.deepEqual(sendEmailCalls, []);
+  });
+
+  it('missing and unknown trust values never authorize an automatic invitation, including on replay', async () => {
+    resetHooks();
+    const members = [
+      member('did:plc:alice', 'auto'),
+      member('did:plc:bob', undefined),
+      member('did:plc:carol', 'unexpected'),
+    ];
+    for (const m of members) m.record.value.email = `${m.did.split(':').pop()}@example.test`;
+    resolveListAvailabilityImpl = async () => members;
+    bestCallSlotsImpl = () => [
+      { slot: '2026-07-21T14:00', participants: members.map((m) => m.did), count: 3 },
+    ];
+    const args = {
+      scope: LIST_URI, durationMinutes: 30, window: WINDOW, title: 'Planning call',
+      idempotencyKey: 'consent-replay',
+    };
+
+    const first = JSON.parse(await callTool('schedule_call', args, SERVICE));
+    const replay = JSON.parse(await callTool('schedule_call', args, SERVICE));
+
+    assert.deepEqual(first.autoBooked, ['did:plc:alice']);
+    assert.deepEqual(first.needsConfirm, ['did:plc:bob', 'did:plc:carol']);
+    assert.deepEqual(replay.needsConfirm, first.needsConfirm);
+    assert.equal(replay.alreadyBooked, true);
+    assert.deepEqual(sendEmailCalls.map((email) => email.to), ['alice@example.test']);
+    const ics = Buffer.from(sendEmailCalls[0].attachments[0].content, 'base64').toString('utf8');
+    assert.doesNotMatch(ics, /did:plc:bob|did:plc:carol/);
   });
 
   it('(f) an object scope with no type is rejected — the tool schema declares type required', async () => {
