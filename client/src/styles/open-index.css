@@ -1,0 +1,64 @@
+/* Avails is an operating surface: shared identity, task-specific density.
+   Values here are geometry/type exceptions, not a second brand palette. */
+:root {
+  --avails-text-caption: 0.875rem;
+  --avails-text-ui: 1rem;
+  --avails-text-body: 1.125rem;
+  --avails-text-page: clamp(1.875rem, 1.25rem + 2vw, 3rem);
+  --avails-slot-height: 2.75rem;
+  --avails-grid-time-width: 4rem;
+  --avails-grid-date-width: 6rem;
+}
+body { margin: 0; font-size: var(--avails-text-body); line-height: 1.5; font-synthesis: none; }
+h1,h2,h3,h4 { hyphens: none; word-break: normal; overflow-wrap: break-word; }
+h1 { font-size: var(--avails-text-page); line-height: 1.12; letter-spacing: var(--cibc-tracking-heading); }
+a { text-underline-offset: 0.2em; }
+::selection { color: var(--cibc-color-on-accent); background: var(--cibc-color-accent); }
+:focus-visible { outline: var(--cibc-focus-width) solid var(--cibc-color-focus); outline-offset: var(--cibc-focus-offset); }
+input,textarea { caret-color: var(--cibc-color-text); }
+input::placeholder,textarea::placeholder { color: var(--cibc-color-text-muted); opacity: 1; }
+header { background: var(--cibc-color-page); }
+header > div { height: auto; min-height: 4rem; padding-block: 0.75rem; flex-wrap: wrap; }
+footer {
+  background: var(--cibc-color-surface-strong);
+  color: var(--cibc-color-on-surface-strong);
+  --foreground: var(--cibc-color-on-surface-strong);
+  --muted-foreground: var(--cibc-color-on-surface-strong);
+  --cibc-color-text-secondary: var(--cibc-color-on-surface-strong);
+}
+footer a:focus-visible { outline-color: var(--cibc-color-focus-inverse); }
+[data-slot='button'],[data-slot='input'],[data-slot='select-trigger'],select {
+  min-height: 2.75rem;
+  font-size: var(--avails-text-ui);
+}
+[data-slot='button'] { white-space: normal; height: auto; padding-block: 0.625rem; }
+[data-slot='button'][data-size^='icon'] { min-width: 2.75rem; padding: 0.5rem; }
+[data-slot='input'],[data-slot='textarea'] { background: var(--cibc-color-surface); }
+[data-slot='dialog-content'] { max-height: calc(100dvh - 2rem); overflow-y: auto; }
+[data-slot='calendar'] .rdp-months { flex-wrap: wrap; }
+[data-slot='calendar'] .rdp-month { min-width: 14rem; }
+/* Calendar days are a genuinely two-dimensional control; keep the familiar
+   seven-day matrix rather than enlarging each date into a general action. */
+[data-slot='calendar'] [data-slot='button'][data-day] { min-height: 2rem; min-width: 0; padding: 0; }
+.avails-landing { background: var(--cibc-color-page); }
+.avails-landing h1 { font-size: clamp(2.25rem, 1.5rem + 3vw, 4rem); max-width: 18ch; }
+.avails-landing footer { margin-top: 0; }
+.avails-grid-label { font-size: var(--avails-text-caption); line-height: 1.3; }
+.avails-grid-time { font-size: var(--avails-text-caption); line-height: 1; }
+.avails-grid-event {
+  color: var(--cibc-color-text);
+  background: var(--cibc-color-surface);
+  border: 1px solid var(--cibc-color-text);
+  font-size: var(--avails-text-caption);
+  box-shadow: none;
+}
+.avails-poll:has(.avails-save-bar) main { padding-bottom: 8rem; }
+@media (max-width: 49.999rem) {
+  :root { --avails-text-body: 1rem; }
+  header > div { gap: 0.75rem; }
+  .avails-weekly-scroll { max-height: none; overflow: visible; }
+  .avails-weekly-frame { overflow: visible; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,*::before,*::after { scroll-behavior: auto !important; transition-duration: 0s !important; }
+}

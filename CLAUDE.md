@@ -54,7 +54,7 @@ Client unit tests use Node's built-in test runner; `cd client && npm test` and `
 
 Always use `frontend-design` skill for visual/UI tasks. Always query shadcn MCP before hand-rolling component CSS. When dispatching subagents for UI work, explicitly instruct them to use shadcn MCP tools.
 
-`PRODUCT.md` and `DESIGN.md` (repo root) hold the strategic brief (register=product, users=community/civic organizers, brand, anti-references, WCAG 2.1 AA) and the visual system (North Star "The Village Notice Board", Paper Cream `#faf9f6` ground, single Gather Teal `#0d9488` accent, Geist, flat-with-one-hero elevation). The `impeccable` commands read these — consult them before any UI change so it stays on-brand.
+`PRODUCT.md` and `DESIGN.md` (repo root) hold the strategic brief (register=product, users=community/civic organizers, brand, anti-references, WCAG 2.1 AA target) and the implemented Open Index visual system: Public Sans, canonical yellow/blue roles from `Citizen-Infra/design-system` revision `6df5682711d11d1dde20453d0e06a78aca48b34f` (`0.2.0-draft.1`), pale task surfaces and flat ruled grids with separate data/state semantics. This supersedes Village Notice Board/Geist/teal guidance, not product or hard constraints. Use task-specific phone density and whole-word headings rather than universal display-sized floors; preserve user font resizing and existing shadcn/Radix interaction owners. The frontend is light-only. `DESIGN.md` carries the implemented visual roles. Consult the product and design documents before UI changes.
 
 ## Deployment
 

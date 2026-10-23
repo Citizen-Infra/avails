@@ -1,5 +1,6 @@
 import { Fragment, useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import { cn } from '@/lib/utils'
+import { useGridDates } from '@/lib/useGridDates'
 import '../styles/avail-grid.css'
 
 /**
@@ -100,8 +101,12 @@ export default function WeeklyPatternGrid({ value, onChange }) {
   // reference feeds useMemo below and would re-derive `selected` every render).
   value = value || EMPTY_WEEKLY
 
+  const gridRef = useRef(null)
+  const [page, setPage] = useState(0)
+  const dayPages = useGridDates(DAY_ORDER, gridRef)
+  const pageIndex = Math.min(page, Math.max(0, dayPages.length - 1))
+  const days = dayPages[pageIndex] || DAY_ORDER
   const times = useMemo(() => generateTimes(), [])
-  const days = DAY_ORDER
 
   const selected = useMemo(() => windowsToSlots(value, times), [value, times])
 
@@ -112,7 +117,6 @@ export default function WeeklyPatternGrid({ value, onChange }) {
   const [dragState, setDragState] = useState(null) // { pending: Set<string>, removing: boolean } | null
   const [focusCell, setFocusCell] = useState({ row: 0, col: 0 }) // roving tabindex
   const kbAnchor = useRef(null) // { row, col, wasSelected } — keyboard block-extension anchor
-  const gridRef = useRef(null)
 
   const computePendingKeys = useCallback(
     (down, cur) => {
@@ -233,18 +237,18 @@ export default function WeeklyPatternGrid({ value, onChange }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-[#8a8580]">
+        <p className="text-sm text-muted-foreground">
           Drag to paint the times you're usually free. Drag again over a painted cell to clear it.
         </p>
         {windowCount > 0 && (
           <div className="flex items-center gap-3 shrink-0">
-            <span className="text-sm font-medium text-[#0d9488]">
+            <span className="text-sm font-medium text-primary">
               {windowCount} {windowCount === 1 ? 'window' : 'windows'} across {dayCount} {dayCount === 1 ? 'day' : 'days'}
             </span>
             <button
               type="button"
               onClick={() => onChange?.([])}
-              className="text-sm text-[#8a8580] hover:text-[#1a1a1a] underline underline-offset-2 transition-colors"
+              className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
             >
               Clear all
             </button>
@@ -252,9 +256,16 @@ export default function WeeklyPatternGrid({ value, onChange }) {
         )}
       </div>
 
-      <div className="select-none overflow-hidden rounded-lg border border-[#d8d4cf]">
+      {dayPages.length > 1 && (
+        <div className="grid grid-cols-2 gap-2 text-sm">
+          <span className="col-span-2 text-center" aria-live="polite">{DAY_LABELS[days[0]]} – {DAY_LABELS[days[days.length - 1]]} · {pageIndex + 1} of {dayPages.length}</span>
+          <button type="button" aria-label="Show previous days" disabled={pageIndex === 0} onClick={() => setPage(pageIndex - 1)} className="min-h-11 px-1 border border-input rounded-sm disabled:opacity-50">Previous</button>
+          <button type="button" aria-label="Show next days" disabled={pageIndex === dayPages.length - 1} onClick={() => setPage(pageIndex + 1)} className="min-h-11 px-1 border border-input rounded-sm disabled:opacity-50">Next</button>
+        </div>
+      )}
+      <div className="avails-weekly-frame select-none overflow-hidden rounded-sm border border-input">
         <div
-          className="overflow-auto max-h-[28rem]"
+          className="avails-weekly-scroll overflow-auto max-h-[28rem]"
           style={{ touchAction: 'none', cursor: 'crosshair' }}
         >
           <div
@@ -264,17 +275,17 @@ export default function WeeklyPatternGrid({ value, onChange }) {
             onKeyDown={handleGridKeyDown}
             className="grid w-full"
             style={{
-              gridTemplateColumns: `clamp(3rem, 12vw, 5rem) repeat(${days.length}, 1fr)`,
+              gridTemplateColumns: `var(--avails-grid-time-width) repeat(${days.length}, minmax(0, 1fr))`,
             }}
           >
             {/* Header — sticky so day labels stay visible while scrolling a tall grid */}
-            <div className="sticky top-0 z-[2] bg-[#faf9f6]" />
+            <div className="sticky top-0 z-[2] bg-background" />
             {days.map((day) => (
               <div
                 key={day}
-                className="sticky top-0 z-[2] flex flex-col items-center gap-0.5 pb-2 pt-1 text-center bg-[#faf9f6]"
+                className="sticky top-0 z-[2] flex flex-col items-center gap-0.5 pb-2 pt-1 text-center bg-background"
               >
-                <span className="text-[11px] font-medium text-[#8a8580] uppercase tracking-[0.1em]">
+                <span className="avails-grid-label font-medium text-muted-foreground">
                   {DAY_LABELS[day]}
                 </span>
               </div>
@@ -283,11 +294,11 @@ export default function WeeklyPatternGrid({ value, onChange }) {
             {/* Rows */}
             {times.map((time, rowIdx) => (
               <Fragment key={time}>
-                <div className="pr-2 flex items-start justify-end -mt-[7px]">
+                <div className={cn('pr-2 flex items-start justify-end', rowIdx > 0 && '-mt-[0.4375rem]')}>
                   <span
                     className={cn(
-                      'text-xs tabular-nums leading-none',
-                      time.endsWith(':00') ? 'text-[#1a1a1a] font-medium' : 'text-[#a09a94]'
+                      'avails-grid-time tabular-nums',
+                      time.endsWith(':00') ? 'text-foreground font-medium' : 'text-muted-foreground'
                     )}
                   >
                     {time}
@@ -311,7 +322,7 @@ export default function WeeklyPatternGrid({ value, onChange }) {
                       aria-pressed={isSelected}
                       tabIndex={rowIdx === fRow && colIdx === fCol ? 0 : -1}
                       className={cn(
-                        'avail-cell h-8',
+                        'avail-cell',
                         time.endsWith(':00') && rowIdx > 0 && 'avail-cell--hour',
                         !isSelected && !isPendingAdd && !isPendingRemove && 'avail-cell--empty',
                         isPendingAdd && 'avail-cell--pending-add',

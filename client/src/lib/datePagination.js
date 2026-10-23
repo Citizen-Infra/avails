@@ -1,9 +1,10 @@
 export const MAX_DATES_PER_PAGE = 7
 
-export function paginateDates(dates) {
+export function paginateDates(dates, capacity = MAX_DATES_PER_PAGE) {
   if (!dates.length) return []
 
-  const pageCount = Math.ceil(dates.length / MAX_DATES_PER_PAGE)
+  const maximum = Math.max(1, Math.min(MAX_DATES_PER_PAGE, Math.floor(capacity) || 1))
+  const pageCount = Math.ceil(dates.length / maximum)
   const basePageSize = Math.floor(dates.length / pageCount)
   const largerPageCount = dates.length % pageCount
   const pages = []

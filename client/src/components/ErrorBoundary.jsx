@@ -19,20 +19,20 @@ export default class ErrorBoundary extends Component {
       return (
         <div className="min-h-[50vh] flex items-center justify-center px-6">
           <div className="max-w-md text-center space-y-4">
-            <h2 className="text-2xl font-bold text-[#1a1a1a]">Something went wrong</h2>
-            <p className="text-base text-[#6b6560]">
+            <h2 className="text-2xl font-bold text-foreground">Something went wrong</h2>
+            <p className="text-base text-foreground-secondary">
               {this.state.error?.message || 'An unexpected error occurred.'}
             </p>
             <div className="flex items-center justify-center gap-3 pt-2">
               <button
                 onClick={() => window.location.reload()}
-                className="px-5 py-2 rounded-lg bg-[#0d9488] text-white text-base font-medium hover:bg-[#0f766e] transition-colors"
+                className="px-5 py-2 rounded-sm bg-primary text-primary-foreground text-base font-medium hover:bg-primary-hover transition-colors"
               >
                 Reload page
               </button>
               <a
                 href="/"
-                className="px-5 py-2 rounded-lg border border-[#e8e5df] text-base text-[#6b6560] hover:text-[#1a1a1a] transition-colors"
+                className="px-5 py-2 rounded-sm border border-input text-base text-foreground-secondary hover:text-foreground transition-colors"
               >
                 Go home
               </a>

@@ -2,29 +2,35 @@
 
 /* Base cell */
 .avail-cell {
+  /* Scope the accepted blue/white data ramp to grid cells, not global roles. */
+  --cibc-data-empty: var(--cibc-color-surface);
+  --cibc-data-high: var(--cibc-color-action);
+  --cibc-data-low: var(--cibc-color-selected);
+  --cibc-data-mid: color-mix(in srgb, var(--cibc-color-action) 35%, var(--cibc-color-surface));
   position: relative;
+  height: var(--avails-slot-height);
   transition: background-color 0.1s ease;
 }
 
-/* Grid lines via ::after — z-index -1 so cell background renders on top */
+/* Grid rules are above the data field and never consume pointer events. */
 .avail-cell::after {
   content: '';
   position: absolute;
   inset: 0;
-  border-top: 1px solid #ecebe7;
-  border-left: 1px solid #ecebe7;
-  z-index: -1;
+  border-top: 1px solid var(--cibc-color-border);
+  border-left: 1px solid var(--cibc-color-border);
+  z-index: 0;
   pointer-events: none;
 }
 
 /* Stronger top border on hour-boundary rows — helps vertical scanning */
 .avail-cell--hour::after {
-  border-top-color: #c9c4be;
+  border-top-color: var(--cibc-color-control-border);
 }
 
-/* Empty cells — subtle warm tint, not white void */
+/* White empties leave the blue ramp to encode nonzero group overlap. */
 .avail-cell--empty {
-  background-color: #f5f3ef;
+  background-color: var(--cibc-data-empty);
 }
 
 /* Subtle pulse on first empty cell to draw attention */
@@ -33,8 +39,8 @@
 }
 
 @keyframes cell-hint {
-  0%, 100% { background-color: #f5f3ef; }
-  50% { background-color: rgba(34, 197, 94, 0.15); }
+  0%, 100% { background-color: var(--cibc-data-empty); }
+  50% { background-color: var(--cibc-data-low); }
 }
 
 /* Stop animation once any cell is selected */
@@ -42,9 +48,14 @@
   animation: none;
 }
 
-/* Busy — translucent rose overlay so heatmap/mine show through */
-.avail-cell--busy {
-  background-image: linear-gradient(rgba(248, 113, 113, 0.38), rgba(248, 113, 113, 0.38));
+/* Sparse opaque conflict strokes leave the underlying data fill visible. */
+.avail-cell--busy,
+.avail-cell--mine.avail-cell--busy {
+  background-image: repeating-linear-gradient(135deg,
+    transparent 0 10px,
+    var(--cibc-color-surface) 10px 11px,
+    var(--cibc-color-text) 11px 12px,
+    transparent 12px 14px);
 }
 
 /* Hover: dashed outline via ::before (above background) */
@@ -52,23 +63,20 @@
   content: '';
   position: absolute;
   inset: 0;
-  border: 2px dashed rgba(0, 0, 0, 0.3);
+  border: 1px dashed var(--cibc-color-text);
+  outline: 1px solid var(--cibc-color-surface);
+  outline-offset: -2px;
   z-index: 1;
   pointer-events: none;
 }
 
-/* My selected slots — translucent teal wash.
-   The wash sits on top of the heatmap (inline background-color) so the
-   group signal stays visible underneath. */
-.avail-cell--mine {
-  background-image: linear-gradient(rgba(13, 148, 136, 0.45), rgba(13, 148, 136, 0.45));
-}
-
-/* Mine + busy: stack both washes so heatmap → rose → teal all read. */
-.avail-cell--mine.avail-cell--busy {
-  background-image:
-    linear-gradient(rgba(13, 148, 136, 0.45), rgba(13, 148, 136, 0.45)),
-    linear-gradient(rgba(248, 113, 113, 0.38), rgba(248, 113, 113, 0.38));
+/* Ownership is an ink-bounded yellow edge, never a blended data fill. */
+.avail-cell--mine,
+.avails-mine-key {
+  background-image: none;
+  box-shadow: inset 0 0 0 1px var(--cibc-color-text),
+              inset 0 0 0 3px var(--cibc-color-page),
+              inset 0 0 0 4px var(--cibc-color-text);
 }
 
 /* Scroll hint — gradient fade on right edge when grid overflows */
@@ -79,7 +87,7 @@
   right: 0;
   bottom: 0;
   width: 2rem;
-  background: linear-gradient(to right, transparent, #faf9f6);
+  background: linear-gradient(to right, transparent, var(--cibc-color-surface-subtle));
   pointer-events: none;
   z-index: 2;
 }
@@ -92,27 +100,33 @@
   cursor: crosshair;
 }
 
-/* Pending add — lighter green preview */
+/* Pending edits temporarily replace overlap; solid add, dashed remove. */
 .avail-cell--pending-add {
-  background-color: hsl(142, 55%, 78%);
+  background-color: var(--cibc-color-selected);
+  outline: 2px solid var(--cibc-color-text);
+  outline-offset: -2px;
+  box-shadow: inset 0 0 0 1px var(--cibc-color-text),
+              inset 0 0 0 3px var(--cibc-color-page),
+              inset 0 0 0 4px var(--cibc-color-text);
 }
 
-/* Pending remove — red tint preview */
 .avail-cell--pending-remove {
-  background-color: hsl(0, 50%, 85%);
-  opacity: 0.7;
+  background-color: var(--cibc-color-selected);
+  outline: 2px dashed var(--cibc-color-text);
+  outline-offset: -2px;
+  box-shadow: none;
 }
 
-/* Pending schedule — teal preview */
+/* Tentative organizer selection has no finalized check/time stamp. */
 .avail-cell--pending-schedule {
-  background-color: rgba(13, 148, 136, 0.35);
-  outline: 2px solid #0d9488;
+  background-color: var(--cibc-color-selected);
+  outline: 2px solid var(--cibc-color-action);
   outline-offset: -2px;
 }
 
 /* Scheduled — finalized time block (individual cells get subtle tint) */
 .avail-cell--scheduled {
-  background-color: rgba(13, 148, 136, 0.12) !important;
+  background-color: var(--cibc-color-selected) !important;
 }
 
 /* Scheduled overlay card — floats over the grid spanning the full duration */
@@ -122,82 +136,76 @@
   right: 3px;
   top: 1px;
   z-index: 3;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
-  box-shadow:
-    0 2px 8px rgba(13, 148, 136, 0.3),
-    0 0 0 1px rgba(13, 148, 136, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  padding: 6px 10px;
+  border-radius: var(--cibc-radius-control);
+  background: var(--cibc-color-surface-strong);
+  outline: 1px solid var(--cibc-color-surface);
+  outline-offset: -1px;
+  padding: 2px 4px;
   pointer-events: none;
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 2px;
-  overflow: hidden;
+  align-items: center;
+  gap: 4px;
 }
 
 .avail-scheduled-card__check {
   display: flex;
   align-items: center;
-  gap: 5px;
-  color: white;
-  font-size: 12px;
+  gap: 4px;
+  color: var(--cibc-color-on-surface-strong);
+  font-size: var(--avails-text-caption);
   font-weight: 600;
   letter-spacing: 0.02em;
   line-height: 1;
 }
 
 .avail-scheduled-card__check svg {
-  width: 14px;
-  height: 14px;
+  width: 0.875rem;
+  height: 0.875rem;
   flex-shrink: 0;
 }
 
 .avail-scheduled-card__time {
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 11px;
+  color: var(--cibc-color-on-surface-strong);
+  font-size: var(--avails-text-caption);
   font-weight: 500;
-  line-height: 1;
+  line-height: 1.2;
   font-variant-numeric: tabular-nums;
-}
-
-/* Subtle animated shimmer on the card */
-.avail-scheduled-card::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    120deg,
-    transparent 30%,
-    rgba(255, 255, 255, 0.08) 50%,
-    transparent 70%
-  );
-  animation: scheduled-shimmer 3s ease-in-out infinite;
-}
-
-@keyframes scheduled-shimmer {
-  0%, 100% { transform: translateX(-100%); }
-  50% { transform: translateX(100%); }
 }
 
 /* Active slot — tapped cell in read-only mode (mobile tap-to-highlight) */
 .avail-cell--active {
-  box-shadow: inset 0 0 0 2.5px #0d9488;
+  outline: 2px solid var(--cibc-color-text);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 4px var(--cibc-color-surface);
   z-index: 2;
 }
 
 
 /* Override the grid line pseudo-element so the ring isn't hidden behind it */
 .avail-cell--active::after {
-  z-index: -1;
+  z-index: 0;
 }
 
 /* Keyboard focus ring (WCAG 2.4.7) — visible when navigating cells by keyboard */
 .avail-cell:focus-visible {
-  outline: 2px solid #0d9488;
-  outline-offset: -2px;
+  outline: 3px solid var(--cibc-color-text);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px var(--cibc-color-surface);
   z-index: 4;
+}
+
+.avail-cell--mine.avail-cell--active,
+.avail-cell--mine:focus-visible,
+.avail-cell--pending-add:focus-visible {
+  box-shadow: 0 0 0 6px var(--cibc-color-surface),
+              inset 0 0 0 1px var(--cibc-color-text),
+              inset 0 0 0 3px var(--cibc-color-page),
+              inset 0 0 0 4px var(--cibc-color-text);
+}
+
+/* Preserve the remove signal even when the cell also has keyboard focus. */
+.avail-cell--pending-remove:focus-visible {
+  outline-style: dashed;
 }
 
 /* Respect reduced-motion: drop the coaching pulse + scheduled shimmer */

@@ -39,7 +39,7 @@ export default function AuthButton() {
     return (
       <div className="flex items-center gap-3">
         <span className="text-base text-muted-foreground">@{session.handle}</span>
-        <Button variant="outline" onClick={handleSignOut} className="border-[#0d9488] text-[#0d9488] hover:bg-[#ccfbf1] text-base px-5 py-2 rounded-lg">
+        <Button variant="outline" onClick={handleSignOut} className="border-primary text-primary hover:bg-accent text-base px-5 py-2 rounded-lg">
           Sign out
         </Button>
       </div>
@@ -48,8 +48,8 @@ export default function AuthButton() {
 
   if (showInput) {
     return (
-      <form onSubmit={handleSignIn} className="flex items-center gap-3">
-        <div className="flex flex-col gap-1">
+      <form onSubmit={handleSignIn} className="flex flex-wrap items-center gap-3 max-w-full">
+        <div className="flex flex-col gap-1 min-w-0 basis-full sm:basis-auto">
           <Label htmlFor="handle" className="sr-only">Bluesky handle</Label>
           <Input
             id="handle"
@@ -57,18 +57,18 @@ export default function AuthButton() {
             placeholder="yourhandle.bsky.social"
             value={handle}
             onChange={e => setHandle(e.target.value)}
-            className="h-11 w-64 text-base border-[#e8e5df] focus-visible:ring-[#0d9488]"
+            className="h-11 w-full sm:w-64 text-base border-input focus-visible:ring-ring"
             autoFocus
           />
         </div>
-        <Button type="submit" disabled={submitting} className="bg-[#0d9488] text-white hover:bg-[#0f766e] text-base px-6 py-3 rounded-lg h-11">
+        <Button type="submit" disabled={submitting} className="bg-primary text-primary-foreground hover:bg-primary-hover text-base px-6 py-3 rounded-lg h-11">
           {submitting ? 'Redirecting...' : 'Continue'}
         </Button>
         <Button
           type="button"
           variant="ghost"
           onClick={() => setShowInput(false)}
-          className="text-base text-[#6b6560] hover:text-[#1a1a1a]"
+          className="text-base text-foreground-secondary hover:text-foreground"
         >
           Cancel
         </Button>
@@ -77,7 +77,7 @@ export default function AuthButton() {
   }
 
   return (
-    <Button onClick={() => setShowInput(true)} className="bg-[#0d9488] text-white hover:bg-[#0f766e] text-lg px-8 py-4 rounded-lg h-auto font-semibold">
+    <Button onClick={() => setShowInput(true)} className="bg-primary text-primary-foreground hover:bg-primary-hover text-base px-5 py-3 rounded-lg h-auto font-semibold">
       Sign in with Bluesky
     </Button>
   )

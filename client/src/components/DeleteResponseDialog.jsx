@@ -28,20 +28,20 @@ export default function DeleteResponseDialog({ open, onOpenChange, onConfirm }) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-white">
+      <DialogContent className="bg-card">
         <DialogHeader>
-          <DialogTitle className="text-[#1a1a1a]">Delete your availability?</DialogTitle>
+          <DialogTitle className="text-foreground">Delete your availability?</DialogTitle>
         </DialogHeader>
-        <p className="text-base text-[#6b6560]">
+        <p className="text-base text-foreground-secondary">
           This removes your response from this poll. The poll stays open, so you can add your availability again any time.
         </p>
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-destructive">{error}</p>}
         <DialogFooter>
           <DialogClose asChild>
             <Button
               type="button"
               variant="outline"
-              className="border-[#e8e5df] text-[#6b6560] hover:bg-[#f0eeea] hover:text-[#1a1a1a] text-base px-5 py-2 rounded-lg"
+              className="border-input text-foreground-secondary hover:bg-muted hover:text-foreground text-base px-5 py-2 rounded-lg"
               disabled={loading}
             >
               Cancel
@@ -50,7 +50,7 @@ export default function DeleteResponseDialog({ open, onOpenChange, onConfirm }) 
           <Button
             onClick={handleConfirm}
             disabled={loading}
-            className="bg-red-600 text-white hover:bg-red-700 text-base px-6 py-3 rounded-lg transition-colors"
+            className="bg-destructive text-primary-foreground hover:bg-destructive/90 text-base px-6 py-3 rounded-lg transition-colors"
           >
             {loading ? 'Deleting...' : 'Delete availability'}
           </Button>

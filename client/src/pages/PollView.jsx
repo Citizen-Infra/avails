@@ -561,26 +561,26 @@ export default function PollView() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#faf9f6] flex items-center justify-center">
-        <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#1a1a1a] border-t-transparent" />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-foreground border-t-transparent" />
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#faf9f6] flex items-center justify-center px-4">
-        <div className="max-w-sm w-full rounded-xl border border-[#e8e5df] bg-[#faf9f6] p-8 text-center space-y-4">
-          <p className="text-lg font-medium text-[#1a1a1a]">Couldn't load this poll</p>
-          <p className="text-sm text-[#8a8580]">{error}</p>
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <div className="max-w-sm w-full rounded-xl border border-border bg-background p-8 text-center space-y-4">
+          <p className="text-lg font-medium text-foreground">Couldn't load this poll</p>
+          <p className="text-sm text-muted-foreground">{error}</p>
           <div className="flex items-center justify-center gap-3 pt-1">
             <Button
               onClick={() => { setError(null); setLoading(true); fetchData() }}
-              className="bg-[#0d9488] text-white hover:bg-[#0f766e] rounded-lg"
+              className="bg-primary text-primary-foreground hover:bg-primary-hover rounded-lg"
             >
               Try again
             </Button>
-            <a href="/" className="text-sm text-[#6b6560] hover:text-[#1a1a1a] underline underline-offset-2">
+            <a href="/" className="text-sm text-foreground-secondary hover:text-foreground underline underline-offset-2">
               Go home
             </a>
           </div>
@@ -625,16 +625,16 @@ export default function PollView() {
   }
 
   return (
-    <div className="min-h-screen bg-[#faf9f6]">
+    <div className="avails-poll min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-[#e8e5df]">
+      <header className="border-b border-border">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
           <a href="/" className="flex items-center gap-2.5">
             <Logo size={32} />
-            <span className="text-xl font-bold tracking-tight text-[#1a1a1a]">avails</span>
+            <span className="text-xl font-bold tracking-tight text-foreground">Avails</span>
           </a>
-          <nav className="flex items-center gap-6 text-base text-[#6b6560]">
-            <a href="/about" className="hover:text-[#1a1a1a] transition-colors">About</a>
+          <nav className="flex items-center gap-6 text-base text-foreground-secondary">
+            <a href="/about" className="hover:text-foreground transition-colors">About</a>
           </nav>
         </div>
       </header>
@@ -661,7 +661,7 @@ export default function PollView() {
 
         {/* Transient post-submit confirmation for the responder */}
         {justSubmitted && (
-          <div className="rounded-lg bg-[#f0fdf4] border border-[#bbf7d0] px-4 py-3 text-[#15803d] flex items-center gap-2.5">
+          <div className="rounded-lg bg-success-muted border border-success-border px-4 py-3 text-success flex items-center gap-2.5">
             <svg width="18" height="18" viewBox="0 0 16 16" fill="none" className="shrink-0">
               <path d="M3 8.5L6.5 12L13 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
@@ -673,12 +673,12 @@ export default function PollView() {
 
         {/* Best-effort calendar-cleanup notice (replaces a raw alert) */}
         {calendarCleanupWarning && (
-          <div className="rounded-lg bg-[#fef9c3] border border-[#fde68a] px-4 py-3 text-[#854d0e] flex items-start justify-between gap-3">
+          <div className="rounded-lg bg-warning-muted border border-warning-border px-4 py-3 text-warning flex items-start justify-between gap-3">
             <span className="text-sm">{calendarCleanupWarning}</span>
             <button
               type="button"
               onClick={() => setCalendarCleanupWarning(null)}
-              className="text-sm font-medium text-[#854d0e]/70 hover:text-[#854d0e] shrink-0"
+              className="text-sm font-medium text-warning hover:underline shrink-0"
             >
               Dismiss
             </button>
@@ -687,15 +687,15 @@ export default function PollView() {
 
         {/* Finalized result card */}
         {poll.finalTime && (
-          <div className="rounded-xl bg-gradient-to-br from-[#f0fdf4] to-[#ecfdf5] border border-[#bbf7d0] p-6 sm:p-8 space-y-4">
-            <div className="flex items-center gap-2 text-[#15803d]">
+          <div className="rounded-sm bg-success-muted border border-success-border p-6 sm:p-8 space-y-4">
+            <div className="flex items-center gap-2 text-success">
               <svg width="20" height="20" viewBox="0 0 16 16" fill="none">
                 <path d="M3 8.5L6.5 12L13 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
               <span className="text-sm font-semibold uppercase tracking-wide">Scheduled</span>
             </div>
 
-            <p className="text-xl sm:text-2xl font-medium text-[#15803d]">
+            <p className="text-xl sm:text-2xl font-medium text-success">
               {new Date(poll.finalTime).toLocaleString(undefined, {
                 weekday: 'long',
                 month: 'long',
@@ -703,7 +703,7 @@ export default function PollView() {
                 hour: 'numeric',
                 minute: '2-digit',
               })}
-              {poll.finalDuration && <span className="text-[#6b6560] text-lg ml-2">({poll.finalDuration} min)</span>}
+              {poll.finalDuration && <span className="text-foreground-secondary text-lg ml-2">({poll.finalDuration} min)</span>}
             </p>
 
             {/* Join, directly under the time. It is the one line someone opens
@@ -717,21 +717,21 @@ export default function PollView() {
                   href={poll.meetingUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group inline-flex items-baseline gap-2 text-lg font-semibold text-[#15803d] hover:text-[#166534] no-underline"
+                  className="group inline-flex items-baseline gap-2 text-lg font-semibold text-success hover:underline no-underline"
                 >
                   <span className="underline underline-offset-4 decoration-2">Join the call</span>
                   {/* The host alone, because a Zoom link carrying a passcode
                       query string is unreadable; the anchor keeps all of it.
                       Explicitly not underlined — inside the anchor it would
                       inherit one and read as a second, competing link. */}
-                  <span className="text-sm font-normal text-[#6b6560] no-underline break-all">
+                  <span className="text-sm font-normal text-foreground-secondary no-underline break-all">
                     {hostOf(poll.meetingUrl)}
                   </span>
                 </a>
                 {isCreator && (
                   <button
                     onClick={openMeetingLinkEditor}
-                    className="text-sm text-[#6b6560] hover:text-[#1a1a1a] underline underline-offset-2 transition-colors"
+                    className="text-sm text-foreground-secondary hover:text-foreground underline underline-offset-2 transition-colors"
                   >
                     Edit
                   </button>
@@ -742,7 +742,7 @@ export default function PollView() {
             {isCreator && !poll.meetingUrl && !editingMeetingUrl && (
               <button
                 onClick={openMeetingLinkEditor}
-                className="text-sm font-medium text-[#15803d] hover:text-[#166534] underline underline-offset-2 transition-colors"
+                className="text-sm font-medium text-success hover:decoration-2 underline underline-offset-2 transition-colors"
               >
                 Add a meeting link
               </button>
@@ -763,26 +763,26 @@ export default function PollView() {
                     size="sm"
                     onClick={handleSaveMeetingLink}
                     disabled={meetingUrlSaving}
-                    className="bg-[#15803d] text-white hover:bg-[#166534]"
+                    className="bg-success text-primary-foreground hover:bg-success"
                   >
                     {meetingUrlSaving ? 'Saving…' : 'Save link'}
                   </Button>
                   <button
                     onClick={() => { setEditingMeetingUrl(false); setMeetingUrlError(null) }}
                     disabled={meetingUrlSaving}
-                    className="text-sm text-[#6b6560] hover:text-[#1a1a1a] transition-colors disabled:opacity-50"
+                    className="text-sm text-foreground-secondary hover:text-foreground transition-colors disabled:opacity-50"
                   >
                     Cancel
                   </button>
                 </div>
-                <p className="text-sm text-[#6b6560]">
+                <p className="text-sm text-foreground-secondary">
                   Everyone who answered gets an updated invite. The time does not change.
                 </p>
               </div>
             )}
 
             {googleEventLink && (
-              <p className="text-sm text-[#0d9488]">
+              <p className="text-sm text-primary">
                 Added to {googleEventLink.calendarSummary} —{' '}
                 <a href={googleEventLink.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
                   view event
@@ -809,18 +809,18 @@ export default function PollView() {
             community's dashboard feed. The feed row appears once a community is
             set (#138 selector merged with the #5 sub-project F publish control). */}
         {isOpen && isCreator && (communities.length > 0 || poll.community) && (
-          <div className="rounded-xl border border-[#e8e5df] bg-[#faf9f6] p-5 sm:p-6 space-y-4">
+          <div className="rounded-sm border border-border bg-background p-5 sm:p-6 space-y-4">
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div className="space-y-0.5">
-                <p className="text-sm font-medium text-[#1a1a1a]">Community</p>
-                <p className="text-sm text-[#8a8580]">Choose the community this poll belongs to.</p>
+                <p className="text-sm font-medium text-foreground">Community</p>
+                <p className="text-sm text-muted-foreground">Choose the community this poll belongs to.</p>
               </div>
               <Select
                 value={poll.community || '__none__'}
                 onValueChange={v => handleSetCommunity(v === '__none__' ? '' : v)}
                 disabled={savingCommunity}
               >
-                <SelectTrigger aria-label="Community" className="w-full sm:w-[220px] border-[#e8e5df] bg-white text-[#1a1a1a]">
+                <SelectTrigger aria-label="Community" className="w-full sm:w-[220px] border-input bg-card text-foreground">
                   <SelectValue placeholder="None" />
                 </SelectTrigger>
                 <SelectContent>
@@ -831,13 +831,13 @@ export default function PollView() {
                 </SelectContent>
               </Select>
             </div>
-            {communityError && <p className="text-sm text-red-600">{communityError}</p>}
+            {communityError && <p className="text-sm text-destructive">{communityError}</p>}
 
             {poll.community && (
-              <div className="flex items-center justify-between gap-4 flex-wrap border-t border-[#e8e5df] pt-4">
+              <div className="flex items-center justify-between gap-4 flex-wrap border-t border-border pt-4">
                 <div className="space-y-0.5">
-                  <p className="text-sm font-medium text-[#1a1a1a]">Community feed</p>
-                  <p className="text-sm text-[#8a8580]">
+                  <p className="text-sm font-medium text-foreground">Community feed</p>
+                  <p className="text-sm text-muted-foreground">
                     {feedIsPublished
                       ? `Showing on the ${communityName} dashboard so members find it without opening chat.`
                       : `Publish to the ${communityName} dashboard so members find it without opening chat.`}
@@ -848,13 +848,13 @@ export default function PollView() {
                   size="sm"
                   onClick={() => handlePublishToCommunityFeed(!feedIsPublished)}
                   disabled={publishingToFeed}
-                  className="border-[#0d9488] text-[#0d9488] hover:bg-[#ccfbf1] shrink-0"
+                  className="border-primary text-primary hover:bg-accent shrink-0"
                 >
                   {publishingToFeed ? 'Saving…' : feedIsPublished ? 'Unpublish' : 'Publish to community feed'}
                 </Button>
               </div>
             )}
-            {feedError && <p className="text-sm text-red-600">{feedError}</p>}
+            {feedError && <p className="text-sm text-destructive">{feedError}</p>}
           </div>
         )}
 
@@ -862,7 +862,7 @@ export default function PollView() {
         {poll.finalTime && (
           <button
             onClick={() => setShowBreakdown(v => !v)}
-            className="flex items-center gap-2 text-sm font-medium text-[#6b6560] hover:text-[#1a1a1a] py-3"
+            className="flex items-center gap-2 text-sm font-medium text-foreground-secondary hover:text-foreground py-3"
           >
             <svg className={`w-4 h-4 transition-transform ${showBreakdown ? 'rotate-90' : ''}`} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M6 4l4 4-4 4"/>
@@ -880,17 +880,16 @@ export default function PollView() {
               <div className="space-y-2">
                 {/* Identity line */}
                 {session?.did && (
-                  <p className="text-sm text-[#8a8580]">
-                    Signed in as <span className="text-[#1a1a1a] font-medium">@{session.handle}</span>
+                  <p className="text-sm text-muted-foreground">
+                    Signed in as <span className="text-foreground font-medium">@{session.handle}</span>
                   </p>
                 )}
 
                 {/* Coaching — dissolves on first paint */}
                 {mySlots.size === 0 && (
-                  <p className="text-base text-[#6b6560] flex items-center gap-2">
+                  <p className="text-base text-foreground-secondary flex items-center gap-2">
                     <span
-                      className="inline-block w-5 h-5 rounded bg-[#f5f3ef] shrink-0"
-                      style={{ backgroundImage: 'linear-gradient(rgba(13,148,136,0.45), rgba(13,148,136,0.45))' }}
+                      className="avails-mine-key inline-block w-5 h-5 rounded bg-card shrink-0"
                     />
                     <span>
                       {session?.did
@@ -902,8 +901,8 @@ export default function PollView() {
                 )}
 
                 {calendarConnected && (
-                  <p className="text-sm text-[#0d9488]">
-                    Calendar connected — busy times shown in pink
+                  <p className="text-sm text-primary">
+                    Calendar connected — busy times are hatched
                   </p>
                 )}
               </div>
@@ -947,12 +946,12 @@ export default function PollView() {
           <aside className="space-y-4">
             {/* Save card — desktop only (mobile gets sticky bar below) */}
             {isOpen && !submitted && mySlots.size > 0 && (
-              <div className="hidden lg:block rounded-lg bg-[#0d9488] p-4 text-white space-y-3">
+              <div className="hidden lg:block rounded-sm bg-primary p-4 text-primary-foreground space-y-3">
                 <p className="text-sm font-medium">{mySlots.size} slot{mySlots.size !== 1 ? 's' : ''} selected</p>
                 <Button
                   onClick={editing ? handleUpdate : (participant ? handleSubmit : () => setShowGuestModal(true))}
                   disabled={submitting}
-                  className="w-full py-2.5 bg-white text-[#0d9488] font-semibold text-base hover:bg-white/90"
+                  className="w-full py-2.5 bg-card text-primary font-semibold text-base hover:bg-card/90"
                 >
                   {submitting ? 'Saving...' : editing ? 'Save changes' : 'Save availability'}
                 </Button>
@@ -960,12 +959,12 @@ export default function PollView() {
                   <button
                     onClick={() => { setEditing(false); setSubmitted(true) }}
                     disabled={submitting}
-                    className="w-full text-sm text-white/80 hover:text-white underline underline-offset-2"
+                    className="w-full text-sm text-primary-foreground hover:underline underline-offset-2"
                   >
                     Cancel
                   </button>
                 )}
-                {submitError && <p className="text-xs text-red-200">{submitError}</p>}
+                {submitError && <p className="text-sm text-primary-foreground">{submitError}</p>}
               </div>
             )}
 
@@ -1021,28 +1020,28 @@ export default function PollView() {
 
       {/* Mobile sticky save bar */}
       {isOpen && !submitted && mySlots.size > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-[#0d9488] px-4 py-3 shadow-[0_-4px_12px_rgba(0,0,0,0.1)]" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
+        <div className="avails-save-bar fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-primary px-4 py-3" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-medium text-white/90">
+            <p className="text-sm font-medium text-primary-foreground">
               {mySlots.size} slot{mySlots.size !== 1 ? 's' : ''} selected
             </p>
             <div className="flex items-center gap-2">
               {editing && (
                 <Button variant="ghost" size="sm" onClick={() => { setEditing(false); setSubmitted(true) }} disabled={submitting}
-                  className="text-white/80 hover:text-white hover:bg-white/10">
+                  className="text-primary-foreground hover:underline hover:bg-card/10">
                   Cancel
                 </Button>
               )}
               <Button
                 onClick={editing ? handleUpdate : (participant ? handleSubmit : () => setShowGuestModal(true))}
                 disabled={submitting}
-                className="bg-white text-[#0d9488] font-semibold hover:bg-white/90"
+                className="bg-card text-primary font-semibold hover:bg-card/90"
               >
                 {submitting ? 'Saving...' : editing ? 'Save changes' : 'Save'}
               </Button>
             </div>
           </div>
-          {submitError && <p className="text-xs text-red-200 mt-1">{submitError}</p>}
+          {submitError && <p className="text-sm text-primary-foreground mt-1">{submitError}</p>}
         </div>
       )}
     </div>

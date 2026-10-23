@@ -89,37 +89,37 @@ export default function EditPollDialog({ open, onOpenChange, poll, did, rkey, on
         <div className="space-y-5 py-2">
           {/* Title */}
           <div className="space-y-2">
-            <Label htmlFor="edit-title" className="text-base font-medium text-[#1a1a1a]">Title <span className="text-red-500">*</span></Label>
+            <Label htmlFor="edit-title" className="text-base font-medium text-foreground">Title <span className="text-destructive">*</span></Label>
             <Input
               id="edit-title"
               value={title}
               onChange={e => setTitle(e.target.value)}
-              className="border-[#e8e5df] bg-white text-[#1a1a1a] focus-visible:ring-[#0d9488]"
+              className="border-input bg-card text-foreground focus-visible:ring-ring"
             />
           </div>
 
           {/* Description */}
           <div className="space-y-2">
-            <Label htmlFor="edit-description" className="text-base font-medium text-[#1a1a1a]">
-              Description <span className="text-[#a09a94] text-xs font-normal">(optional)</span>
+            <Label htmlFor="edit-description" className="text-base font-medium text-foreground">
+              Description <span className="text-muted-foreground text-sm font-normal">(optional)</span>
             </Label>
             <Textarea
               id="edit-description"
               value={description}
               onChange={e => setDescription(e.target.value)}
               rows={3}
-              className="border-[#e8e5df] bg-white text-[#1a1a1a] focus-visible:ring-[#0d9488]"
+              className="border-input bg-card text-foreground focus-visible:ring-ring"
             />
           </div>
 
-          <div className="border-t border-[#e8e5df]" />
+          <div className="border-t border-border" />
 
           {/* Date picker */}
           <div className="space-y-2">
-            <Label className="text-base font-medium text-[#1a1a1a]">
-              Possible dates <span className="text-red-500">*</span>
+            <Label className="text-base font-medium text-foreground">
+              Possible dates <span className="text-destructive">*</span>
               {selectedDates.length > 0 && (
-                <span className="ml-2 text-[#a09a94] text-xs font-normal">
+                <span className="ml-2 text-muted-foreground text-sm font-normal">
                   {selectedDates.length} selected
                 </span>
               )}
@@ -129,11 +129,11 @@ export default function EditPollDialog({ open, onOpenChange, poll, did, rkey, on
                 mode="multiple"
                 selected={selectedDates}
                 onSelect={setSelectedDates}
-                className="rounded-lg border border-[#e8e5df] bg-white"
+                className="rounded-sm border border-input bg-card"
               />
             </div>
             {selectedDates.length > 0 && (
-              <p className="text-sm text-[#8a8580]">
+              <p className="text-sm text-muted-foreground">
                 {selectedDates
                   .slice()
                   .sort((a, b) => a - b)
@@ -143,34 +143,34 @@ export default function EditPollDialog({ open, onOpenChange, poll, did, rkey, on
             )}
           </div>
 
-          <div className="border-t border-[#e8e5df]" />
+          <div className="border-t border-border" />
 
           {/* Time range + slot duration */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="edit-earliest" className="text-base font-medium text-[#1a1a1a]">Earliest time</Label>
+              <Label htmlFor="edit-earliest" className="text-base font-medium text-foreground">Earliest time</Label>
               <Input
                 id="edit-earliest"
                 type="time"
                 value={earliestTime}
                 onChange={e => setEarliestTime(e.target.value)}
-                className="border-[#e8e5df] bg-white text-[#1a1a1a] focus-visible:ring-[#0d9488]"
+                className="border-input bg-card text-foreground focus-visible:ring-ring"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-latest" className="text-base font-medium text-[#1a1a1a]">Latest time</Label>
+              <Label htmlFor="edit-latest" className="text-base font-medium text-foreground">Latest time</Label>
               <Input
                 id="edit-latest"
                 type="time"
                 value={latestTime}
                 onChange={e => setLatestTime(e.target.value)}
-                className="border-[#e8e5df] bg-white text-[#1a1a1a] focus-visible:ring-[#0d9488]"
+                className="border-input bg-card text-foreground focus-visible:ring-ring"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-slot-duration" className="text-base font-medium text-[#1a1a1a]">Slot duration</Label>
+              <Label htmlFor="edit-slot-duration" className="text-base font-medium text-foreground">Slot duration</Label>
               <Select value={slotDuration} onValueChange={setSlotDuration}>
-                <SelectTrigger id="edit-slot-duration" className="border-[#e8e5df] bg-white text-[#1a1a1a]">
+                <SelectTrigger id="edit-slot-duration" className="border-input bg-card text-foreground">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -182,7 +182,7 @@ export default function EditPollDialog({ open, onOpenChange, poll, did, rkey, on
             </div>
           </div>
 
-          <div className="border-t border-[#e8e5df]" />
+          <div className="border-t border-border" />
 
           {/* Privacy option */}
           <label className="flex items-start gap-3 cursor-pointer">
@@ -190,24 +190,24 @@ export default function EditPollDialog({ open, onOpenChange, poll, did, rkey, on
               type="checkbox"
               checked={hideResponsesUntilSubmit}
               onChange={e => setHideResponsesUntilSubmit(e.target.checked)}
-              className="mt-1 h-4 w-4 rounded border-[#d8d4cf] text-[#0d9488] focus:ring-[#0d9488] focus:ring-offset-0 accent-[#0d9488] cursor-pointer"
+              className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-ring focus:ring-offset-0 accent-primary cursor-pointer"
             />
             <span className="flex-1">
-              <span className="text-base font-medium text-[#1a1a1a] block">Hide other responses until people submit</span>
-              <span className="text-sm text-[#8a8580] block mt-0.5">Respondents see an empty grid until they save their own availability.</span>
+              <span className="text-base font-medium text-foreground block">Hide other responses until people submit</span>
+              <span className="text-sm text-muted-foreground block mt-0.5">Respondents see an empty grid until they save their own availability.</span>
             </span>
           </label>
 
           {error && (
-            <p className="text-sm text-red-600">{error}</p>
+            <p className="text-sm text-destructive">{error}</p>
           )}
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving} className="border-[#e8e5df] text-[#6b6560] hover:bg-[#f0eeea] hover:text-[#1a1a1a] text-base px-5 py-2 rounded-lg">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving} className="border-input text-foreground-secondary hover:bg-muted hover:text-foreground text-base px-5 py-2 rounded-lg">
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={saving} className="bg-[#0d9488] text-white hover:bg-[#0f766e] text-base px-6 py-3 rounded-lg transition-colors">
+          <Button onClick={handleSave} disabled={saving} className="bg-primary text-primary-foreground hover:bg-primary-hover text-base px-6 py-3 rounded-lg transition-colors">
             {saving ? 'Saving...' : 'Save changes'}
           </Button>
         </DialogFooter>

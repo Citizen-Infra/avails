@@ -1,179 +1,247 @@
 ---
-name: avails
-description: Warm, communal group scheduling — a shared surface for a group to converge on a time.
+name: Avails
+description: Open Index adapted to a communal time-finding tool; the grid is the working surface.
 colors:
-  paper-cream: "#faf9f6"
-  gather-teal: "#0d9488"
-  deep-teal: "#0f766e"
-  warm-ink: "#1a1a1a"
-  stone: "#6b6560"
-  ash: "#8a8580"
-  mist: "#a09a94"
-  linen-border: "#d8d4cf"
-  hairline: "#e8e5df"
-  oat: "#f5f3ef"
-  consensus-green: "#22c55e"
-  conflict-rose: "#f87171"
-  confirmed-green: "#15803d"
-  confirmed-bg: "#f0fdf4"
-  destructive: "#dc2626"
+  page: "#F4F44D"
+  surface: "#FFFFFF"
+  task-ground: "#FFFDD4"
+  action: "#2545EF"
+  action-hover: "#1832CA"
+  ink: "#14233A"
+  secondary-ink: "#253749"
+  muted-ink: "#3C4B5E"
+  border: "#C8CE91"
+  control-border: "#53667B"
+  selected: "#E2E8FF"
+  text-selection: "#FF744E"
+  success: "#1E5B3F"
+  success-surface: "#E2F1E9"
+  success-border: "#3F7C5D"
+  warning: "#714300"
+  warning-surface: "#FFF1CF"
+  warning-border: "#9C6800"
+  danger: "#9A2831"
+  danger-surface: "#FBE7E7"
+  danger-border: "#BC4350"
+  data-empty: "#FFFFFF"
+  data-low: "#E2E8FF"
+  data-mid: "#B3BEF9"
+  data-high: "#2545EF"
 typography:
   display:
-    fontFamily: "Geist Variable, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "clamp(1.875rem, 5vw, 3rem)"
-    fontWeight: 700
-    lineHeight: 1.1
-    letterSpacing: "-0.02em"
+    fontFamily: "Public Sans, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "clamp(2.25rem, 1.5rem + 3vw, 4rem)"
+    lineHeight: 1.12
+    letterSpacing: "-0.03em"
+  headline:
+    fontFamily: "Public Sans, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "clamp(1.875rem, 1.25rem + 2vw, 3rem)"
+    lineHeight: 1.12
+    letterSpacing: "-0.03em"
   title:
-    fontFamily: "Geist Variable, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Public Sans, ui-sans-serif, system-ui, sans-serif"
     fontSize: "1.25rem"
     fontWeight: 600
-    lineHeight: 1.3
   body:
-    fontFamily: "Geist Variable, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Public Sans, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "1.125rem"
+    fontWeight: 400
+    lineHeight: 1.5
+  body-phone:
+    fontFamily: "Public Sans, ui-sans-serif, system-ui, sans-serif"
     fontSize: "1rem"
     fontWeight: 400
     lineHeight: 1.5
-  label:
-    fontFamily: "Geist Variable, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "0.6875rem"
+  control:
+    fontFamily: "Public Sans, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "1rem"
     fontWeight: 500
-    letterSpacing: "0.1em"
+  grid-label:
+    fontFamily: "Public Sans, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "0.875rem"
+    fontWeight: 500
+    lineHeight: 1.3
 rounded:
-  sm: "6px"
-  md: "8px"
-  lg: "10px"
+  sm: "0.15rem"
+  md: "0.2rem"
+  lg: "0.25rem"
+  xl: "0.35rem"
+  pill: "3.40282e38px"
 spacing:
-  xs: "4px"
-  sm: "8px"
-  md: "16px"
-  lg: "24px"
+  xs: "0.25rem"
+  sm: "0.5rem"
+  compact: "0.75rem"
+  md: "1rem"
+  lg: "1.5rem"
+  xl: "2rem"
+  section: "3rem"
 components:
   button-primary:
-    backgroundColor: "{colors.gather-teal}"
-    textColor: "{colors.paper-cream}"
+    backgroundColor: "{colors.action}"
+    textColor: "{colors.surface}"
     rounded: "{rounded.lg}"
-    padding: "8px 10px"
+    typography: "{typography.control}"
+    padding: "0.625rem 0.625rem"
+  button-primary-hover:
+    backgroundColor: "{colors.action-hover}"
   button-outline:
-    backgroundColor: "{colors.paper-cream}"
-    textColor: "{colors.warm-ink}"
+    backgroundColor: "{colors.task-ground}"
+    textColor: "{colors.secondary-ink}"
     rounded: "{rounded.lg}"
+    typography: "{typography.control}"
+    padding: "0.625rem 0.625rem"
+  button-ghost:
+    textColor: "{colors.secondary-ink}"
+    rounded: "{rounded.lg}"
+    typography: "{typography.control}"
+    padding: "0.5rem"
+  input:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.lg}"
+    padding: "0.25rem 0.625rem"
+  navigation:
+    backgroundColor: "{colors.page}"
+    textColor: "{colors.secondary-ink}"
+  status-tag:
+    backgroundColor: "{colors.selected}"
+    textColor: "{colors.action}"
+    rounded: "{rounded.pill}"
+    padding: "0.375rem 0.75rem"
+  poll-card:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.lg}"
+    padding: "1rem 1.25rem"
+  scheduled-result:
+    backgroundColor: "{colors.success-surface}"
+    textColor: "{colors.success}"
+    rounded: "{rounded.sm}"
+    padding: "1.5rem"
   avail-cell:
-    backgroundColor: "{colors.oat}"
-    height: "32px"
-  scheduled-card:
-    backgroundColor: "{colors.gather-teal}"
-    textColor: "{colors.paper-cream}"
-    rounded: "{rounded.md}"
+    backgroundColor: "{colors.data-empty}"
+    height: "2.75rem"
+  scheduled-stamp:
+    backgroundColor: "{colors.action}"
+    textColor: "{colors.surface}"
+    rounded: "{rounded.lg}"
+    padding: "2px 4px"
 ---
 
-# Design System: avails
+# Design System: Avails
 
-## 1. Overview
+## Overview
 
-**Creative North Star: "The Village Notice Board"**
+**Creative North Star: "Open Index"**
 
-avails is a shared surface a group gathers around to converge on a time, not a product trying to convert them. The feel is a warm public board in a co-op hallway: paper-toned, unhurried, legible to anyone who walks up, with no gate to pass and no one selling anything. Warmth is structural here, carried by a cream-paper ground and a hand-warmed neutral scale, never by ornament. The single teal accent behaves like a marker pen on that board: it means "available", "selected", "this is the action", and nothing else.
+Avails uses the selected Citizen Infrastructure Open Index family: a yellow public-facing field, blue actions, Public Sans and calm, ruled task surfaces. It remains a plain, communal time-finding tool, not a marketing performance or an event-management dashboard. The anonymous responder on a phone sets the density requirement; the timetable gets the reading space.
 
-The system explicitly rejects four things, in line with the product's anti-references: the **corporate-SaaS** busy-dashboard with its upsell banners and "Book a demo"; the **crypto/web3** neon-on-black costume (avails is ATProto-backed, but sovereignty is a quiet guarantee, never a flex); the **generic AI-template** look of purple gradients, identical card grids and hero-metric blocks; and **clinical minimalism**, the cold grey-on-white austerity that would make a communal tool feel like a tax form. The warmth is the differentiator. When in doubt, the move is to remove decoration and keep the kindness.
+The canonical foundation is [`Citizen-Infra/design-system`](https://github.com/Citizen-Infra/design-system/tree/6df5682711d11d1dde20453d0e06a78aca48b34f), revision `6df5682711d11d1dde20453d0e06a78aca48b34f` (`0.2.0-draft.1`), installed through immutable HTTPS Git. This supersedes Village Notice Board, Geist and the single-teal app palette. Product truth and plain language remain in [PRODUCT.md](PRODUCT.md). This record describes the implemented light-only frontend, not unused package themes or every package display minimum. Server email styling is outside this frontend system.
 
-Density is low and the grid is the protagonist. Chrome recedes; the availability heatmap is the one thing in focus.
+Source authority: [role adapter](client/src/styles/globals.css), [app geometry/type](client/src/styles/open-index.css), [grid states](client/src/styles/avail-grid.css) and [grid presentation helpers](client/src/lib/gridPresentation.js). Frontmatter records their resolved canonical values; implementation must keep consuming package roles rather than copying a second palette.
 
 **Key Characteristics:**
-- Warm paper ground (`#faf9f6`), never pure white, never cold grey.
-- One accent — Gather Teal — used sparingly and meaningfully.
-- Flat by default; a single elevated hero (the scheduled-time card).
-- Mobile-first, because the highest-volume user is an anonymous responder on a phone.
-- Availability legible without color via interaction (tap-to-reveal who's free) plus aria-label counts, not green saturation alone.
+- Yellow masthead and landing-route field; pale task ground; blue actions and footer.
+- Public Sans, whole-word headings and task-specific phone density.
+- Flat ruled grids; blue overlap, yellow/ink ownership edges and neutral conflict marks.
+- Existing shadcn/Radix control owners and native mouse, touch and keyboard interactions.
+- Availability counts and names recoverable through interaction and accessible labels, not resting in-cell numbers.
 
-## 2. Colors
+## Colors
 
-A warm, paper-based neutral field with one teal accent and a two-color data semantic (green = consensus, rose = conflict).
+Bright yellow/blue identity surrounds a quieter working surface. White is an intentional canonical surface; the old pure-white and cool-neutral prohibitions no longer apply.
 
 ### Primary
-- **Gather Teal** (`#0d9488`): the only brand color. Marks the user's own availability (translucent wash over cells), the primary action buttons, selection/scheduling state, and the finalized-time card. Its scarcity is what gives it meaning.
-- **Deep Teal** (`#0f766e`): companion only, used as the gradient terminus on the scheduled-time card. Never appears alone.
+- **Index Yellow** (`page`): masthead and the `/` route's field, including signed-in creation; inverse footer focus and the ink-bounded personal-slot edge derive from this role.
+- **Action Blue** (`action`, `action-hover`): primary actions, links, footer, save surfaces, dense scheduled stamps and the grid's overlap axis. White provides inverse text; stamps retain their check, full time range and white separation edge.
 
-### Tertiary (data semantics)
-- **Consensus Green** (`#22c55e`): the availability heatmap. Opacity scales 0.2 → 0.9 with the share of respondents available in a slot. Quantity of agreement, rendered as saturation.
-- **Conflict Rose** (`#f87171`): calendar busy-times overlaid on the grid (translucent, so the heatmap reads underneath).
-- **Confirmed Green** (`#15803d` on `#f0fdf4`): the "Scheduled" success card after finalize.
+### Secondary
+- **Selection Pale Blue** (`selected`): open status tags and pending/finalized grid selection; component text uses its assigned action role.
+- **Text-selection Coral** (`text-selection`): native text selection only. This is not a warm panel theme.
 
-### Neutral (the warm scale — this is the soul of the system)
-- **Paper Cream** (`#faf9f6`): the page ground everywhere. The single most important color in the system.
-- **Warm Ink** (`#1a1a1a`): primary text. A warm near-black, never `#000`.
-- **Stone** (`#6b6560`) / **Ash** (`#8a8580`) / **Mist** (`#a09a94`): the secondary-to-tertiary text ramp.
-- **Linen Border** (`#d8d4cf`) / **Hairline** (`#e8e5df`) / **Oat** (`#f5f3ef`): borders, dividers, and the warm tint of an empty grid cell (never a white void).
+### Tertiary
+- **Overlap scale** (`data-empty`, `data-low`, `data-mid`, `data-high`): scoped inside `.avail-cell`, remap to surface white, selection pale blue, a 35% action-blue/white mix and action blue respectively. Frontmatter records these grid-local resolved values, not changes to upstream package tokens. Nonzero overlap retains weight `0.2 + 0.7 × count / total`; full overlap is 90% blue/10% white. Low supplies the empty-cell hint; pending edits use the canonical selected role rather than mid.
+- **Success**, **Warning** and **Danger**: retain separate text/surface/border families for confirmed results, cleanup warnings, errors and deletion outside the grid. Calendar conflicts instead use sparse opaque ink/white hatching and an opaque white/ink title tag, not a danger wash.
 
-### Named Rules
-**The Single Voice Rule.** Gather Teal is the only brand hue. If a second accent color is entering a screen, it is a mistake; reach for weight, size, or a neutral instead.
+### Neutral
+- **Task Ground** (`task-ground`) and **Surface White** (`surface`): main poll ground and controls/cards/popovers respectively.
+- **Ink**, **Secondary Ink** and **Muted Ink**: readable hierarchy; ink also supplies focus outlines.
+- **Rule** (`border`) and **Control Rule** (`control-border`): light dividers versus input, outer-grid and hour-boundary definition.
 
-**The Email Link Exception (2026-08-02).** Deep Teal (`#0f766e`) is permitted **alone**, for body-size link text in transactional email only. Gather Teal on Paper Cream measures **3.56:1**, which clears AA for large text and UI but falls under the 4.5:1 required for normal text, and an email body link is normal text. Deep Teal measures **5.28:1**. This is the single carve-out from the companion-only rule above; it does not extend to the app, where teal appears at larger sizes or as a UI surface rather than as body-size text. See `server/src/lib/email-template.js`.
+**The Signal Separation Rule.** Separate meanings through independent channels: blue intensity for overlap, yellow/ink edges for ownership, neutral hatching for conflict, solid/dashed pending edges and a check/time stamp for finalized time. Never mix translucent state fills into a third color or rely on blue alone to identify scheduled time.
 
-**The No Cold Grey Rule.** Every neutral is warmed toward paper. Pure greys are forbidden on brand surfaces. (Note: the shadcn base layer in `globals.css` ships cold `oklch(... 0 0)` neutrals with chroma 0; those leak coldness into any unstyled shadcn component and must be overridden, not inherited.)
+## Typography
 
-## 3. Typography
+**Display / Body / Control Font:** Public Sans, with `ui-sans-serif, system-ui, sans-serif` fallback. Normal and italic variable files cover weights 400–700; fonts are bundled locally through the package font stylesheet imported by [main.jsx](client/src/main.jsx).
 
-**Display / Body / Label Font:** Geist Variable (with `ui-sans-serif, system-ui, sans-serif` fallback).
-
-**Character:** One typeface does everything. Geist is a clean, slightly technical humanist sans; warmth comes from the cream ground and generous spacing, not from a decorative display face. The restraint is intentional and on-brand.
+**Character:** Direct, public-facing sans typography with a substantial title and compact working labels. Weight and spacing carry hierarchy; no second display family is introduced.
 
 ### Hierarchy
-- **Display** (700, `clamp(1.875rem, 5vw, 3rem)`, line-height 1.1, `-0.02em`): page and poll titles.
-- **Title** (600, 1.25rem): section headers, the finalized-time statement.
-- **Body** (400, 1rem, line-height 1.5): descriptions, coaching copy. Cap measure at 65–75ch.
-- **Label** (500, 0.6875rem, `0.1em`, uppercase): day-of-week column headers, status eyebrows ("SCHEDULED"). `tabular-nums` on all times and dates.
+- **Display:** the larger landing-route H1 applies to both signed-out introduction (700) and signed-in “New poll” (600), with an 18ch maximum measure.
+- **Headline:** ordinary page/poll H1, usually 700; the page clamp is approximately 30–48px at the default root. Display is approximately 36–64px. These are responsive rem-based roles, not fixed pixel root sizing.
+- **Title:** the common section role is 600 at 1.25rem; result text has its existing 1.25–1.5rem responsive assignment.
+- **Body:** fallback body is 1.125rem on desktop, 1rem below 50rem, line-height 1.5. Explicit utility copy/control assignments often remain 1–1.25rem; not every desktop paragraph is 18px.
+- **Control / Grid label:** ordinary controls use 1rem; grid labels, metadata and compact stamps use 0.875rem. Grid dates use 1rem. Time-axis labels use line-height 1; stamp ranges use 1.2. Dates and times use tabular numerals.
 
-### Named Rules
-**The One Typeface Rule.** Geist carries the entire system. No serif display, no second family. Hierarchy is weight and scale only.
+**The Working Type Rule.** Proportionate phone density and whole-word headings take precedence over the shared package's display-sized floors. Keep the root resizable; never force a fixed root font or hyphenate ordinary heading words to fit.
 
-## 4. Elevation
+## Layout
 
-Flat by default, with exactly one deliberately elevated element. Surfaces sit directly on the paper ground separated by hairline borders and warm tonal tints, not shadows. Depth is tonal, not cast.
+Retain the standard product layout: a compact masthead, title/actions/timezone, then the grid. Poll content uses a centered 64rem maximum; landing and creation use 56rem, with 1–1.5rem responsive horizontal gutters. At the existing 64rem large breakpoint the poll can use a 14rem response/save sidebar; below it the save strip is fixed to the bottom. Poll main content reserves 8rem bottom space when that strip exists.
 
-The single exception is the **scheduled-time card**, which floats over the grid with a teal gradient and a real shadow (`0 2px 8px rgba(13,148,136,0.3)` plus an inset highlight) and a slow shimmer. This is the peak-end moment — the group found its time — and it is the only place the system raises its voice.
+The spacing rhythm is quarter-rem based. Working groups usually use 0.5–1.5rem gaps, cards 1–2rem padding and major groups 3rem separation. The masthead has intrinsic height with a 4rem minimum and wrapping controls, not a fixed clipping box.
 
-### Named Rules
-**The Flat-With-One-Hero Rule.** Surfaces are flat. The only earned shadow in the system is the scheduled-time card. If a new shadow is being added anywhere else, tonal layering is the answer instead.
+Data rows are 2.75rem tall. Reserve a 4rem time axis and budget 6rem per date/day: capacity is `clamp(1, floor((width − 4 × rootSize) / (6 × rootSize)), 7)`. Both dated grids balance pages within that capacity; weekly pages use the same width budget. Keep selected slot keys across page/width changes instead of squeezing seven columns into a phone. Weekly phone grids scroll with the outer page and keep visible/sticky day headers; the first time label is not negatively shifted into the header.
 
-## 5. Components
+## Elevation & Depth
+
+Flat at rest: fields, poll cards, result panels and scheduled stamps use solid tones and rules, not a hero gradient or shimmer. The grid's opaque inset edges communicate selection and active state; focus rings communicate keyboard position, not elevation. Existing Radix dialogs/menus retain their overlay behavior and utility shadows; the package's overlay-shadow token is not a new universal card style.
+
+The empty-cell hint runs twice over 2s after a 1s delay, stops on selection and is removed under reduced motion. Cell background transitions use 0.1s ease; reduced motion removes them. Do not turn this small coaching cue into ambient animation.
+
+## Shapes
+
+Small, practical corners: the adapter's base control radius is 0.25rem; its small/medium/extra-large derivatives are recorded in frontmatter. Outer grids and result sections use the small derivative, ordinary controls and poll cards the base, and status pills the full radius. Do not substitute the package's unused larger card radius for these actual app assignments. Grid rules are one-pixel, non-intercepting overlays; hour rules use the stronger control-border role.
+
+## Components
 
 ### Buttons
-- **Shape:** gently rounded (`rounded-lg`, 10px). shadcn/ui `cva` base.
-- **Primary:** in-app primary actions are Gather Teal on cream (the save card, schedule confirm). Note: the shadcn `default` variant is Warm-Ink-on-light; brand-primary teal is applied contextually, not as the token default (see Don'ts).
-- **Hover / Focus:** subtle background shift; `focus-visible` ring (3px, `ring/50`). `active` nudges 1px down — a small tactile confirmation.
-- **Outline / Ghost / Destructive:** outline on cream for secondary; destructive is a restrained tinted style (`destructive/10` bg, red text), not a loud solid red.
+Existing shadcn buttons, not a replacement control framework. Primary actions use action blue on white with contextual action-hover; outline and ghost actions recede into the ground. Standard data-slot buttons have a 2.75rem minimum height, intrinsic height and wrapping text, with 0.625rem vertical padding. Icon actions have the same minimum width. Calendar day buttons deliberately retain their seven-column matrix with a 2rem minimum height: this is a dense two-dimensional exception, not an exact rendered height or a general action target.
+
+Focus uses the canonical ink outline (3px, offset 3px), with existing shadcn rings where assigned. Enabled native actions retain the existing one-pixel active nudge. Destructive/error styling remains semantic; existing dialog/control owners remain authoritative.
+
+### Inputs / Fields
+White surfaces, control-border strokes and base-radius corners. Inputs retain 0.625rem horizontal / 0.25rem vertical padding and a 2.75rem minimum height. Placeholders use muted ink; focus uses ink/ring and invalid state uses danger. Dialog content scrolls within `100dvh − 2rem` rather than growing beyond the phone.
 
 ### Cards / Containers
-- **Corner Style:** `rounded-xl` (14px) for result cards, `rounded-lg` for the grid container.
-- **Background:** cream or a soft tinted gradient (the green `#f0fdf4 → #ecfdf5` confirmation card).
-- **Border:** hairline (`#e8e5df` / `#bbf7d0`). Flat — no shadow except the scheduled hero.
-- **Internal Padding:** 24–32px (`p-6 sm:p-8`).
+Poll-list cards are white, ruled, unshadowed and base-radius, with 1rem vertical / 1.25rem horizontal padding; their border turns action blue on hover. Confirmed result panels use success text/surface/border, small corners and 1.5rem padding, increasing to 2rem at the small breakpoint. An explicit scheduled label and full result statement remain outside the dense stamp.
 
-### The Availability Cell (signature component)
-- 32px-tall (`h-8`) grid cells. Empty = warm Oat (`#f5f3ef`), never white.
-- Three composited layers: heatmap base (inline green), the user's "mine" teal wash on top, and a rose busy wash — stacked via `background-image` linear-gradients so all three signals read at once.
-- Hairline grid lines via `::after` at `z-index:-1`; hour boundaries get a stronger line for vertical scanning.
-- Drag-select with a dashed hover outline; a first-cell pulse animation coaches the empty state.
+### Chips / Tags
+Open status is a pale-blue pill with action text. Scheduled poll-list status uses the existing neutral treatment. Community tags are small-cornered, outlined metadata. Calendar tags stay compact with ink text and border on opaque white; full titles are recovered through the grid's accessible name, wrapping tooltip and native disclosure, not by shrinking the tag.
 
 ### Navigation
-- Minimal top bar: logo + wordmark left, sparse text links right (`#6b6560`, hover to Warm Ink). No app-shell sidebar.
+Yellow top bar, existing sixteen-cell blue/white logo and Avails wordmark; sparse familiar navigation, no new app-shell sidebar. The footer is blue with white copy and yellow inverse focus. The standalone SVG favicon reuses the same mark geometry and resolves the two roles from the pin; it is not new artwork.
 
-## 6. Do's and Don'ts
+### Availability grid
+The blue/white overlap base is unchanged by personal ownership: an inset 1px ink / 2px yellow / 1px ink edge marks personal slots. Busy cells add sparse 1px white/1px ink diagonal strokes separated by transparent gaps; combined mine/busy cells retain both independent marks. No state wash changes the overlap fill. Pending edits temporarily replace overlap with pale-blue selected: solid ink plus the ownership edge for add, dashed ink without yellow for remove. Pending schedule uses selected with a solid action outline and no finalized stamp. Hover is a thinner dashed ink/white mark. Active and keyboard-focus outlines sit outside with white separation; ownership edges survive focus, and pending removal remains dashed under focus. Preserve current hit areas, row geometry and controllers.
+
+Preserve drag painting, touch painting, roving focus and arrow/Space/Enter interactions. Counts/names remain available through existing tap/focus/hover and ARIA presentation; do not invent resting in-cell counts. In AvailGrid, the full existing local conflict title is included even when availability counts are absent. A native details/summary readout below and outside the paint container groups contiguous conflicts on visible dates and exposes date/start time/title without changing selection or calling a provider.
+
+### Scheduled stamp
+Solid blue with a white check, thin white separation edge and complete time range at the grid caption size. It spans `rowCount × slotHeight − 2px`, using the same row variable as the grid. “Scheduled” is screen-reader-only inside this compact stamp; the result panel and cell accessible labels state it explicitly. Do not claim a visible word that is not painted.
+
+## Do's and Don'ts
 
 ### Do:
-- **Do** ground every screen on Paper Cream (`#faf9f6`). It is the system.
-- **Do** reserve Gather Teal (`#0d9488`) for availability, selection, and the primary action only. Scarcity is the point.
-- **Do** keep surfaces flat; convey depth with warm tints and hairline borders.
-- **Do** keep the availability heatmap legible without color via **interaction**: tapping a cell (or a name) reveals who is actually available, plus per-cell `aria-label` counts and a hover tooltip. Don't rely on green saturation alone, and don't clutter every cell with a resting number. (WCAG 1.4.1 / 2.1 AA.)
-- **Do** design the phone first; the highest-volume user is an anonymous responder on mobile.
-- **Do** override shadcn's cold base neutrals with the warm scale.
+- **Do** consume pinned canonical roles and separate grid meanings with intensity, edges, hatching and explicit stamps rather than unrelated hues.
+- **Do** prioritize anonymous phone responders, proportional text, whole-word headings and user font resizing.
+- **Do** preserve keyboard/touch behavior and non-color recovery of counts, names, conflicts and scheduled time.
+- **Do** keep the timetable flat and ruled, with explicit outlines for selection and pending edits.
+- **Do** retain the existing logo geometry and separate AGPL app, MIT shared-code and OFL font notices.
 
 ### Don't:
-- **Don't** ship the **corporate-SaaS** look: no upsell banners, no "Book a demo", no busy dashboards, no gradient marketing heroes.
-- **Don't** wear the **crypto/web3** costume: no neon-on-black, no glassmorphism, no decentralization hype. Sovereignty is quiet.
-- **Don't** produce the **generic AI-template** look: no purple gradients, no identical card grids, no hero-metric blocks, no emoji-bullet feature lists.
-- **Don't** fall into **clinical minimalism**: no cold grey-on-white, no pure `#000`/`#fff`, no austere whitespace-and-Helvetica.
-- **Don't** introduce a second brand accent. One voice.
-- **Don't** add shadows outside the single scheduled-time hero card.
-- **Don't** use `border-left`/`border-right` colored stripes as accents, or gradient text.
+- **Don't** restore Geist/teal authority, fork a competing palette or treat unused package dark/warm/fresh themes as implemented product features.
+- **Don't** squeeze seven dates into every viewport, fix the root font size or force shared display floors onto phone controls.
+- **Don't** rely on color alone, hide full conflict titles behind clipped tags or insert counts into every resting cell.
+- **Don't** add promotional eyebrows, gradient text, accent stripes, crypto styling, advertising or invented testimonials/user numbers.
+- **Don't** treat a local visual review as WCAG certification, live integration verification or publication approval.

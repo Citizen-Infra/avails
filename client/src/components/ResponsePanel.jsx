@@ -25,12 +25,12 @@ export default function ResponsePanel({ responses = [], focusedName, onFocus, ho
   return (
     <div className="space-y-4">
       <div>
-        <div className="w-8 h-1 bg-[#0d9488] rounded-full mb-2" />
-        <div className="text-sm font-semibold text-[#1a1a1a] uppercase tracking-wide">
+        <div className="w-full border-t border-input mb-2" />
+        <div className="text-sm font-semibold text-foreground">
           {hiddenUntilSubmit ? 'Responses hidden' : `${responses.length} ${responses.length === 1 ? 'response' : 'responses'}`}
         </div>
         {responses.length > 0 && !hiddenUntilSubmit && (
-          <p className="text-xs text-[#a09a94] mt-1">Hover or tap a name to see only their availability</p>
+          <p className="text-sm text-muted-foreground mt-1">Hover or tap a name to see only their availability</p>
         )}
       </div>
       <ul className="space-y-0.5">
@@ -45,11 +45,11 @@ export default function ResponsePanel({ responses = [], focusedName, onFocus, ho
                 type="button"
                 className={cn(
                   'w-full text-left px-3 py-2.5 rounded-md text-base transition-all duration-150',
-                  'cursor-pointer hover:bg-[#f0eeea]',
-                  isFocused ? 'text-[#1a1a1a] bg-[#f0eeea]' : 'text-[#6b6560]',
-                  isPinned && 'ring-1 ring-[#0d9488]/40',
-                  isAvailableAtHover && 'bg-[#f0fdf4]',
-                  isUnavailableAtHover && 'opacity-40'
+                  'cursor-pointer hover:bg-muted',
+                  isFocused ? 'text-foreground bg-muted' : 'text-foreground-secondary',
+                  isPinned && 'ring-1 ring-ring',
+                  isAvailableAtHover && 'bg-success-muted',
+                  isUnavailableAtHover && 'opacity-90'
                 )}
                 onMouseEnter={() => handleMouseEnter(r.name)}
                 onMouseLeave={handleMouseLeave}
@@ -57,11 +57,11 @@ export default function ResponsePanel({ responses = [], focusedName, onFocus, ho
               >
                 <span className="flex items-center gap-1.5">
                   {isAvailableAtHover && (
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-[#0d9488] shrink-0">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-primary shrink-0">
                       <path d="M3 8.5L6.5 12L13 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                   )}
-                  <span className={cn('font-medium', isUnavailableAtHover ? 'text-[#a09a94]' : 'text-[#1a1a1a]')}>
+                  <span className={cn('font-medium', isUnavailableAtHover ? 'text-muted-foreground' : 'text-foreground')}>
                     {r.name}
                   </span>
                 </span>
@@ -70,7 +70,7 @@ export default function ResponsePanel({ responses = [], focusedName, onFocus, ho
           )
         })}
         {responses.length === 0 && (
-          <li className="text-base text-[#a09a94] px-3 py-2">
+          <li className="text-base text-muted-foreground px-3 py-2">
             {hiddenUntilSubmit
               ? 'Responses are hidden until you save your own availability.'
               : 'No responses yet.'}

@@ -84,6 +84,14 @@ cd client && npm install && npm run dev
 
 The client dev server proxies `/api` requests to the Express server on port 3000.
 
+### Shared frontend foundation and gates
+
+Avails uses Open Index (`0.2.0-draft.1`) from [`Citizen-Infra/design-system`](https://github.com/Citizen-Infra/design-system/tree/6df5682711d11d1dde20453d0e06a78aca48b34f), pinned through HTTPS Git to `6df5682711d11d1dde20453d0e06a78aca48b34f` in the client manifest and lockfile. Public Sans and canonical yellow/blue roles feed the existing React/shadcn/Radix controls; app-specific phone/grid density is documented in [DESIGN.md](DESIGN.md). There is no automatic upgrade or npm publication dependency.
+
+Use the repo's Node 22 line ([`.node-version`](.node-version)); the shared package requires Node **22.12 or newer**. CI reads that file and runs client `npm ci`, then `npm test`, then `npm run build`. Unit tests validate source/package/notice invariants without requiring `dist/`. The build's automatic `postbuild` gate checks both emitted Public Sans binaries and the MIT/OFL notices byte-for-byte against the installed pin. Existing server gates remain separate.
+
+[`main.jsx`](client/src/main.jsx) imports package `fonts.css` directly so Vite rebases its font URLs; [`globals.css`](client/src/styles/globals.css) imports the canonical tokens and aliases shadcn roles. Keep this font entry path. After an explicitly authorized pin change, `npm run sync-foundation-assets` in `client/` refreshes the public MIT/OFL notice copies and resolves the existing favicon geometry's colors from that pin. App AGPL, shared-code MIT and font OFL licences remain distinct; the package is not relicensed as the app. Visual-check fixtures must stay synthetic and locally intercepted as described in [PRODUCT.md](PRODUCT.md#visual-check-safety).
+
 ### Tests
 
 ```bash

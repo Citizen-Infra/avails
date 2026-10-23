@@ -327,16 +327,16 @@ export default function StandingAvailability() {
     && (!isEventMode || eventGrant?.active)
 
   return (
-    <div className="min-h-screen bg-[#faf9f6]">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-[#e8e5df]">
+      <header className="border-b border-border">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
           <a href="/" className="flex items-center gap-2 shrink-0">
             <Logo size={32} />
-            <span className="text-xl font-bold tracking-tight text-[#1a1a1a]">avails</span>
+            <span className="text-xl font-bold tracking-tight text-foreground">Avails</span>
           </a>
           <div className="flex items-center gap-3 sm:gap-6 min-w-0">
-            <a href="/" className="hidden sm:block text-base text-[#6b6560] hover:text-[#1a1a1a] transition-colors">
+            <a href="/" className="hidden sm:block text-base text-foreground-secondary hover:text-foreground transition-colors">
               My polls
             </a>
             <AuthButton />
@@ -347,12 +347,12 @@ export default function StandingAvailability() {
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
         {sessionLoading ? (
           <div className="flex justify-center py-32">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#1a1a1a] border-t-transparent" />
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-foreground border-t-transparent" />
           </div>
         ) : !session?.did ? (
           <div className="py-16 max-w-lg space-y-6">
-            <h1 className="text-3xl font-semibold text-[#1a1a1a] tracking-tight">Standing availability</h1>
-            <p className="text-lg text-[#6b6560] leading-relaxed">
+            <h1 className="font-semibold text-foreground tracking-tight">Standing availability</h1>
+            <p className="text-lg text-foreground-secondary leading-relaxed">
                {isEventMode
                  ? 'Share the times you are usually free for the Social Internet Unconference. Sign in with Bluesky to continue.'
                   : "Publish the times you're usually free for a Bluesky list, once, instead of filling out a new poll every time. Sign in with Bluesky to set it up."}
@@ -362,8 +362,8 @@ export default function StandingAvailability() {
         ) : (
           <div className="space-y-12">
             <div>
-              <h1 className="text-3xl font-semibold text-[#1a1a1a] tracking-tight">Standing availability</h1>
-              <p className="text-lg text-[#6b6560] mt-1">
+              <h1 className="font-semibold text-foreground tracking-tight">Standing availability</h1>
+              <p className="text-lg text-foreground-secondary mt-1">
                  {isEventMode
                    ? 'Set the times you are usually free for the Social Internet Unconference, once.'
                    : "Tell a group the times you're usually free, once, instead of answering a new poll every time."}
@@ -371,11 +371,11 @@ export default function StandingAvailability() {
              </div>
 
              {isEventMode && eventGrant && !eventGrant.loading && (
-               <div className="rounded-lg border border-[#d8d4cf] bg-[#f5f3ef] px-4 py-3">
-                 <p className="font-medium text-[#1a1a1a]">
+               <div className="rounded-sm border border-input bg-muted px-4 py-3">
+                 <p className="font-medium text-foreground">
                    {eventGrant.active ? 'Your SIU participation is active' : 'SIU participation is not active'}
                  </p>
-                 <p className="mt-1 text-sm text-[#6b6560]">
+                 <p className="mt-1 text-sm text-foreground-secondary">
                    {eventGrant.active
                      ? 'Your availability can count toward finding a shared time for supported topics.'
                      : eventGrant.unavailable
@@ -386,37 +386,37 @@ export default function StandingAvailability() {
              )}
 
             {cleanupWarning && (
-              <p className="text-sm text-red-600">{cleanupWarning}</p>
+              <p className="text-sm text-destructive">{cleanupWarning}</p>
             )}
 
             {/* Published records */}
             {recordsLoading ? (
-              <div className="flex items-center gap-2 text-base text-[#a09a94] py-2">
-                <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[#a09a94] border-t-transparent" />
+              <div className="flex items-center gap-2 text-base text-muted-foreground py-2">
+                <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
                 Loading…
               </div>
             ) : visibleRecords.length > 0 && (
               <div className="space-y-4">
-                <h2 className="text-xl font-semibold text-[#1a1a1a] tracking-tight">Published</h2>
+                <h2 className="text-xl font-semibold text-foreground tracking-tight">Published</h2>
                 <div className="space-y-3">
                   {visibleRecords.map((record) => {
                     const groups = groupWeeklyByDay(record.pattern.weekly)
                     return (
                       <div
                         key={record.uri}
-                        className="rounded-lg border border-[#e8e5df] bg-white p-5 space-y-3"
+                        className="rounded-sm border border-border bg-card p-5 space-y-3"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 space-y-1">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-mono text-sm text-[#1a1a1a] break-all">
+                              <span className="font-mono text-sm text-foreground break-all">
                                 {shortenAtUri(record.scope.value)}
                               </span>
-                              <Badge variant="outline" className="border-[#0d9488]/30 text-[#0d9488]">
+                              <Badge variant="outline" className="border-primary/30 text-primary">
                                 Public on your PDS
                               </Badge>
                             </div>
-                            <p className="text-sm text-[#8a8580]">
+                            <p className="text-sm text-muted-foreground">
                               {record.timezone} &middot; {record.trust === 'auto' ? 'Auto-book' : 'Confirm before booking'}
                               {record.validUntil && (
                                 <> &middot; until {formatValidUntil(record.validUntil)}</>
@@ -431,17 +431,17 @@ export default function StandingAvailability() {
                               type="button"
                               variant="ghost"
                               size="sm"
-                              className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                              className="text-destructive hover:bg-accent hover:text-destructive"
                               onClick={() => { setDeleteTarget(record); setDeleteError(null) }}
                             >
                               Delete
                             </Button>
                           </div>
                         </div>
-                        <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-[#6b6560]">
+                        <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-foreground-secondary">
                           {groups.map((g) => (
                             <span key={g.day}>
-                              <span className="font-medium text-[#1a1a1a]">{g.label}</span> {g.ranges.join(', ')}
+                              <span className="font-medium text-foreground">{g.label}</span> {g.ranges.join(', ')}
                             </span>
                           ))}
                         </div>
@@ -455,14 +455,14 @@ export default function StandingAvailability() {
             {/* Publish / edit form */}
             <div id="standing-availability-form" className="space-y-8 scroll-mt-6">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="text-xl font-semibold text-[#1a1a1a] tracking-tight">
+                <h2 className="text-xl font-semibold text-foreground tracking-tight">
                    {form.editingRkey ? 'Edit standing availability' : isEventMode ? 'Your SIU availability' : 'Add a list'}
                 </h2>
                 {form.editingRkey && (
                   <button
                     type="button"
                     onClick={handleCancelEdit}
-                    className="text-sm text-[#8a8580] hover:text-[#1a1a1a] underline underline-offset-2 transition-colors"
+                    className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
                   >
                     Cancel edit
                   </button>
@@ -473,10 +473,10 @@ export default function StandingAvailability() {
                 {/* Scope picker */}
                  {!isEventMode ? (
                    <div className="space-y-2">
-                     <Label htmlFor="scope-input" className="text-base font-medium text-[#1a1a1a]">
-                       Bluesky list <span className="text-red-500">*</span>
+                     <Label htmlFor="scope-input" className="text-base font-medium text-foreground">
+                       Bluesky list <span className="text-destructive">*</span>
                      </Label>
-                      <p className="text-sm text-[#6b6560]">
+                      <p className="text-sm text-foreground-secondary">
                         Paste a list URL (bsky.app/profile/…/lists/…) or an at:// list URI. The list identifies who this availability is for; it does not make the record private.
                      </p>
                      <div className="flex flex-col sm:flex-row gap-2">
@@ -491,20 +491,20 @@ export default function StandingAvailability() {
                              handleCheckList(e)
                            }
                          }}
-                         className="border-[#e8e5df] bg-white text-[#1a1a1a] placeholder:text-[#a09a94] focus-visible:ring-[#0d9488]"
+                         className="border-input bg-card text-foreground placeholder:text-muted-foreground focus-visible:ring-ring"
                        />
                        <Button
                          type="button"
                          variant="outline"
                          onClick={handleCheckList}
                          disabled={resolving || !form.scopeInput.trim()}
-                         className="border-[#e8e5df] text-[#1a1a1a] hover:bg-[#f0eeea] shrink-0 h-8 sm:h-auto"
+                         className="border-input text-foreground hover:bg-muted shrink-0 h-8 sm:h-auto"
                        >
                          {resolving ? 'Checking…' : 'Check list'}
                        </Button>
                      </div>
                      {form.resolvedScope && (
-                       <p className="text-sm text-[#0d9488] flex items-center gap-1.5">
+                       <p className="text-sm text-primary flex items-center gap-1.5">
                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
                            <path d="M3 8.5L6.5 12L13 4" strokeLinecap="round" strokeLinejoin="round" />
                          </svg>
@@ -513,38 +513,38 @@ export default function StandingAvailability() {
                             : <>Availability is for this list</>}
                        </p>
                      )}
-                     {resolveError && <p className="text-sm text-red-600">{resolveError}</p>}
+                     {resolveError && <p className="text-sm text-destructive">{resolveError}</p>}
                    </div>
                  ) : (
                    <div className="space-y-2">
-                     <Label className="text-base font-medium text-[#1a1a1a]">Event</Label>
-                     <p className="text-base text-[#1a1a1a]">Social Internet Unconference</p>
-                     <p className="break-all text-sm text-[#8a8580]">{eventDid}</p>
+                     <Label className="text-base font-medium text-foreground">Event</Label>
+                     <p className="text-base text-foreground">Social Internet Unconference</p>
+                     <p className="break-all text-sm text-muted-foreground">{eventDid}</p>
                    </div>
                  )}
 
-                <div className="border-t border-[#e8e5df]" />
+                <div className="border-t border-border" />
 
                 {/* Weekly pattern */}
                 <div className="space-y-2">
-                  <Label className="text-base font-medium text-[#1a1a1a]">
-                    Weekly pattern <span className="text-red-500">*</span>
+                  <Label className="text-base font-medium text-foreground">
+                    Weekly pattern <span className="text-destructive">*</span>
                   </Label>
                   <WeeklyPatternGrid value={form.weekly} onChange={handleWeeklyChange} />
                 </div>
 
-                <div className="border-t border-[#e8e5df]" />
+                <div className="border-t border-border" />
 
                 {/* Controls */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="timezone" className="text-base font-medium text-[#1a1a1a]">Timezone</Label>
+                    <Label htmlFor="timezone" className="text-base font-medium text-foreground">Timezone</Label>
                     {TIMEZONE_OPTIONS ? (
                       <select
                         id="timezone"
                         value={form.timezone}
                         onChange={(e) => updateForm({ timezone: e.target.value })}
-                        className="h-8 w-full rounded-lg border border-[#e8e5df] bg-white px-2.5 text-base text-[#1a1a1a] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[#0d9488]/50"
+                        className="h-8 w-full rounded-sm border border-input bg-card px-2.5 text-base text-foreground focus-visible:ring-3 focus-visible:ring-ring"
                       >
                         {TIMEZONE_OPTIONS.map((tz) => (
                           <option key={tz} value={tz}>{tz}</option>
@@ -556,65 +556,65 @@ export default function StandingAvailability() {
                         value={form.timezone}
                         onChange={(e) => updateForm({ timezone: e.target.value })}
                         placeholder="Europe/Berlin"
-                        className="border-[#e8e5df] bg-white text-[#1a1a1a] focus-visible:ring-[#0d9488]"
+                        className="border-input bg-card text-foreground focus-visible:ring-ring"
                       />
                     )}
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="valid-until" className="text-base font-medium text-[#1a1a1a]">Valid until</Label>
+                    <Label htmlFor="valid-until" className="text-base font-medium text-foreground">Valid until</Label>
                     <Input
                       id="valid-until"
                       type="date"
                       min={formatDateLocal(new Date())}
                       value={form.validUntil}
                       onChange={(e) => updateForm({ validUntil: e.target.value })}
-                      className="border-[#e8e5df] bg-white text-[#1a1a1a] focus-visible:ring-[#0d9488]"
+                      className="border-input bg-card text-foreground focus-visible:ring-ring"
                     />
                   </div>
                 </div>
 
                 {/* Trust */}
                  {!isEventMode && <div className="space-y-3">
-                  <Label className="text-base font-medium text-[#1a1a1a]">When someone wants this time</Label>
+                  <Label className="text-base font-medium text-foreground">When someone wants this time</Label>
                   <RadioGroup
                     value={form.trust}
                     onValueChange={(v) => updateForm({ trust: v })}
                     className="gap-3"
                   >
                     <label className="flex items-start gap-3 cursor-pointer">
-                      <RadioGroupItem value="confirm" id="trust-confirm" className="mt-1 border-[#d8d4cf] data-[state=checked]:bg-[#0d9488] data-[state=checked]:border-[#0d9488]" />
+                      <RadioGroupItem value="confirm" id="trust-confirm" className="mt-1 border-input data-[state=checked]:bg-primary data-[state=checked]:border-primary" />
                       <span className="flex-1">
-                        <span className="text-base font-medium text-[#1a1a1a] block">Ask me to confirm</span>
-                        <span className="text-sm text-[#8a8580] block mt-0.5">You'll be asked to confirm before anything is booked into these windows.</span>
+                        <span className="text-base font-medium text-foreground block">Ask me to confirm</span>
+                        <span className="text-sm text-muted-foreground block mt-0.5">You'll be asked to confirm before anything is booked into these windows.</span>
                       </span>
                     </label>
                     <label className="flex items-start gap-3 cursor-pointer">
-                      <RadioGroupItem value="auto" id="trust-auto" className="mt-1 border-[#d8d4cf] data-[state=checked]:bg-[#0d9488] data-[state=checked]:border-[#0d9488]" />
+                      <RadioGroupItem value="auto" id="trust-auto" className="mt-1 border-input data-[state=checked]:bg-primary data-[state=checked]:border-primary" />
                       <span className="flex-1">
-                        <span className="text-base font-medium text-[#1a1a1a] block">Book automatically</span>
-                        <span className="text-sm text-[#8a8580] block mt-0.5">Anything requested inside these windows can be booked without asking you first.</span>
+                        <span className="text-base font-medium text-foreground block">Book automatically</span>
+                        <span className="text-sm text-muted-foreground block mt-0.5">Anything requested inside these windows can be booked without asking you first.</span>
                       </span>
                     </label>
                   </RadioGroup>
                  </div>}
 
-                <div className="border-t border-[#e8e5df]" />
+                <div className="border-t border-border" />
 
                 {/* Honest disclosure */}
-                <p className="text-sm text-[#6b6560] leading-relaxed">
+                <p className="text-sm text-foreground-secondary leading-relaxed">
                   {isEventMode
                     ? 'Publishing saves a public availability record to your Bluesky account. Anyone can read it through AT Protocol. It is used to calculate aggregate SIU readiness and does not schedule or invite anyone. It remains public until you delete it, and copies may remain elsewhere afterward.'
                     : 'Publishing saves a public availability record to your Bluesky account. Anyone can read it through AT Protocol. The Bluesky list identifies who the availability is for; it does not restrict access. The record remains public until you delete it, and copies may remain elsewhere afterward.'}
                 </p>
 
-                {publishError && <p className="text-sm text-red-600">{publishError}</p>}
+                {publishError && <p className="text-sm text-destructive">{publishError}</p>}
 
                 <div className="flex items-center gap-3">
                   <Button
                     type="submit"
                     disabled={!canPublish}
-                    className="bg-[#0d9488] text-white hover:bg-[#0f766e] text-lg px-6 py-4 rounded-lg h-auto font-semibold transition-colors disabled:opacity-50"
+                    className="bg-primary text-primary-foreground hover:bg-primary-hover text-lg px-6 py-4 rounded-sm h-auto font-semibold transition-colors disabled:opacity-50"
                   >
                     {submitting ? 'Publishing…' : form.editingRkey ? 'Save changes' : 'Publish availability'}
                   </Button>
@@ -623,7 +623,7 @@ export default function StandingAvailability() {
                       type="button"
                       variant="ghost"
                       onClick={handleCancelEdit}
-                      className="text-base text-[#6b6560] hover:text-[#1a1a1a]"
+                      className="text-base text-foreground-secondary hover:text-foreground"
                     >
                       Cancel
                     </Button>
@@ -637,20 +637,20 @@ export default function StandingAvailability() {
 
       {/* Delete confirmation */}
       <Dialog open={Boolean(deleteTarget)} onOpenChange={(open) => { if (!open) { setDeleteTarget(null); setDeleteError(null) } }}>
-        <DialogContent className="bg-white">
+        <DialogContent className="bg-card">
           <DialogHeader>
-            <DialogTitle className="text-[#1a1a1a]">Delete this standing availability?</DialogTitle>
+            <DialogTitle className="text-foreground">Delete this standing availability?</DialogTitle>
           </DialogHeader>
-          <p className="text-base text-[#6b6560]">
+          <p className="text-base text-foreground-secondary">
             This removes the record from your Bluesky account, so it will no longer be used for overlap checks. Copies already made elsewhere may remain.
           </p>
-          {deleteError && <p className="text-sm text-red-600">{deleteError}</p>}
+          {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
           <DialogFooter>
             <DialogClose asChild>
               <Button
                 type="button"
                 variant="outline"
-                className="border-[#e8e5df] text-[#6b6560] hover:bg-[#f0eeea] hover:text-[#1a1a1a] text-base px-5 py-2 rounded-lg"
+                className="border-input text-foreground-secondary hover:bg-muted hover:text-foreground text-base px-5 py-2 rounded-lg"
                 disabled={deleting}
               >
                 Cancel
@@ -659,7 +659,7 @@ export default function StandingAvailability() {
             <Button
               onClick={handleDelete}
               disabled={deleting}
-              className="bg-red-600 text-white hover:bg-red-700 text-base px-6 py-3 rounded-lg transition-colors"
+              className="bg-destructive text-primary-foreground hover:bg-destructive/90 text-base px-6 py-3 rounded-lg transition-colors"
             >
               {deleting ? 'Deleting...' : 'Delete'}
             </Button>
