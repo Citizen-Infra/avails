@@ -1,12 +1,15 @@
+@import "@citizen-infra/design-system/tokens.css";
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "@fontsource-variable/geist";
+@import "./open-index.css";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--cibc-font-sans);
   --font-heading: var(--font-sans);
+  --text-xs: 0.875rem;
+  --text-xs--line-height: 1.4;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -25,6 +28,14 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-primary-hover: var(--cibc-color-action-hover);
+  --color-foreground-secondary: var(--cibc-color-text-secondary);
+  --color-success: var(--cibc-color-success);
+  --color-success-muted: var(--cibc-color-success-surface);
+  --color-success-border: var(--cibc-color-success-border);
+  --color-warning: var(--cibc-color-warning);
+  --color-warning-muted: var(--cibc-color-warning-surface);
+  --color-warning-border: var(--cibc-color-warning-border);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -45,30 +56,25 @@
 }
 
 :root {
-  /* Warm neutral scale — hue ~80 (paper), low chroma. Mirrors the bespoke hex
-     palette (Paper Cream #faf9f6, Oat #f5f3ef, Hairline #e8e5df, Warm Ink #1a1a1a,
-     Stone #6b6560) so shadcn surfaces inherit warmth instead of cold grey.
-     See DESIGN.md "The No Cold Grey Rule". */
-  --background: oklch(0.985 0.004 85);
-  --foreground: oklch(0.205 0.005 60);
-  --card: oklch(0.985 0.004 85);
-  --card-foreground: oklch(0.205 0.005 60);
-  --popover: oklch(0.99 0.004 85);
-  --popover-foreground: oklch(0.205 0.005 60);
-  --primary: oklch(0.205 0.005 60);
-  --primary-foreground: oklch(0.985 0.004 85);
-  --secondary: oklch(0.962 0.005 80);
-  --secondary-foreground: oklch(0.205 0.005 60);
-  --muted: oklch(0.962 0.005 80);
-  --muted-foreground: oklch(0.52 0.008 70);
-  --accent: oklch(0.95 0.006 80);
-  --accent-foreground: oklch(0.205 0.005 60);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.915 0.006 78);
-  --input: oklch(0.915 0.006 78);
-  /* Focus ring = Gather Teal (brand accent), aids the keyboard-a11y work in #86 */
-  --ring: oklch(0.62 0.1 185);
-  --radius: 0.625rem;
+  --background: var(--cibc-color-surface-subtle);
+  --foreground: var(--cibc-color-text);
+  --card: var(--cibc-color-surface);
+  --card-foreground: var(--cibc-color-text);
+  --popover: var(--cibc-color-surface);
+  --popover-foreground: var(--cibc-color-text);
+  --primary: var(--cibc-color-action);
+  --primary-foreground: var(--cibc-color-on-action);
+  --secondary: var(--cibc-color-surface-subtle);
+  --secondary-foreground: var(--cibc-color-text);
+  --muted: var(--cibc-color-surface);
+  --muted-foreground: var(--cibc-color-text-muted);
+  --accent: var(--cibc-color-selected);
+  --accent-foreground: var(--cibc-color-on-selected);
+  --destructive: var(--cibc-color-danger);
+  --border: var(--cibc-color-border);
+  --input: var(--cibc-color-control-border);
+  --ring: var(--cibc-color-focus);
+  --radius: var(--cibc-radius-control);
 }
 
 @layer base {

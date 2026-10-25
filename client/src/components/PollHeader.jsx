@@ -25,18 +25,18 @@ export default function PollHeader({ poll, did, rkey, isCreator, onEditClick, on
   return (
     <div className="space-y-4">
       {/* Title + badges */}
-      <div className="flex items-start gap-3">
-        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[#1a1a1a] flex-1 min-w-0">
+      <div className="flex flex-wrap items-start gap-3">
+        <h1 className="font-bold tracking-tight text-foreground flex-1 min-w-[min(100%,18rem)]">
           {poll.title}
         </h1>
         <div className="flex items-center gap-2 shrink-0 mt-1.5">
           {poll.community && (
-            <span className="text-sm px-3 py-1.5 rounded-full border border-[#e8e5df] font-medium text-[#6b6560]">{poll.community}</span>
+            <span className="text-sm px-3 py-1.5 rounded-sm border border-border font-medium text-foreground-secondary">{poll.community}</span>
           )}
           <span className={`text-sm px-3 py-1.5 rounded-full font-medium ${
             isOpen
-              ? 'bg-[#ccfbf1] text-[#0d9488]'
-              : 'bg-[#f0eeea] text-[#8a8580]'
+              ? 'bg-accent text-primary'
+              : 'bg-muted text-muted-foreground'
           }`}>
             {isOpen ? 'Open' : 'Scheduled'}
           </span>
@@ -45,16 +45,16 @@ export default function PollHeader({ poll, did, rkey, isCreator, onEditClick, on
 
       {/* Description */}
       {poll.description && (
-        <p className="text-lg text-[#6b6560] leading-relaxed break-words">
+        <p className="text-lg text-foreground-secondary leading-relaxed break-words">
           {descriptionLinks(poll.description).map((part, index) => part.href
-            ? <a key={index} href={part.href} target="_blank" rel="noopener noreferrer" className="text-[#0f766e] underline underline-offset-2 hover:text-[#1a1a1a] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f766e]">{part.text}</a>
+            ? <a key={index} href={part.href} target="_blank" rel="noopener noreferrer" className="text-primary-hover underline underline-offset-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">{part.text}</a>
             : part.text)}
         </p>
       )}
 
       {/* Metadata row — informational only */}
       {poll.timezone && (
-        <p className="text-sm text-[#a09a94]">
+        <p className="text-sm text-muted-foreground">
           {Intl.DateTimeFormat().resolvedOptions().timeZone === poll.timezone
             ? poll.timezone
             : `Showing times in ${Intl.DateTimeFormat().resolvedOptions().timeZone}`}
@@ -64,11 +64,11 @@ export default function PollHeader({ poll, did, rkey, isCreator, onEditClick, on
       {/* Actions row */}
       <div className="flex items-center gap-2 flex-wrap">
         {isCreator && isOpen && onScheduleClick && !schedulingMode && (
-          <Button onClick={onScheduleClick} className="bg-[#0d9488] text-white hover:bg-[#0f766e]">
+          <Button onClick={onScheduleClick} className="bg-primary text-primary-foreground hover:bg-primary-hover">
             Schedule meeting
           </Button>
         )}
-        <Button variant="outline" onClick={copyLink} className="border-[#d8d4cf] text-[#6b6560] hover:bg-[#f0eeea]">
+        <Button variant="outline" onClick={copyLink} className="border-input text-foreground-secondary hover:bg-muted">
           {copied ? 'Copied!' : 'Copy link'}
         </Button>
         {showCalendarConnect && (
@@ -76,7 +76,7 @@ export default function PollHeader({ poll, did, rkey, isCreator, onEditClick, on
             variant="outline"
             onClick={onConnectGoogleCalendar}
             disabled={connectingCalendar}
-            className="border-[#d8d4cf] text-[#6b6560] hover:bg-[#f0eeea] gap-1.5"
+            className="border-input text-foreground-secondary hover:bg-muted gap-1.5"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="1.8" />
@@ -88,7 +88,7 @@ export default function PollHeader({ poll, did, rkey, isCreator, onEditClick, on
         {isCreator && (isOpen || onUnscheduleClick) && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-[#6b6560] hover:bg-[#f0eeea]">
+              <Button variant="ghost" size="icon" aria-label="Poll actions" className="text-foreground-secondary hover:bg-muted">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -98,7 +98,7 @@ export default function PollHeader({ poll, did, rkey, isCreator, onEditClick, on
                 <DropdownMenuItem onClick={onUnscheduleClick}>Unschedule meeting</DropdownMenuItem>
               )}
               {onDeleteClick && (
-                <DropdownMenuItem onClick={onDeleteClick} className="text-red-600">Delete poll</DropdownMenuItem>
+                <DropdownMenuItem onClick={onDeleteClick} className="text-destructive">Delete poll</DropdownMenuItem>
               )}
             </DropdownMenuContent>
           </DropdownMenu>
@@ -107,8 +107,8 @@ export default function PollHeader({ poll, did, rkey, isCreator, onEditClick, on
         {/* Response status — inline after poll actions */}
         {submitted && (
           <>
-            <span className="text-[#d8d4cf] select-none" aria-hidden="true">·</span>
-            <span className="text-sm text-[#0d9488] font-medium flex items-center gap-1">
+            <span className="text-input select-none" aria-hidden="true">·</span>
+            <span className="text-sm text-primary font-medium flex items-center gap-1">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="shrink-0">
                 <path d="M3 8.5L6.5 12L13 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
@@ -116,11 +116,11 @@ export default function PollHeader({ poll, did, rkey, isCreator, onEditClick, on
             </span>
             {isOpen && responseRkey && (
               <>
-                <span className="text-[#d8d4cf] select-none" aria-hidden="true">·</span>
-                <button onClick={onEditResponse} className="text-sm text-[#6b6560] hover:text-[#1a1a1a] transition-colors">
+                <span className="text-input select-none" aria-hidden="true">·</span>
+                <button onClick={onEditResponse} className="text-sm text-foreground-secondary hover:text-foreground transition-colors">
                   Edit
                 </button>
-                <button onClick={onDeleteResponse} className="text-sm text-[#6b6560] hover:text-red-600 transition-colors">
+                <button onClick={onDeleteResponse} className="text-sm text-foreground-secondary hover:text-destructive transition-colors">
                   Delete
                 </button>
               </>

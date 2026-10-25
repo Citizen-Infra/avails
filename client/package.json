@@ -6,10 +6,13 @@
   "scripts": {
     "dev": "vite",
     "test": "node --test \"test/*.test.js\"",
+    "sync-foundation-assets": "node scripts/sync-foundation-assets.mjs",
     "build": "vite build",
+    "postbuild": "node scripts/check-foundation-assets.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@citizen-infra/design-system": "git+https://github.com/Citizen-Infra/design-system.git#6df5682711d11d1dde20453d0e06a78aca48b34f",
     "@fontsource-variable/geist": "^5.2.8",
     "@tailwindcss/postcss": "^4.2.2",
     "class-variance-authority": "^0.7.1",

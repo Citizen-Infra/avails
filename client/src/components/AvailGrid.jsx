@@ -6,7 +6,8 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-import { paginateDates } from '@/lib/datePagination'
+import { useGridDates } from '@/lib/useGridDates'
+import { slotColor } from '@/lib/gridPresentation'
 import '../styles/avail-grid.css'
 
 function generateSlots(dates, timeRange, slotMinutes) {
@@ -48,13 +49,6 @@ function computeHeatmap(responses, dates, times) {
   return map
 }
 
-// Heatmap: single green, alpha 20% (1 person) → 90% (everyone)
-function slotColor(count, total) {
-  if (!count || !total) return null
-  const alpha = 0.2 + 0.7 * (count / total)
-  return `rgba(34, 197, 94, ${alpha})`
-}
-
 const EMPTY_SET = new Set()
 const EMPTY_OBJ = {}
 
@@ -83,7 +77,7 @@ export default function AvailGrid({
   // Balance dates across pages while keeping seven as the maximum. An eight-date
   // poll is easier to scan as 4 + 4 than as 7 + 1.
   const [page, setPage] = useState(0)
-  const datePages = useMemo(() => paginateDates(dates), [dates])
+  const datePages = useGridDates(dates, containerRef)
   const totalPages = datePages.length
   const pageIndex = Math.min(page, Math.max(0, totalPages - 1))
   const visibleDates = datePages[pageIndex] || []
@@ -131,6 +125,26 @@ export default function AvailGrid({
   )
 
   const totalRespondents = effectiveResponses.length
+
+  // A compact in-cell tag cannot carry a full calendar title on a phone.
+  // Keep an ordinary native disclosure outside the painting surface, grouped
+  // by contiguous event on the currently visible dates. No provider call or
+  // selection handler belongs to this readout.
+  const calendarConflicts = useMemo(() => {
+    const entries = []
+    for (const date of visibleDates) {
+      for (let row = 0; row < times.length; row++) {
+        const time = times[row]
+        const key = `${date}T${time}`
+        if (!busySlots.has(key)) continue
+        const title = slotEvents[key] || 'Busy on your calendar'
+        const previous = row > 0 ? `${date}T${times[row - 1]}` : null
+        if (previous && busySlots.has(previous) && (slotEvents[previous] || 'Busy on your calendar') === title) continue
+        entries.push({ key, date, time, title })
+      }
+    }
+    return entries
+  }, [visibleDates, times, busySlots, slotEvents])
 
   // Precompute scheduled card positions: for each column, find first scheduled row and span
   const scheduledCards = useMemo(() => {
@@ -276,12 +290,16 @@ export default function AvailGrid({
   function getTooltipContent(date, time) {
     const key = `${date}T${time}`
     const count = heatmap[key] || 0
-    if (count === 0) return null
+    const conflict = busySlots.has(key)
+      ? `Busy on your calendar${slotEvents[key] ? `: ${slotEvents[key]}` : ''}`
+      : null
     const names = effectiveResponses
       .filter((r) => r.slots.includes(key))
       .map((r) => r.name)
-    if (focusedName) return `${focusedName} available`
-    return `${count}/${totalRespondents} available — ${names.join(', ')}`
+    const availability = count > 0
+      ? (focusedName ? `${focusedName} available` : `${count}/${totalRespondents} available — ${names.join(', ')}`)
+      : null
+    return [availability, conflict].filter(Boolean).join(' · ') || null
   }
 
   // Keyboard navigation (WCAG 2.1.1) — roving tabindex over cells with arrow
@@ -338,11 +356,11 @@ export default function AvailGrid({
               aria-label="Show previous dates"
               onClick={() => setPage(pageIndex - 1)}
               disabled={!hasLeft}
-              className={cn('inline-flex h-11 w-11 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0d9488] focus-visible:ring-offset-2', hasLeft ? 'text-[#1a1a1a] hover:bg-[#f0eeea]' : 'text-[#d8d4cf] cursor-default')}
+              className={cn('inline-flex h-11 w-11 items-center justify-center rounded-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2', hasLeft ? 'text-foreground hover:bg-muted' : 'text-muted-foreground cursor-default')}
             >
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 4l-6 6 6 6"/></svg>
             </button>
-            <div aria-live="polite" className="text-center text-sm font-medium text-[#6b6560]">
+            <div aria-live="polite" className="text-center text-sm font-medium text-foreground-secondary">
               <span>{formatDate(visibleDates[0]).monthDay} — {formatDate(visibleDates[visibleDates.length - 1]).monthDay}</span>
               <span className="ml-2 font-normal">Page {pageIndex + 1} of {totalPages}</span>
             </div>
@@ -351,7 +369,7 @@ export default function AvailGrid({
               aria-label="Show next dates"
               onClick={() => setPage(pageIndex + 1)}
               disabled={!hasRight}
-              className={cn('inline-flex h-11 w-11 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0d9488] focus-visible:ring-offset-2', hasRight ? 'text-[#1a1a1a] hover:bg-[#f0eeea]' : 'text-[#d8d4cf] cursor-default')}
+              className={cn('inline-flex h-11 w-11 items-center justify-center rounded-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2', hasRight ? 'text-foreground hover:bg-muted' : 'text-muted-foreground cursor-default')}
             >
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 4l6 6-6 6"/></svg>
             </button>
@@ -368,9 +386,9 @@ export default function AvailGrid({
             role="group"
             aria-label="Availability grid. Use arrow keys to move between time slots and Space to toggle your availability."
             onKeyDown={handleGridKeyDown}
-            className="grid w-full rounded-lg border border-[#d8d4cf] overflow-hidden"
+            className="grid w-full rounded-sm border border-input overflow-hidden"
             style={{
-              gridTemplateColumns: `clamp(3rem, 12vw, 5rem) repeat(${visibleDates.length}, 1fr)`,
+              gridTemplateColumns: `var(--avails-grid-time-width) repeat(${visibleDates.length}, minmax(0, 1fr))`,
             }}
           >
             {/* Header row */}
@@ -382,10 +400,10 @@ export default function AvailGrid({
                 key={date}
                 className="flex flex-col items-center gap-0.5 pb-2 pt-1 text-center"
               >
-                <span className="text-[11px] font-medium text-[#8a8580] uppercase tracking-[0.1em]">
+                <span className="avails-grid-label font-medium text-muted-foreground">
                   {dayName}
                 </span>
-                <span className="text-base text-[#1a1a1a] font-semibold tabular-nums leading-none">{monthDay}</span>
+                <span className="text-base text-foreground font-semibold tabular-nums leading-tight">{monthDay}</span>
               </div>
             )
           })}
@@ -396,13 +414,13 @@ export default function AvailGrid({
               {/* Time label */}
               <div
                 key={`label-${time}`}
-                className="pr-2 flex items-start justify-end -mt-[7px]"
+                className={cn('pr-2 flex items-start justify-end', rowIdx > 0 && '-mt-[0.4375rem]')}
               >
                 <span className={cn(
-                  'text-xs tabular-nums leading-none',
+                  'avails-grid-time tabular-nums',
                   time.endsWith(':00')
-                    ? 'text-[#1a1a1a] font-medium'
-                    : 'text-[#a09a94]'
+                    ? 'text-foreground font-medium'
+                    : 'text-muted-foreground'
                 )}>
                   {time}
                 </span>
@@ -433,7 +451,7 @@ export default function AvailGrid({
                 const cellLabel =
                   `${fd.dayName} ${fd.monthDay} at ${time}` +
                   (totalRespondents > 0 ? `, ${heatCount} of ${totalRespondents} available` : ', no responses yet') +
-                  (isBusy ? ', busy on your calendar' : '') +
+                  (isBusy ? `, busy on your calendar${eventName ? `: ${eventName}` : ''}` : '') +
                   (isScheduled ? ', scheduled time' : '') +
                   (!readOnly ? (isMine ? ', selected' : ', not selected') : '')
 
@@ -447,7 +465,7 @@ export default function AvailGrid({
                     aria-pressed={readOnly ? undefined : isMine}
                     tabIndex={rowIdx === fRow && colIdx === fCol ? 0 : -1}
                     className={cn(
-                      'avail-cell h-8 cursor-pointer',
+                      'avail-cell cursor-pointer',
                       time.endsWith(':00') && rowIdx > 0 && slotMinutes < 60 && 'avail-cell--hour',
                       !(isScheduled && scheduledCards[colIdx]?.startRow === rowIdx) && 'overflow-hidden',
                       rowIdx === 0 && 'rounded-t',
@@ -476,7 +494,7 @@ export default function AvailGrid({
                     onPointerEnter={(e) => handlePointerEnter(e, rowIdx, colIdx)}
                   >
                     {showEventName && (
-                      <span className="absolute left-1 right-1 top-0.5 bottom-0.5 flex items-start rounded bg-rose-400/90 px-1.5 py-0.5 text-[11px] leading-tight text-white font-medium truncate pointer-events-none z-[1] shadow-sm">
+                      <span className="avails-grid-event absolute left-1 right-1 top-0.5 bottom-0.5 flex items-start rounded px-1.5 py-0.5 leading-tight font-medium truncate pointer-events-none z-[1]">
                         {eventName}
                       </span>
                     )}
@@ -484,11 +502,11 @@ export default function AvailGrid({
                     {isScheduled && scheduledCards[colIdx]?.startRow === rowIdx && (
                       <div
                         className="avail-scheduled-card"
-                        style={{ height: `calc(${scheduledCards[colIdx].span} * 2rem - 2px)` }}
+                        style={{ height: `calc(${scheduledCards[colIdx].span} * var(--avails-slot-height) - 2px)` }}
                       >
                         <span className="avail-scheduled-card__check">
                           <svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5L6.5 12L13 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                          Scheduled
+                          <span className="avail-scheduled-card__label sr-only">Scheduled</span>
                         </span>
                         <span className="avail-scheduled-card__time">
                           {scheduledCards[colIdx].startTime} – {scheduledCards[colIdx].endTime}
@@ -503,7 +521,7 @@ export default function AvailGrid({
                 return (
                   <Tooltip key={key}>
                     <TooltipTrigger asChild>{cell}</TooltipTrigger>
-                    <TooltipContent side="top">
+                    <TooltipContent side="top" className="max-w-[min(24rem,calc(100vw-2rem))] whitespace-normal [overflow-wrap:anywhere]">
                       <span>{tooltipText}</span>
                     </TooltipContent>
                   </Tooltip>
@@ -513,6 +531,22 @@ export default function AvailGrid({
           ))}
           </div>
         </div>
+        {calendarConflicts.length > 0 && (
+          <details className="rounded-sm border border-input p-3">
+            <summary className="min-h-11 cursor-pointer py-3 text-base font-medium text-foreground">Calendar conflicts ({calendarConflicts.length})</summary>
+            <ul className="space-y-3 pt-2 text-sm text-foreground-secondary">
+              {calendarConflicts.map(entry => {
+                const date = formatDate(entry.date)
+                return (
+                  <li key={entry.key} style={{ overflowWrap: 'anywhere' }}>
+                    <span className="font-medium text-foreground">{date.dayName} {date.monthDay}, {entry.time}</span>
+                    {' — '}{entry.title}
+                  </li>
+                )
+              })}
+            </ul>
+          </details>
+        )}
       </div>
     </TooltipProvider>
   )

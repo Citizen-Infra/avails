@@ -1,27 +1,27 @@
 import Logo from '@/components/Logo'
 export default function Terms() {
   return (
-    <div className="min-h-screen bg-[#faf9f6]">
-      <header className="border-b border-[#e8e5df]">
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-border">
         <div className="max-w-3xl mx-auto px-6 h-16 flex items-center justify-between">
           <a href="/" className="flex items-center gap-2.5">
             <Logo size={32} />
-            <span className="text-xl font-bold tracking-tight text-[#1a1a1a]">avails</span>
+            <span className="text-xl font-bold tracking-tight text-foreground">Avails</span>
           </a>
-          <nav className="flex items-center gap-6 text-base text-[#6b6560]">
-            <a href="/about" className="hover:text-[#1a1a1a] transition-colors">About</a>
+          <nav className="flex items-center gap-6 text-base text-foreground-secondary">
+            <a href="/about" className="hover:text-foreground transition-colors">About</a>
           </nav>
         </div>
       </header>
 
       <main className="max-w-3xl mx-auto px-6 py-12 space-y-8">
-        <h1 className="text-4xl font-bold text-[#1a1a1a] tracking-tight">Terms of Service</h1>
-        <p className="text-base text-[#6b6560]">Last updated: April 2, 2026</p>
+        <h1 className="text-4xl font-bold text-foreground tracking-tight">Terms of Service</h1>
+        <p className="text-base text-foreground-secondary">Last updated: April 2, 2026</p>
 
-        <div className="space-y-6 text-base text-[#1a1a1a] leading-relaxed">
+        <div className="space-y-6 text-base text-foreground leading-relaxed">
           <section className="space-y-3">
             <h2 className="text-xl font-semibold">What this is</h2>
-            <p>Avails is a free, open-source scheduling tool operated by <a href="https://github.com/Citizen-Infra" className="text-[#0d9488] underline underline-offset-2" target="_blank" rel="noopener noreferrer">Citizen Infrastructure</a>. These terms cover your use of avails.citizeninfra.org. The former address, avails.zhgnv.com, now redirects here.</p>
+            <p>Avails is a free, open-source scheduling tool operated by <a href="https://github.com/Citizen-Infra" className="text-primary underline underline-offset-2" target="_blank" rel="noopener noreferrer">Citizen Infrastructure</a>. These terms cover your use of avails.citizeninfra.org. The former address, avails.zhgnv.com, now redirects here.</p>
           </section>
 
           <section className="space-y-3">
@@ -42,12 +42,12 @@ export default function Terms() {
 
           <section className="space-y-3">
             <h2 className="text-xl font-semibold">Google Calendar</h2>
-            <p>Avails' use and transfer of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy" className="text-[#0d9488] underline underline-offset-2" target="_blank" rel="noopener noreferrer">Google API Services User Data Policy</a>, including the Limited Use requirements. Calendar data is processed in your browser only and is not stored or transmitted to our servers.</p>
+            <p>Avails' use and transfer of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy" className="text-primary underline underline-offset-2" target="_blank" rel="noopener noreferrer">Google API Services User Data Policy</a>, including the Limited Use requirements. Calendar data is processed in your browser only and is not stored or transmitted to our servers.</p>
           </section>
 
           <section className="space-y-3">
             <h2 className="text-xl font-semibold">Open source</h2>
-            <p>The avails source code is available under the AGPL-3.0 license at <a href="https://github.com/Citizen-Infra/avails" className="text-[#0d9488] underline underline-offset-2" target="_blank" rel="noopener noreferrer">github.com/Citizen-Infra/avails</a>. You are free to self-host your own instance.</p>
+            <p>The avails source code is available under the AGPL-3.0 license at <a href="https://github.com/Citizen-Infra/avails" className="text-primary underline underline-offset-2" target="_blank" rel="noopener noreferrer">github.com/Citizen-Infra/avails</a>. You are free to self-host your own instance.</p>
           </section>
 
           <section className="space-y-3">
@@ -57,7 +57,7 @@ export default function Terms() {
 
           <section className="space-y-3">
             <h2 className="text-xl font-semibold">Contact</h2>
-            <p>Questions about these terms? Open an issue on <a href="https://github.com/Citizen-Infra/avails/issues" className="text-[#0d9488] underline underline-offset-2" target="_blank" rel="noopener noreferrer">GitHub</a> or contact hello@citizeninfra.org.</p>
+            <p>Questions about these terms? Open an issue on <a href="https://github.com/Citizen-Infra/avails/issues" className="text-primary underline underline-offset-2" target="_blank" rel="noopener noreferrer">GitHub</a> or contact hello@citizeninfra.org.</p>
           </section>
         </div>
       </main>

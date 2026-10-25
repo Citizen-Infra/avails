@@ -16,13 +16,13 @@ export default function GuestModal({ open, onOpenChange, onSubmit, submitting })
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-white">
+      <DialogContent className="sm:max-w-md bg-card">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold text-[#1a1a1a]">Continue as guest</DialogTitle>
+          <DialogTitle className="text-xl font-bold text-foreground">Continue as guest</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
           <div className="space-y-2">
-            <Label htmlFor="guest-name" className="text-base text-[#1a1a1a]">Name</Label>
+            <Label htmlFor="guest-name" className="text-base text-foreground">Name</Label>
             <Input
               id="guest-name"
               placeholder="Your name"
@@ -30,12 +30,12 @@ export default function GuestModal({ open, onOpenChange, onSubmit, submitting })
               onChange={(e) => setName(e.target.value)}
               required
               autoFocus
-              className="border-[#e8e5df] text-base focus-visible:ring-[#0d9488]"
+              className="border-input text-base focus-visible:ring-ring"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="guest-email" className="text-base text-[#6b6560]">
-              Email address <span className="text-[#a09a94]">(optional — for calendar invite)</span>
+            <Label htmlFor="guest-email" className="text-base text-foreground-secondary">
+              Email address <span className="text-muted-foreground">(optional — for calendar invite)</span>
             </Label>
             <Input
               id="guest-email"
@@ -43,13 +43,13 @@ export default function GuestModal({ open, onOpenChange, onSubmit, submitting })
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="border-[#e8e5df] text-base focus-visible:ring-[#0d9488]"
+              className="border-input text-base focus-visible:ring-ring"
             />
           </div>
           <Button
             type="submit"
             disabled={!name.trim() || submitting}
-            className="w-full bg-[#0d9488] text-white hover:bg-[#0f766e] text-base py-3 rounded-lg"
+            className="w-full bg-primary text-primary-foreground hover:bg-primary-hover text-base py-3 rounded-lg"
           >
             {submitting ? 'Saving...' : 'Save availability'}
           </Button>

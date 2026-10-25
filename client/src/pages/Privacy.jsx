@@ -1,24 +1,24 @@
 import Logo from '@/components/Logo'
 export default function Privacy() {
   return (
-    <div className="min-h-screen bg-[#faf9f6]">
-      <header className="border-b border-[#e8e5df]">
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-border">
         <div className="max-w-3xl mx-auto px-6 h-16 flex items-center justify-between">
           <a href="/" className="flex items-center gap-2.5">
             <Logo size={32} />
-            <span className="text-xl font-bold tracking-tight text-[#1a1a1a]">avails</span>
+            <span className="text-xl font-bold tracking-tight text-foreground">Avails</span>
           </a>
-          <nav className="flex items-center gap-6 text-base text-[#6b6560]">
-            <a href="/about" className="hover:text-[#1a1a1a] transition-colors">About</a>
+          <nav className="flex items-center gap-6 text-base text-foreground-secondary">
+            <a href="/about" className="hover:text-foreground transition-colors">About</a>
           </nav>
         </div>
       </header>
 
       <main className="max-w-3xl mx-auto px-6 py-12 space-y-8">
-        <h1 className="text-4xl font-bold text-[#1a1a1a] tracking-tight">Privacy Policy</h1>
-        <p className="text-base text-[#6b6560]">Last updated: April 2, 2026</p>
+        <h1 className="text-4xl font-bold text-foreground tracking-tight">Privacy Policy</h1>
+        <p className="text-base text-foreground-secondary">Last updated: April 2, 2026</p>
 
-        <div className="space-y-6 text-base text-[#1a1a1a] leading-relaxed">
+        <div className="space-y-6 text-base text-foreground leading-relaxed">
           <section className="space-y-3">
             <h2 className="text-xl font-semibold">What avails does</h2>
             <p>Avails is an open-source group scheduling tool built on the AT Protocol. It helps people find meeting times that work for everyone.</p>
@@ -37,7 +37,7 @@ export default function Privacy() {
 
           <section className="space-y-3">
             <h2 className="text-xl font-semibold">Google Calendar</h2>
-            <p>If you choose to connect your Google Calendar, avails requests read-only access to check your busy times. Calendar data is processed in your browser and never sent to our server or stored anywhere. You can disconnect at any time by revoking access in your <a href="https://myaccount.google.com/permissions" className="text-[#0d9488] underline underline-offset-2" target="_blank" rel="noopener noreferrer">Google Account settings</a>.</p>
+            <p>If you choose to connect your Google Calendar, avails requests read-only access to check your busy times. Calendar data is processed in your browser and never sent to our server or stored anywhere. You can disconnect at any time by revoking access in your <a href="https://myaccount.google.com/permissions" className="text-primary underline underline-offset-2" target="_blank" rel="noopener noreferrer">Google Account settings</a>.</p>
           </section>
 
           <section className="space-y-3">
@@ -52,12 +52,12 @@ export default function Privacy() {
 
           <section className="space-y-3">
             <h2 className="text-xl font-semibold">Open source</h2>
-            <p>Avails is open source under the AGPL-3.0 license. You can inspect exactly what the code does at <a href="https://github.com/Citizen-Infra/avails" className="text-[#0d9488] underline underline-offset-2" target="_blank" rel="noopener noreferrer">github.com/Citizen-Infra/avails</a>.</p>
+            <p>Avails is open source under the AGPL-3.0 license. You can inspect exactly what the code does at <a href="https://github.com/Citizen-Infra/avails" className="text-primary underline underline-offset-2" target="_blank" rel="noopener noreferrer">github.com/Citizen-Infra/avails</a>.</p>
           </section>
 
           <section className="space-y-3">
             <h2 className="text-xl font-semibold">Contact</h2>
-            <p>For privacy questions, open an issue on <a href="https://github.com/Citizen-Infra/avails/issues" className="text-[#0d9488] underline underline-offset-2" target="_blank" rel="noopener noreferrer">GitHub</a> or contact hello@citizeninfra.org.</p>
+            <p>For privacy questions, open an issue on <a href="https://github.com/Citizen-Infra/avails/issues" className="text-primary underline underline-offset-2" target="_blank" rel="noopener noreferrer">GitHub</a> or contact hello@citizeninfra.org.</p>
           </section>
         </div>
       </main>

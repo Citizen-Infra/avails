@@ -24,8 +24,8 @@ export default function MeetingLinkField({
 
   return (
     <div className="space-y-1.5">
-      <label htmlFor={id} className="block text-sm font-medium text-[#6b6560]">
-        Meeting link <span className="font-normal text-[#a09a94]">(optional)</span>
+      <label htmlFor={id} className="block text-sm font-medium text-foreground-secondary">
+        Meeting link <span className="font-normal text-muted-foreground">(optional)</span>
       </label>
 
       <Input
@@ -41,7 +41,7 @@ export default function MeetingLinkField({
         placeholder="https://"
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? errorId : undefined}
-        className="h-10 border-[#d8d4cf] bg-[#faf9f6] text-[#1a1a1a] placeholder:text-[#a09a94]"
+        className="h-10 border-input bg-card text-foreground placeholder:text-muted-foreground"
       />
 
       <div className="flex items-center gap-3 min-h-5">
@@ -50,7 +50,7 @@ export default function MeetingLinkField({
             type="button"
             onClick={() => onChange(suggestion)}
             disabled={disabled}
-            className="text-sm text-[#0d9488] hover:text-[#0f766e] underline underline-offset-2 transition-colors disabled:opacity-50"
+            className="text-sm text-primary hover:text-primary-hover underline underline-offset-2 transition-colors disabled:opacity-50"
           >
             Use a Jitsi room
           </button>
@@ -60,7 +60,7 @@ export default function MeetingLinkField({
             type="button"
             onClick={() => onChange('')}
             disabled={disabled}
-            className="text-sm text-[#6b6560] hover:text-[#1a1a1a] underline underline-offset-2 transition-colors disabled:opacity-50"
+            className="text-sm text-foreground-secondary hover:text-foreground underline underline-offset-2 transition-colors disabled:opacity-50"
           >
             Clear
           </button>
@@ -68,7 +68,7 @@ export default function MeetingLinkField({
         {/* The server is the authority on what a valid link is, so its message
             is shown verbatim rather than re-worded here. */}
         {error && (
-          <p id={errorId} role="alert" className="text-sm text-[#b91c1c]">
+          <p id={errorId} role="alert" className="text-sm text-destructive">
             {error}
           </p>
         )}

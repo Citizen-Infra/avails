@@ -10,11 +10,11 @@ import CallBooking from './pages/CallBooking'
 
 function NotFound() {
   return (
-    <div style={{ maxWidth: 480, margin: '100px auto', padding: 20, textAlign: 'center' }}>
-      <h1 style={{ fontSize: 48, marginBottom: 8, color: '#1a1a1a' }}>404</h1>
-      <p style={{ color: '#6b6560', marginBottom: 24 }}>This page doesn't exist.</p>
-      <Link to="/" style={{ color: '#0d9488' }}>Go to Avails</Link>
-    </div>
+    <main style={{ maxWidth: 480, margin: '100px auto', padding: 20, textAlign: 'center' }}>
+      <h1 style={{ marginBottom: 8, color: 'var(--cibc-color-text)' }}>404</h1>
+      <p style={{ color: 'var(--cibc-color-text-secondary)', marginBottom: 24 }}>This page doesn't exist.</p>
+      <Link to="/" style={{ color: 'var(--cibc-color-link)' }}>Go to Avails</Link>
+    </main>
   )
 }
 

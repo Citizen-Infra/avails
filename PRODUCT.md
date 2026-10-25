@@ -68,10 +68,18 @@ Warm, human, communal. Avails should feel like a tool a co-op made for its membe
 
 ## Brand Commitments
 
+- **Approved shared family: Open Index.** Public Sans, canonical yellow/blue fields and semantic roles from `Citizen-Infra/design-system`, pinned to HTTPS Git revision `6df5682711d11d1dde20453d0e06a78aca48b34f`. This replaces the former Village Notice Board/Geist/teal visual direction, not the product's purpose, familiar controls or scheduling behaviour.
+- **Task-appropriate density.** Preserve a substantial desktop hierarchy, but use proportionate phone text and readable grid labels rather than imposing display-sized shared minimums on every control. Titles wrap whole words; the availability grid owns the reading space. Keep native touch/keyboard controls usable and user font resizing intact.
+- **Grid states belong to the same visual family.** Data/state colours must feel recognizably Open Index, not a generic teal/grey desktop-spreadsheet palette. Avoid blended washes that produce muddy olive/pink intermediate colours. Preserve overlap, personal selection, conflict and scheduled meanings through clear brand-related colour roles plus non-colour cues.
+- **Accepted grid mapping.** White empty cells and a brand-blue overlap ramp; personal availability uses yellow/ink inset edges without changing the data fill. Calendar conflicts use sparse ink/white hatching and white/ink title tags. Pending edits retain solid-add/dashed-remove edges; finalized time retains its blue/white check and complete time range.
 - **The name is "Avails" in anything user-facing** — headings, docs, comms, marketing. Lowercase `avails` is the repo, the package, and code identifiers only.
 - **License: AGPL-3.0.** Stewarded by the **Citizen Infrastructure Builders Club (CIBC)**, not owned by a company.
 - **Live at `avails.citizeninfra.org`.** `avails.zhgnv.com` permanently redirects there as of 2026-08-04; sign-in and MCP answer on the new host only.
 - No advertising, no upsell, no "Book a demo", and no telemetry that would undercut the sovereignty claim.
+
+## Visual-check Safety
+
+Visual changes must preserve anonymous responding, API/ATProto/OAuth contracts, timezone conversion, recurrence/booking semantics, private-response gating, existing legal copy and the frozen OpenMeet compatibility boundary. Visual-check browser fixtures must be synthetic and locally intercepted: they must not cause live account writes, invitations, community-feed publication or Telegram distribution. A local visual check is not authorization to publish or evidence of working live integrations. MIT shared-code and OFL font notices remain separate from the application's AGPL licence. [DESIGN.md](DESIGN.md) records the implemented visual roles and task-specific density; product purpose and constraints remain authoritative here.
 
 ## Evidence on Hand
 

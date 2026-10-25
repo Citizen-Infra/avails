@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import { cn } from '@/lib/utils'
-import { paginateDates } from '@/lib/datePagination'
+import { useGridDates } from '@/lib/useGridDates'
+import { slotColor } from '@/lib/gridPresentation'
 import MeetingLinkField from './MeetingLinkField'
 import '../styles/avail-grid.css'
 
@@ -49,14 +50,6 @@ function computeHeatmap(responses, dates, times) {
   return map
 }
 
-// Match AvailGrid's heatmap exactly so the green doesn't shift when the creator
-// switches from response view to scheduling view (Consensus Green, alpha 0.2 → 0.9).
-function slotColor(count, total) {
-  if (!count || !total) return null
-  const alpha = 0.2 + 0.7 * (count / total)
-  return `rgba(34, 197, 94, ${alpha})`
-}
-
 export default function SchedulingGrid({
   dates,
   timeRange,
@@ -103,7 +96,7 @@ export default function SchedulingGrid({
   // Date pagination mirrors AvailGrid. Pages are balanced while staying at seven
   // dates or fewer; selection persists because slot keys are page-independent.
   const [page, setPage] = useState(0)
-  const datePages = useMemo(() => paginateDates(dates), [dates])
+  const datePages = useGridDates(dates, gridRef)
   const totalPages = datePages.length
   const pageIndex = Math.min(page, Math.max(0, totalPages - 1))
   const visibleDates = datePages[pageIndex] || []
@@ -208,18 +201,18 @@ export default function SchedulingGrid({
   return (
     <div className="space-y-4">
       {/* Scheduling bar */}
-      <div className="rounded-lg bg-[#0d9488] text-white px-6 py-4 space-y-3 sm:space-y-0 sm:flex sm:items-center sm:justify-between sm:gap-4">
+      <div className="rounded-sm bg-primary text-primary-foreground px-6 py-4 space-y-3 xl:space-y-0 xl:flex xl:items-center xl:justify-between xl:gap-4">
         <p className="text-base font-medium">Select a time block on the grid</p>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           {/* Add-to-calendar picker */}
           {googleConnected && writableCalendars && writableCalendars.length > 0 ? (
             <label className="flex items-center gap-2 text-sm">
-              <span className="text-white/90">Add to:</span>
+              <span className="text-primary-foreground">Add to:</span>
               <select
                 value={chosenCalendarId}
                 onChange={(e) => onChooseCalendar(e.target.value)}
-                className="rounded-md bg-white text-[#1a1a1a] px-2 py-1.5 text-sm border-0 focus:ring-2 focus:ring-white"
+                className="rounded-sm bg-card text-foreground px-2 py-1.5 text-sm border-0 focus:ring-2 focus:ring-ring"
               >
                 <option value="none">Don't add</option>
                 {writableCalendars.map((c) => (
@@ -231,23 +224,23 @@ export default function SchedulingGrid({
             <button
               type="button"
               onClick={onConnectGoogle}
-              className="text-sm underline underline-offset-2 hover:text-white/80"
+              className="text-sm underline underline-offset-2 hover:decoration-2"
             >
               Connect Google Calendar to add event
             </button>
           )}
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={onCancel}
-              className="text-base px-4 py-2 rounded-lg bg-white/20 hover:bg-white/30 transition-colors"
+              className="text-base px-4 py-2 rounded-sm border border-current hover:underline transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={onConfirm}
               disabled={confirmDisabled}
-              className="text-base px-4 py-2 rounded-lg bg-white text-[#0d9488] font-medium hover:bg-white/90 transition-colors disabled:opacity-50"
+              className="text-base px-4 py-2 rounded-sm bg-card text-primary font-medium hover:bg-card/90 transition-colors disabled:opacity-50"
             >
               {confirmLoading ? 'Scheduling...' : 'Schedule'}
             </button>
@@ -271,7 +264,7 @@ export default function SchedulingGrid({
         </div>
       )}
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
 
       {/* Pagination arrows + month-range header — mirrors AvailGrid */}
       {totalPages > 1 && (
@@ -281,11 +274,11 @@ export default function SchedulingGrid({
             aria-label="Show previous dates"
             onClick={() => setPage(pageIndex - 1)}
             disabled={!hasLeft}
-            className={cn('inline-flex h-11 w-11 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0d9488] focus-visible:ring-offset-2', hasLeft ? 'text-[#1a1a1a] hover:bg-[#f0eeea]' : 'text-[#d8d4cf] cursor-default')}
+            className={cn('inline-flex h-11 w-11 items-center justify-center rounded-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2', hasLeft ? 'text-foreground hover:bg-muted' : 'text-muted-foreground cursor-default')}
           >
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 4l-6 6 6 6" /></svg>
           </button>
-          <div aria-live="polite" className="text-center text-sm font-medium text-[#6b6560]">
+          <div aria-live="polite" className="text-center text-sm font-medium text-foreground-secondary">
             <span>{formatDate(visibleDates[0]).monthDay} — {formatDate(visibleDates[visibleDates.length - 1]).monthDay}</span>
             <span className="ml-2 font-normal">Page {pageIndex + 1} of {totalPages}</span>
           </div>
@@ -294,7 +287,7 @@ export default function SchedulingGrid({
             aria-label="Show next dates"
             onClick={() => setPage(pageIndex + 1)}
             disabled={!hasRight}
-            className={cn('inline-flex h-11 w-11 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0d9488] focus-visible:ring-offset-2', hasRight ? 'text-[#1a1a1a] hover:bg-[#f0eeea]' : 'text-[#d8d4cf] cursor-default')}
+            className={cn('inline-flex h-11 w-11 items-center justify-center rounded-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2', hasRight ? 'text-foreground hover:bg-muted' : 'text-muted-foreground cursor-default')}
           >
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 4l6 6-6 6" /></svg>
           </button>
@@ -311,9 +304,9 @@ export default function SchedulingGrid({
           role="group"
           aria-label="Time-block picker. Use arrow keys to move, Space to start a block, Shift with up or down to extend it."
           onKeyDown={handleGridKeyDown}
-          className="grid w-full rounded-lg border border-[#d8d4cf] overflow-hidden"
+          className="grid w-full rounded-sm border border-input overflow-hidden"
           style={{
-            gridTemplateColumns: `clamp(3rem, 12vw, 5rem) repeat(${visibleDates.length}, 1fr)`,
+            gridTemplateColumns: `var(--avails-grid-time-width) repeat(${visibleDates.length}, minmax(0, 1fr))`,
           }}
         >
           {/* Header */}
@@ -322,8 +315,8 @@ export default function SchedulingGrid({
             const { dayName, monthDay } = formatDate(date)
             return (
               <div key={date} className="flex flex-col items-center gap-0.5 pb-2 pt-1 text-center">
-                <span className="text-[11px] font-medium text-[#8a8580] uppercase tracking-[0.1em]">{dayName}</span>
-                <span className="text-base text-[#1a1a1a] font-semibold tabular-nums leading-none">{monthDay}</span>
+                <span className="avails-grid-label font-medium text-muted-foreground">{dayName}</span>
+                <span className="text-base text-foreground font-semibold tabular-nums leading-tight">{monthDay}</span>
               </div>
             )
           })}
@@ -331,10 +324,10 @@ export default function SchedulingGrid({
           {/* Rows */}
           {times.map((time, rowIdx) => (
             <>
-              <div key={`label-${time}`} className="pr-2 flex items-start justify-end -mt-[7px]">
+              <div key={`label-${time}`} className={cn('pr-2 flex items-start justify-end', rowIdx > 0 && '-mt-[0.4375rem]')}>
                 <span className={cn(
-                  'text-xs tabular-nums leading-none',
-                  time.endsWith(':00') ? 'text-[#1a1a1a] font-medium' : 'text-[#a09a94]'
+                  'avails-grid-time tabular-nums',
+                  time.endsWith(':00') ? 'text-foreground font-medium' : 'text-muted-foreground'
                 )}>
                   {time}
                 </span>
@@ -361,7 +354,7 @@ export default function SchedulingGrid({
                     aria-pressed={isSelected}
                     tabIndex={rowIdx === fRow && colIdx === fCol ? 0 : -1}
                     className={cn(
-                      'avail-cell h-8',
+                      'avail-cell',
                       time.endsWith(':00') && rowIdx > 0 && slotMinutes < 60 && 'avail-cell--hour',
                       rowIdx === 0 && 'rounded-t',
                       rowIdx === times.length - 1 && 'rounded-b',
