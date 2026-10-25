@@ -24,6 +24,28 @@ There is no database. ATProto PDS is the data store:
 4. Creator's OAuth session is used for the creator's own PDS writes (poll create/finalize/unschedule). Participant **responses** no longer ride the creator's session — they go to avails' service repo (see [Service identity](#service-identity)); only the legacy fallback path still uses the creator's session for responses.
 5. Private key for `private_key_jwt` auth stored as base64-encoded JWK in `ATPROTO_PRIVATE_KEY` env var
 
+### OAuth/DID response budgets
+
+`lib/budgetedOAuthClient.js` injects a bounded transport for remote OAuth metadata,
+DID documents, PAR, token exchange and refresh responses. Before SDK JSON parsing
+and Zod validation, `lib/oauthInputBudget.js` limits each response to 512 KiB of
+decoded body bytes, 32 container levels, 1024 entries per array/object, and 8192
+lexical JSON tokens (including member names). A ten-second network/body deadline
+and caller cancellation cover pending reads. The byte ceiling follows the SDK's
+existing safe-fetch default; the structural ceilings are conservative application
+policy, not protocol maxima. Unusually large valid control-plane documents are
+intentionally rejected rather than truncated. Missing or inaccurate Content-Length
+does not bypass streamed byte counting.
+
+The SDK's session-construction hook supplies the original transport to PDS record
+requests; no URL-path guessing is used to exempt data traffic. Token refreshes
+triggered by those requests still use the bounded server factory. Preserve this
+split, existing DPoP/PKCE, nonce retries, scopes, session stores and lazy restore
+when updating the SDK. The lexical preflight is not a JSON grammar parser; the SDK
+still parses syntax and validates schemas. These are per-response mitigations, not
+a global concurrency/CPU budget or a patched Zod dependency. They do not apply to
+unrelated public PDS fetches, service-account transport or calendar integrations.
+
 ## Service identity
 
 avails has its own ATProto account (a `did:plc`, app-password auth — **not** OAuth; #77 investigated did:web and deferred it). `lib/serviceSession.js` logs in via `com.atproto.server.createSession` and refreshes on expiry, exposing authenticated `serviceCreateRecord`/`servicePutRecord`/`serviceDeleteRecord`/`serviceGetRecord`.

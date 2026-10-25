@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { ATPROTO_SCOPE } from '../lib/oauthScopes.js';
-import { NodeOAuthClient } from '@atproto/oauth-client-node';
+import { BudgetedOAuthClient } from '../lib/budgetedOAuthClient.js';
 import { JoseKey } from '@atproto/jwk-jose';
 import { createSession, deleteSession, getSession, sessions } from '../lib/sessionStore.js';
 import { registerStore, markDirty } from '../lib/persistence.js';
@@ -69,7 +69,7 @@ export async function getClient() {
   }
   const key = await JoseKey.fromImportable(keyJson);
 
-  _client = new NodeOAuthClient({
+  _client = new BudgetedOAuthClient({
     clientMetadata: {
       client_id: clientId,
       client_name: 'Avails',
