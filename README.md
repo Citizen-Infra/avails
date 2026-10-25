@@ -94,6 +94,20 @@ Use the repo's Node 22 line ([`.node-version`](.node-version)); the shared packa
 
 ### Tests
 
+Client Node tooling (`shadcn`, the Tailwind PostCSS adapter, Vite and PostCSS)
+belongs in the `devDependencies` section of `client/package.json`; it is not
+imported by application JavaScript.
+The existing React/Radix components remain the browser UI—updating the shadcn CLI
+does not regenerate them. Tailwind's CSS entry and the pinned shared fonts/tokens
+are still consumed when building the static client.
+
+Install dev dependencies for a client build, even when preparing production:
+`cd client && npm ci --include=dev && npm test && npm run build`. CI installs them
+by default, and Railway explicitly uses `--include=dev` before building. The
+running Express server serves `client/dist`, not the CLI or Vite dev server.
+Evaluate the **full** client audit as well as dependency roles: moving a package
+to dev-only does not repair it or eliminate developer/build/supply-chain risk.
+
 ```bash
 cd server && npm test    # Validation + route integration tests (Node built-in test runner)
 ```
