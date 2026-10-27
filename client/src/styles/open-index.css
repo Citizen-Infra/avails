@@ -45,6 +45,9 @@ footer a:focus-visible { outline-color: var(--cibc-color-focus-inverse); }
 .avails-landing footer { margin-top: 0; }
 .avails-grid-label { font-size: var(--avails-text-caption); line-height: 1.3; }
 .avails-grid-time { font-size: var(--avails-text-caption); line-height: 1; }
+/* Dated poll grids are dense paint surfaces, not general-purpose buttons.
+   Keep 24px rows at the default root; weekly pattern geometry stays unchanged. */
+.avails-dated-grid { --avails-slot-height: 1.5rem; column-gap: 0.25rem; }
 .avails-grid-event {
   color: var(--cibc-color-text);
   background: var(--cibc-color-surface);

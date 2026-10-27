@@ -83,6 +83,7 @@ export default function SchedulingGrid({
     [responses, dates, times]
   )
   const totalRespondents = responses.length
+  const maxOverlap = useMemo(() => Object.values(heatmap).reduce((max, count) => Math.max(max, count), 0), [heatmap])
 
   // Drag state — all refs except selectedSlots which needs to trigger render
   const downCell = useRef(null)
@@ -134,6 +135,19 @@ export default function SchedulingGrid({
     setDragPending(pending)
   }, [computePendingKeys])
 
+  // Touch pointers retain implicit capture on the starting cell, so entering
+  // another row does not fire pointerenter. Hit-test movement like AvailGrid,
+  // while preserving this picker's single-date constraint.
+  const handlePointerMove = useCallback((e) => {
+    if (!downCell.current) return
+    const cell = document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-row]')
+    if (!cell || !gridRef.current?.contains(cell)) return
+    const row = Number(cell.dataset.row)
+    if (!Number.isInteger(row) || row === curCell.current?.row) return
+    curCell.current = { row, col: downCell.current.col }
+    setDragPending(computePendingKeys(downCell.current, curCell.current))
+  }, [computePendingKeys])
+
   const commitDrag = useCallback(() => {
     if (!downCell.current) return
     const pending = computePendingKeys(downCell.current, curCell.current)
@@ -147,8 +161,12 @@ export default function SchedulingGrid({
 
   useEffect(() => {
     document.addEventListener('pointerup', commitDrag)
-    return () => document.removeEventListener('pointerup', commitDrag)
-  }, [commitDrag])
+    document.addEventListener('pointermove', handlePointerMove)
+    return () => {
+      document.removeEventListener('pointerup', commitDrag)
+      document.removeEventListener('pointermove', handlePointerMove)
+    }
+  }, [commitDrag, handlePointerMove])
 
   // Keyboard navigation (WCAG 2.1.1). Arrows move; Space/Enter anchors a single
   // cell; Shift+Up/Down extends the time block within the anchor's column.
@@ -304,7 +322,7 @@ export default function SchedulingGrid({
           role="group"
           aria-label="Time-block picker. Use arrow keys to move, Space to start a block, Shift with up or down to extend it."
           onKeyDown={handleGridKeyDown}
-          className="grid w-full rounded-sm border border-input overflow-hidden"
+          className="avails-dated-grid grid w-full"
           style={{
             gridTemplateColumns: `var(--avails-grid-time-width) repeat(${visibleDates.length}, minmax(0, 1fr))`,
           }}
@@ -335,7 +353,7 @@ export default function SchedulingGrid({
               {visibleDates.map((date, colIdx) => {
                 const key = `${date}T${time}`
                 const heatCount = heatmap[key] || 0
-                const bgColor = heatCount > 0 ? slotColor(heatCount, totalRespondents) : undefined
+                const bgColor = heatCount > 0 ? slotColor(heatCount, maxOverlap) : undefined
                 const isPending = dragPending && dragPending.has(key)
                 const isSelected = selectedSlots.has(key)
                 const fd = formatDate(date)
@@ -367,7 +385,13 @@ export default function SchedulingGrid({
                     }}
                     onPointerDown={(e) => handlePointerDown(e, rowIdx, colIdx)}
                     onPointerEnter={(e) => handlePointerEnter(e, rowIdx, colIdx)}
-                  />
+                  >
+                    {(isPending || isSelected) && (
+                      <svg className="avail-cell__mark" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <path d="M3 8l3 3 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </div>
                 )
               })}
             </>

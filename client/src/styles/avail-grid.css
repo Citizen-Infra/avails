@@ -208,6 +208,105 @@
   outline-style: dashed;
 }
 
+/* Compact dated polls: a borderless blue field. Keep the recurring weekly
+   pattern's existing rules and states outside this scoped refinement. */
+/* The portalled positioning wrapper also has a hit area. Disabling just its
+   child leaves an invisible overlay that can swallow the next paint gesture.
+   Scope this to passive grid tooltips, not other popovers or tooltips. */
+[data-radix-popper-content-wrapper]:has(> .avails-grid-tooltip) {
+  pointer-events: none;
+}
+
+.avails-dated-grid .avail-cell {
+  border-radius: 0;
+}
+
+.avails-dated-grid .avail-cell::after {
+  content: none;
+}
+
+.avails-dated-grid .avail-cell:not(.avail-cell--readonly):hover::before {
+  border: 0;
+  outline: 0;
+  background: color-mix(in srgb, var(--cibc-color-action) 8%, transparent);
+}
+
+.avails-dated-grid .avail-cell--mine,
+.avails-dated-grid .avail-cell--pending-add,
+.avails-dated-grid .avail-cell--pending-remove,
+.avails-dated-grid .avail-cell--pending-schedule {
+  outline: none;
+  box-shadow: none;
+}
+
+.avails-dated-grid .avail-cell--mine,
+.avails-dated-grid .avail-cell--pending-add,
+.avails-dated-grid .avail-cell--pending-schedule {
+  background-color: var(--cibc-color-selected);
+}
+
+.avails-dated-grid .avail-cell--pending-remove {
+  background-color: var(--cibc-color-surface);
+}
+
+/* A compact blue/white check carries ownership without covering the data fill.
+   The minus distinguishes removal; both states also retain accessible labels. */
+.avail-cell__mark,
+.avails-poll .avails-mine-key {
+  color: var(--cibc-color-on-action);
+  background: var(--cibc-color-action);
+  box-shadow: none;
+}
+
+.avail-cell__mark {
+  position: absolute;
+  right: 0.25rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1rem;
+  height: 1rem;
+  padding: 1px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.avails-dated-grid .avail-cell--active {
+  outline: 2px solid var(--cibc-color-action);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+
+.avails-dated-grid .avail-scheduled-card {
+  left: 0;
+  right: 0;
+  gap: 0;
+  padding: 1px 0;
+  border-radius: 0;
+  outline: none;
+}
+
+.avails-dated-grid .avail-scheduled-card__time {
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.avails-dated-grid .avail-scheduled-card__check svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.avails-dated-grid .avail-cell:has(.avail-cell__mark) .avails-grid-event {
+  padding-right: 1.25rem;
+}
+
+/* Focus is an interaction affordance, not a resting slot border. Keep it
+   inset so first/last rows cannot be clipped by the paint container. */
+.avails-dated-grid .avail-cell:focus-visible {
+  outline: 2px solid var(--cibc-color-text);
+  outline-offset: -2px;
+  box-shadow: inset 0 0 0 4px var(--cibc-color-surface);
+}
+
 /* Respect reduced-motion: drop the coaching pulse + scheduled shimmer */
 @media (prefers-reduced-motion: reduce) {
   .avail-cell { transition: none; }
