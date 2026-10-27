@@ -143,7 +143,7 @@ Source authority: [role adapter](client/src/styles/globals.css), [app geometry/t
 **Key Characteristics:**
 - Yellow masthead and landing-route field; pale task ground; blue actions and footer.
 - Public Sans, whole-word headings and task-specific phone density.
-- Compact borderless dated poll grids; layered blue overlap, blue/white personal checks and neutral conflict marks. Recurring weekly grids retain their existing rules.
+- Compact borderless dated poll grids; layered blue overlap, glyph-free personal availability and neutral conflict marks. Recurring weekly grids retain their existing rules.
 - Existing shadcn/Radix control owners and native mouse, touch and keyboard interactions.
 - Availability counts and names recoverable through interaction and accessible labels, not resting in-cell numbers.
 
@@ -168,7 +168,7 @@ Bright yellow/blue identity surrounds a quieter working surface. White is an int
 - **Ink**, **Secondary Ink** and **Muted Ink**: readable hierarchy; ink also supplies focus outlines.
 - **Rule** (`border`) and **Control Rule** (`control-border`): light dividers versus input, outer-grid and hour-boundary definition.
 
-**The Signal Separation Rule.** In dated polls, use blue intensity for overlap, a small blue/white check for ownership, neutral hatching for conflict, check/minus previews for pending edits and a check/time stamp for finalized time. No resting slot rules or yellow ownership edges. Never mix state fills into a third hue or rely on blue alone to identify scheduled time. Keep keyboard focus explicit.
+**The Signal Separation Rule.** In dated polls, use blue intensity for overlap, existing blue fill without glyphs for personal availability, neutral hatching for conflict, pale-blue/white fill previews for personal add/remove and a check/time stamp for finalized time. Personal selected-state labels retain non-colour ownership recovery; organizer block-selection checks remain. No resting slot rules or yellow ownership edges. Never mix state fills into a third hue or rely on blue alone to identify scheduled time. Keep keyboard focus explicit.
 
 ## Typography
 
@@ -195,7 +195,7 @@ Dated poll rows are 1.5rem (24px at the default root) tall, a dense two-dimensio
 
 ## Elevation & Depth
 
-Flat at rest: fields, poll cards, result panels and scheduled stamps use solid tones, not a hero gradient or shimmer. Dated grid selections use checks rather than inset edges; focus rings communicate keyboard position, not elevation. Existing Radix dialogs/menus retain their overlay behavior and utility shadows; the package's overlay-shadow token is not a new universal card style.
+Flat at rest: fields, poll cards, result panels and scheduled stamps use solid tones, not a hero gradient or shimmer. Personal dated-grid selections use blue fill without checks or inset edges; organizer blocks retain checks. Focus rings communicate keyboard position, not elevation. Existing Radix dialogs/menus retain their overlay behavior and utility shadows; the package's overlay-shadow token is not a new universal card style.
 
 The empty-cell hint runs twice over 2s after a 1s delay, stops on selection and is removed under reduced motion. Cell background transitions use 0.1s ease; reduced motion removes them. Do not turn this small coaching cue into ambient animation.
 
@@ -223,7 +223,7 @@ Open status is a pale-blue pill with action text. Scheduled poll-list status use
 Yellow top bar, existing sixteen-cell blue/white logo and Avails wordmark; sparse familiar navigation, no new app-shell sidebar. The footer is blue with white copy and yellow inverse focus. The standalone SVG favicon reuses the same mark geometry and resolves the two roles from the pin; it is not new artwork.
 
 ### Availability grid
-In dated polls the blue/white overlap base is unchanged by personal ownership: a small blue square with a white check marks personal slots; newly painted slots without saved overlap use selected pale blue. Busy cells retain sparse white/ink diagonal strokes and full-title recovery. Pending add uses pale blue with a check; removal previews white with a minus. Tentative organizer selection uses pale blue and a check, not the finalized time stamp. Hover is a faint blue wash with no outline. Only tapped read-only state and keyboard focus use inset outlines; white focus separation remains visible on solid blue. Preserve selection controllers, dates, timezone conversion, counts and accessible names. The 24px row and 0.25rem date gutter are scoped to these two poll grids, not weekly patterns.
+In dated polls the blue/white overlap base is unchanged by personal ownership. Personal availability has no per-slot checkmarks or replacement glyphs; newly painted slots without saved overlap use selected pale blue, while cells with group overlap retain that data fill. Busy cells retain sparse white/ink diagonal strokes and full-title recovery. Personal pending add uses pale blue; removal previews white, without check/minus icons. Tentative organizer selection still uses pale blue and a check, not the finalized time stamp. Hover is a faint blue wash with no outline. Only tapped read-only state and keyboard focus use inset outlines; white focus separation remains visible on solid blue. Preserve selection controllers, dates, timezone conversion, counts and accessible names, including personal ownership in read-only labels. Do not replace removed personal glyphs with another per-cell badge without explicit approval. The 24px row and 0.25rem date gutter are scoped to these two poll grids, not weekly patterns.
 
 Preserve drag painting, touch painting, roving focus and arrow/Space/Enter interactions. Organizer touch movement uses hit-testing within its own grid while retaining the single-date constraint. Counts/names remain available through existing tap/focus/hover and ARIA presentation; noninteractive tooltips must not intercept painting in nearby dense rows. Do not invent resting in-cell counts. In AvailGrid, the full existing local conflict title is included even when availability counts are absent. A native details/summary readout below and outside the paint container groups contiguous conflicts on visible dates and exposes date/start time/title without changing selection or calling a provider.
 
@@ -240,7 +240,7 @@ Solid blue with a white check and complete unbroken time range at 0.75rem in dat
 - **Do** consume pinned canonical roles and separate grid meanings with intensity, edges, hatching and explicit stamps rather than unrelated hues.
 - **Do** prioritize anonymous phone responders, proportional text, whole-word headings and user font resizing.
 - **Do** preserve keyboard/touch behavior and non-color recovery of counts, names, conflicts and scheduled time.
-- **Do** keep dated timetables compact and borderless, with checks/minus signs for selection/editing and explicit keyboard focus.
+- **Do** keep personal availability compact, borderless and glyph-free, with blue fills, accessible selected-state labels and explicit keyboard focus; reserve meeting checks for organizer blocks/finalized stamps.
 - **Do** retain the existing logo geometry and separate AGPL app, MIT shared-code and OFL font notices.
 
 ### Don't:

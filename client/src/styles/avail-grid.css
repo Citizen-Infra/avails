@@ -249,8 +249,8 @@
   background-color: var(--cibc-color-surface);
 }
 
-/* A compact blue/white check carries ownership without covering the data fill.
-   The minus distinguishes removal; both states also retain accessible labels. */
+/* Organizer block checks and the blue coaching key share the action palette.
+   Personal availability uses the existing blue fill, not a per-slot glyph. */
 .avail-cell__mark,
 .avails-poll .avails-mine-key {
   color: var(--cibc-color-on-action);
@@ -293,10 +293,6 @@
 .avails-dated-grid .avail-scheduled-card__check svg {
   width: 0.75rem;
   height: 0.75rem;
-}
-
-.avails-dated-grid .avail-cell:has(.avail-cell__mark) .avails-grid-event {
-  padding-right: 1.25rem;
 }
 
 /* Focus is an interaction affordance, not a resting slot border. Keep it

@@ -68,7 +68,6 @@ test('compact borderless poll grids use a poll-wide peak without changing weekly
     assert.match(source, /className="avails-dated-grid grid w-full"/)
     assert.match(source, /Object.values\(heatmap\).reduce/)
     assert.match(source, /slotColor\(heatCount, maxOverlap\)/)
-    assert.match(source, /avail-cell__mark/)
     assert.match(source, /aria-pressed=/)
   }
   assert.match(read('src/styles/open-index.css'), /\.avails-dated-grid \{ --avails-slot-height: 1.5rem; column-gap: 0.25rem; \}/)
@@ -78,6 +77,17 @@ test('compact borderless poll grids use a poll-wide peak without changing weekly
   const css = read('src/styles/avail-grid.css')
   assert.match(css, /\.avails-dated-grid \.avail-cell::after\s*\{\s*content: none/)
   assert.match(css, /\.avails-dated-grid \.avail-cell:focus-visible\s*\{\s*outline: 2px solid var\(--cibc-color-text\)/)
+})
+
+test('personal availability has no per-slot glyphs while meeting checks remain', () => {
+  const participant = read('src/components/AvailGrid.jsx')
+  assert.doesNotMatch(participant, /avail-cell__mark/)
+  assert.match(participant, /isMine && 'avail-cell--mine'/)
+  assert.match(participant, /aria-pressed=\{readOnly \? undefined : isMine\}/)
+  assert.ok(participant.includes("readOnly ? (isMine ? ', your availability' : '')"))
+  assert.match(participant, /avail-scheduled-card__check/)
+  assert.match(read('src/components/SchedulingGrid.jsx'), /avail-cell__mark/)
+  assert.match(read('src/styles/avail-grid.css'), /\.avails-dated-grid \.avail-cell--mine,[\s\S]*?background-color: var\(--cibc-color-selected\)/)
 })
 
 test('responsive pages cover every date exactly once and balance without losing selection keys', () => {

@@ -431,7 +431,7 @@ export default function AvailGrid({
               {visibleDates.map((date, colIdx) => {
                 const key = `${date}T${time}`
                 // When a name is focused, the grid is a view of their availability —
-                // drop the personal check so we don't mix two lenses at once.
+                // drop the personal state so we don't mix two lenses at once.
                 const isMine = mySlots.has(key) && !focusedName
                 const isBusy = busySlots.has(key)
                 const isScheduled = scheduledSlots.has(key)
@@ -454,7 +454,7 @@ export default function AvailGrid({
                   (totalRespondents > 0 ? `, ${heatCount} of ${totalRespondents} available` : ', no responses yet') +
                   (isBusy ? `, busy on your calendar${eventName ? `: ${eventName}` : ''}` : '') +
                   (isScheduled ? ', scheduled time' : '') +
-                  (!readOnly ? (isMine ? ', selected' : ', not selected') : '')
+                  (readOnly ? (isMine ? ', your availability' : '') : (isMine ? ', selected' : ', not selected'))
 
                 const cell = (
                   <div
@@ -477,8 +477,8 @@ export default function AvailGrid({
                       // Drag preview — highest priority
                       isPendingAdd && 'avail-cell--pending-add',
                       isPendingRemove && 'avail-cell--pending-remove',
-                      // Blue overlap, a personal check and neutral conflict hatching
-                      // remain independent. Pending edits preview add/remove.
+                      // Keep the blue overlap fill and neutral conflict hatching.
+                      // Personal edits use fill previews, not per-slot glyphs.
                       !isPendingAdd && !isPendingRemove && cn(
                         isMine && 'avail-cell--mine',
                         isBusy && 'avail-cell--busy',
@@ -491,11 +491,6 @@ export default function AvailGrid({
                     onPointerDown={(e) => handlePointerDown(e, rowIdx, colIdx)}
                     onPointerEnter={(e) => handlePointerEnter(e, rowIdx, colIdx)}
                   >
-                    {(isMine || isPendingAdd || isPendingRemove) && (
-                      <svg className="avail-cell__mark" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                        <path d={isPendingRemove ? 'M4 8h8' : 'M3 8l3 3 7-7'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    )}
                     {showEventName && (
                       <span className="avails-grid-event absolute left-1 right-1 top-0.5 bottom-0.5 flex items-start rounded px-1.5 py-0.5 leading-tight font-medium truncate pointer-events-none z-[1]">
                         {eventName}
