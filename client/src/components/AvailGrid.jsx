@@ -111,7 +111,7 @@ export default function AvailGrid({
   )
 
   // When a name is focused, filter responses to just that person's — heatmap
-  // becomes a single-person view (cells they picked = full green, everything
+  // becomes a single-person view (cells they picked = full blue, everything
   // else empty). Outline-style per-cell highlighting is gone in favor of this.
   const effectiveResponses = useMemo(() => {
     if (!focusedName) return responses
@@ -125,6 +125,7 @@ export default function AvailGrid({
   )
 
   const totalRespondents = effectiveResponses.length
+  const maxOverlap = useMemo(() => Object.values(heatmap).reduce((max, count) => Math.max(max, count), 0), [heatmap])
 
   // A compact in-cell tag cannot carry a full calendar title on a phone.
   // Keep an ordinary native disclosure outside the painting surface, grouped
@@ -386,7 +387,7 @@ export default function AvailGrid({
             role="group"
             aria-label="Availability grid. Use arrow keys to move between time slots and Space to toggle your availability."
             onKeyDown={handleGridKeyDown}
-            className="grid w-full rounded-sm border border-input overflow-hidden"
+            className="avails-dated-grid grid w-full"
             style={{
               gridTemplateColumns: `var(--avails-grid-time-width) repeat(${visibleDates.length}, minmax(0, 1fr))`,
             }}
@@ -430,12 +431,12 @@ export default function AvailGrid({
               {visibleDates.map((date, colIdx) => {
                 const key = `${date}T${time}`
                 // When a name is focused, the grid is a view of their availability —
-                // drop the teal "mine" overlay so we don't mix two lenses at once.
+                // drop the personal check so we don't mix two lenses at once.
                 const isMine = mySlots.has(key) && !focusedName
                 const isBusy = busySlots.has(key)
                 const isScheduled = scheduledSlots.has(key)
                 const heatCount = heatmap[key] || 0
-                const bgColor = heatCount > 0 ? slotColor(heatCount, totalRespondents) : undefined
+                const bgColor = heatCount > 0 ? slotColor(heatCount, maxOverlap) : undefined
                 const tooltipText = getTooltipContent(date, time)
 
                 const isPendingAdd = dragState && !dragState.removing && dragState.pending.has(key)
@@ -476,11 +477,8 @@ export default function AvailGrid({
                       // Drag preview — highest priority
                       isPendingAdd && 'avail-cell--pending-add',
                       isPendingRemove && 'avail-cell--pending-remove',
-                      // Three-layer composition:
-                      //  - bgColor (inline style)    = heatmap base, always paints when count>0
-                      //  - .avail-cell--mine          = translucent teal wash on top + left stripe
-                      //  - .avail-cell--busy          = translucent rose wash on top
-                      //  - .avail-cell--empty         = warm neutral tint when no heatmap
+                      // Blue overlap, a personal check and neutral conflict hatching
+                      // remain independent. Pending edits preview add/remove.
                       !isPendingAdd && !isPendingRemove && cn(
                         isMine && 'avail-cell--mine',
                         isBusy && 'avail-cell--busy',
@@ -493,6 +491,11 @@ export default function AvailGrid({
                     onPointerDown={(e) => handlePointerDown(e, rowIdx, colIdx)}
                     onPointerEnter={(e) => handlePointerEnter(e, rowIdx, colIdx)}
                   >
+                    {(isMine || isPendingAdd || isPendingRemove) && (
+                      <svg className="avail-cell__mark" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <path d={isPendingRemove ? 'M4 8h8' : 'M3 8l3 3 7-7'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
                     {showEventName && (
                       <span className="avails-grid-event absolute left-1 right-1 top-0.5 bottom-0.5 flex items-start rounded px-1.5 py-0.5 leading-tight font-medium truncate pointer-events-none z-[1]">
                         {eventName}
@@ -509,7 +512,7 @@ export default function AvailGrid({
                           <span className="avail-scheduled-card__label sr-only">Scheduled</span>
                         </span>
                         <span className="avail-scheduled-card__time">
-                          {scheduledCards[colIdx].startTime} – {scheduledCards[colIdx].endTime}
+                          {scheduledCards[colIdx].startTime}–{scheduledCards[colIdx].endTime}
                         </span>
                       </div>
                     )}
@@ -521,7 +524,7 @@ export default function AvailGrid({
                 return (
                   <Tooltip key={key}>
                     <TooltipTrigger asChild>{cell}</TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-[min(24rem,calc(100vw-2rem))] whitespace-normal [overflow-wrap:anywhere]">
+                    <TooltipContent side="top" className="avails-grid-tooltip pointer-events-none max-w-[min(24rem,calc(100vw-2rem))] whitespace-normal [overflow-wrap:anywhere]">
                       <span>{tooltipText}</span>
                     </TooltipContent>
                   </Tooltip>

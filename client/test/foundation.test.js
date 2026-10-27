@@ -42,14 +42,42 @@ test('both dated grids use the same responsive pages, data scale and row geometr
   assert.match(read('src/components/AvailGrid.jsx'), /span} \* var\(--avails-slot-height\)/)
 })
 
-test('overlap intensity retains its monotonic count/total weighting', () => {
+test('vote layers grow monotonically and the largest overlap is solid blue', () => {
   assert.equal(slotColor(0, 3), null)
   assert.equal(slotColor(2, 0), null)
   const amounts = [1, 2, 3].map(count => Number(slotColor(count, 3).match(/ ([\d.]+)%/)[1]))
   assert.ok(amounts[0] < amounts[1] && amounts[1] < amounts[2])
-  assert.ok(Math.abs(amounts[2] - 90) < 0.001)
+  assert.equal(amounts[2], 100)
+  assert.equal(slotColor(1, 1), 'color-mix(in srgb, var(--cibc-data-high) 100%, var(--cibc-data-empty))')
+  assert.equal(slotColor(4, 3), slotColor(3, 3))
+  assert.equal(slotColor(-1, 3), null)
+  const weight = (count, max) => Number(slotColor(count, max).match(/ ([\d.]+)%/)[1])
+  assert.ok(weight(1, 10) < weight(1, 3), 'each vote layer gets lighter as the peak grows')
+  assert.equal(weight(7, 7), 100, 'a non-unanimous maximum still reaches solid blue')
+  for (const max of [1, 2, 10, 1000]) {
+    assert.equal(weight(max, max), 100)
+    assert.ok(weight(1, max) > 0)
+  }
   assert.match(slotColor(1, 3), /--cibc-data-high/)
   assert.match(slotColor(1, 3), /--cibc-data-empty/)
+})
+
+test('compact borderless poll grids use a poll-wide peak without changing weekly density', () => {
+  for (const name of ['AvailGrid', 'SchedulingGrid']) {
+    const source = read(`src/components/${name}.jsx`)
+    assert.match(source, /className="avails-dated-grid grid w-full"/)
+    assert.match(source, /Object.values\(heatmap\).reduce/)
+    assert.match(source, /slotColor\(heatCount, maxOverlap\)/)
+    assert.match(source, /avail-cell__mark/)
+    assert.match(source, /aria-pressed=/)
+  }
+  assert.match(read('src/styles/open-index.css'), /\.avails-dated-grid \{ --avails-slot-height: 1.5rem; column-gap: 0.25rem; \}/)
+  assert.doesNotMatch(read('src/components/WeeklyPatternGrid.jsx'), /avails-dated-grid/)
+  assert.match(read('src/components/SchedulingGrid.jsx'), /document.addEventListener\('pointermove', handlePointerMove\)/)
+  assert.match(read('src/components/SchedulingGrid.jsx'), /col: downCell.current.col/)
+  const css = read('src/styles/avail-grid.css')
+  assert.match(css, /\.avails-dated-grid \.avail-cell::after\s*\{\s*content: none/)
+  assert.match(css, /\.avails-dated-grid \.avail-cell:focus-visible\s*\{\s*outline: 2px solid var\(--cibc-color-text\)/)
 })
 
 test('responsive pages cover every date exactly once and balance without losing selection keys', () => {
@@ -110,6 +138,12 @@ test('calendar titles have focus/accessible recovery and a readout outside the p
   assert.match(grid, /<summary[^>]*>Calendar conflicts/)
   assert.match(grid, /\{' — '\}\{entry.title\}/)
   assert.match(grid, /max-w-\[min\(24rem/)
+  assert.match(grid, /TooltipContent[^\n]+pointer-events-none/)
+})
+
+test('passive grid tooltips disable hit testing on their portal wrapper as well as content', () => {
+  assert.match(read('src/components/AvailGrid.jsx'), /TooltipContent[^\n]+avails-grid-tooltip pointer-events-none/)
+  assert.match(read('src/styles/avail-grid.css'), /\[data-radix-popper-content-wrapper\]:has\(> \.avails-grid-tooltip\)\s*\{\s*pointer-events: none;/)
 })
 
 test('About keeps its factual phrases as ordinary prose after their headings', () => {

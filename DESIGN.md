@@ -120,7 +120,7 @@ components:
     padding: "1.5rem"
   avail-cell:
     backgroundColor: "{colors.data-empty}"
-    height: "2.75rem"
+    height: "1.5rem"
   scheduled-stamp:
     backgroundColor: "{colors.action}"
     textColor: "{colors.surface}"
@@ -143,7 +143,7 @@ Source authority: [role adapter](client/src/styles/globals.css), [app geometry/t
 **Key Characteristics:**
 - Yellow masthead and landing-route field; pale task ground; blue actions and footer.
 - Public Sans, whole-word headings and task-specific phone density.
-- Flat ruled grids; blue overlap, yellow/ink ownership edges and neutral conflict marks.
+- Compact borderless dated poll grids; layered blue overlap, blue/white personal checks and neutral conflict marks. Recurring weekly grids retain their existing rules.
 - Existing shadcn/Radix control owners and native mouse, touch and keyboard interactions.
 - Availability counts and names recoverable through interaction and accessible labels, not resting in-cell numbers.
 
@@ -152,15 +152,15 @@ Source authority: [role adapter](client/src/styles/globals.css), [app geometry/t
 Bright yellow/blue identity surrounds a quieter working surface. White is an intentional canonical surface; the old pure-white and cool-neutral prohibitions no longer apply.
 
 ### Primary
-- **Index Yellow** (`page`): masthead and the `/` route's field, including signed-in creation; inverse footer focus and the ink-bounded personal-slot edge derive from this role.
-- **Action Blue** (`action`, `action-hover`): primary actions, links, footer, save surfaces, dense scheduled stamps and the grid's overlap axis. White provides inverse text; stamps retain their check, full time range and white separation edge.
+- **Index Yellow** (`page`): masthead and the `/` route's field, including signed-in creation, and inverse footer focus. Dated poll selections do not use yellow.
+- **Action Blue** (`action`, `action-hover`): primary actions, links, footer, save surfaces, dense scheduled stamps and the grid's overlap axis. White provides inverse text; stamps retain their check and full time range.
 
 ### Secondary
 - **Selection Pale Blue** (`selected`): open status tags and pending/finalized grid selection; component text uses its assigned action role.
 - **Text-selection Coral** (`text-selection`): native text selection only. This is not a warm panel theme.
 
 ### Tertiary
-- **Overlap scale** (`data-empty`, `data-low`, `data-mid`, `data-high`): scoped inside `.avail-cell`, remap to surface white, selection pale blue, a 35% action-blue/white mix and action blue respectively. Frontmatter records these grid-local resolved values, not changes to upstream package tokens. Nonzero overlap retains weight `0.2 + 0.7 × count / total`; full overlap is 90% blue/10% white. Low supplies the empty-cell hint; pending edits use the canonical selected role rather than mid.
+- **Overlap scale** (`data-empty`, `data-low`, `data-mid`, `data-high`): scoped inside `.avail-cell`, remap to surface white, selection pale blue, a 35% action-blue/white mix and action blue respectively. Frontmatter records these grid-local resolved values, not changes to upstream package tokens. For poll-wide peak count `m`, each vote contributes opacity `1/m`; the composed blue weight for count `c` is `(1 − (1 − 1/m)^c) / (1 − (1 − 1/m)^m)`. Thus layers get lighter as the peak grows and the greatest overlap reaches 100% blue, whether unanimous or not. Compute the peak across all dates, not only the visible page. Zero overlap stays white. Low supplies the empty-cell hint; pending edits use canonical selected/white surfaces.
 - **Success**, **Warning** and **Danger**: retain separate text/surface/border families for confirmed results, cleanup warnings, errors and deletion outside the grid. Calendar conflicts instead use sparse opaque ink/white hatching and an opaque white/ink title tag, not a danger wash.
 
 ### Neutral
@@ -168,7 +168,7 @@ Bright yellow/blue identity surrounds a quieter working surface. White is an int
 - **Ink**, **Secondary Ink** and **Muted Ink**: readable hierarchy; ink also supplies focus outlines.
 - **Rule** (`border`) and **Control Rule** (`control-border`): light dividers versus input, outer-grid and hour-boundary definition.
 
-**The Signal Separation Rule.** Separate meanings through independent channels: blue intensity for overlap, yellow/ink edges for ownership, neutral hatching for conflict, solid/dashed pending edges and a check/time stamp for finalized time. Never mix translucent state fills into a third color or rely on blue alone to identify scheduled time.
+**The Signal Separation Rule.** In dated polls, use blue intensity for overlap, a small blue/white check for ownership, neutral hatching for conflict, check/minus previews for pending edits and a check/time stamp for finalized time. No resting slot rules or yellow ownership edges. Never mix state fills into a third hue or rely on blue alone to identify scheduled time. Keep keyboard focus explicit.
 
 ## Typography
 
@@ -181,7 +181,7 @@ Bright yellow/blue identity surrounds a quieter working surface. White is an int
 - **Headline:** ordinary page/poll H1, usually 700; the page clamp is approximately 30–48px at the default root. Display is approximately 36–64px. These are responsive rem-based roles, not fixed pixel root sizing.
 - **Title:** the common section role is 600 at 1.25rem; result text has its existing 1.25–1.5rem responsive assignment.
 - **Body:** fallback body is 1.125rem on desktop, 1rem below 50rem, line-height 1.5. Explicit utility copy/control assignments often remain 1–1.25rem; not every desktop paragraph is 18px.
-- **Control / Grid label:** ordinary controls use 1rem; grid labels, metadata and compact stamps use 0.875rem. Grid dates use 1rem. Time-axis labels use line-height 1; stamp ranges use 1.2. Dates and times use tabular numerals.
+- **Control / Grid label:** ordinary controls use 1rem; grid labels and metadata use 0.875rem. Compact dated stamps use 0.75rem so a check and the complete range fit one 24px row on narrow dates. Grid dates use 1rem. Time-axis labels use line-height 1; stamp ranges use 1.2. Dates and times use tabular numerals.
 
 **The Working Type Rule.** Proportionate phone density and whole-word headings take precedence over the shared package's display-sized floors. Keep the root resizable; never force a fixed root font or hyphenate ordinary heading words to fit.
 
@@ -191,17 +191,17 @@ Retain the standard product layout: a compact masthead, title/actions/timezone, 
 
 The spacing rhythm is quarter-rem based. Working groups usually use 0.5–1.5rem gaps, cards 1–2rem padding and major groups 3rem separation. The masthead has intrinsic height with a 4rem minimum and wrapping controls, not a fixed clipping box.
 
-Data rows are 2.75rem tall. Reserve a 4rem time axis and budget 6rem per date/day: capacity is `clamp(1, floor((width − 4 × rootSize) / (6 × rootSize)), 7)`. Both dated grids balance pages within that capacity; weekly pages use the same width budget. Keep selected slot keys across page/width changes instead of squeezing seven columns into a phone. Weekly phone grids scroll with the outer page and keep visible/sticky day headers; the first time label is not negatively shifted into the header.
+Dated poll rows are 1.5rem (24px at the default root) tall, a dense two-dimensional painting exception to ordinary 44px controls. A 12-hour half-hour field is 576px instead of 1,056px. Separate dates with 0.25rem gutters, not cell borders. Scope the height to `.avails-dated-grid`; recurring weekly rows remain 2.75rem. Reserve a 4rem time axis and budget 6rem per date/day: capacity is `clamp(1, floor((width − 4 × rootSize) / (6 × rootSize)), 7)`. Both dated grids balance pages within that capacity; weekly pages use the same width budget. Keep selected slot keys across page/width changes instead of squeezing seven columns into a phone. Weekly phone grids scroll with the outer page and keep visible/sticky day headers; the first time label is not negatively shifted into the header.
 
 ## Elevation & Depth
 
-Flat at rest: fields, poll cards, result panels and scheduled stamps use solid tones and rules, not a hero gradient or shimmer. The grid's opaque inset edges communicate selection and active state; focus rings communicate keyboard position, not elevation. Existing Radix dialogs/menus retain their overlay behavior and utility shadows; the package's overlay-shadow token is not a new universal card style.
+Flat at rest: fields, poll cards, result panels and scheduled stamps use solid tones, not a hero gradient or shimmer. Dated grid selections use checks rather than inset edges; focus rings communicate keyboard position, not elevation. Existing Radix dialogs/menus retain their overlay behavior and utility shadows; the package's overlay-shadow token is not a new universal card style.
 
 The empty-cell hint runs twice over 2s after a 1s delay, stops on selection and is removed under reduced motion. Cell background transitions use 0.1s ease; reduced motion removes them. Do not turn this small coaching cue into ambient animation.
 
 ## Shapes
 
-Small, practical corners: the adapter's base control radius is 0.25rem; its small/medium/extra-large derivatives are recorded in frontmatter. Outer grids and result sections use the small derivative, ordinary controls and poll cards the base, and status pills the full radius. Do not substitute the package's unused larger card radius for these actual app assignments. Grid rules are one-pixel, non-intercepting overlays; hour rules use the stronger control-border role.
+Small, practical corners: the adapter's base control radius is 0.25rem; its small/medium/extra-large derivatives are recorded in frontmatter. Result sections use the small derivative, ordinary controls and poll cards the base, and status pills the full radius. Dated grid cells are square, borderless and contiguous within each date. Weekly grid rules retain their non-intercepting one-pixel overlays. Do not substitute unused larger package radii.
 
 ## Components
 
@@ -223,12 +223,16 @@ Open status is a pale-blue pill with action text. Scheduled poll-list status use
 Yellow top bar, existing sixteen-cell blue/white logo and Avails wordmark; sparse familiar navigation, no new app-shell sidebar. The footer is blue with white copy and yellow inverse focus. The standalone SVG favicon reuses the same mark geometry and resolves the two roles from the pin; it is not new artwork.
 
 ### Availability grid
-The blue/white overlap base is unchanged by personal ownership: an inset 1px ink / 2px yellow / 1px ink edge marks personal slots. Busy cells add sparse 1px white/1px ink diagonal strokes separated by transparent gaps; combined mine/busy cells retain both independent marks. No state wash changes the overlap fill. Pending edits temporarily replace overlap with pale-blue selected: solid ink plus the ownership edge for add, dashed ink without yellow for remove. Pending schedule uses selected with a solid action outline and no finalized stamp. Hover is a thinner dashed ink/white mark. Active and keyboard-focus outlines sit outside with white separation; ownership edges survive focus, and pending removal remains dashed under focus. Preserve current hit areas, row geometry and controllers.
+In dated polls the blue/white overlap base is unchanged by personal ownership: a small blue square with a white check marks personal slots; newly painted slots without saved overlap use selected pale blue. Busy cells retain sparse white/ink diagonal strokes and full-title recovery. Pending add uses pale blue with a check; removal previews white with a minus. Tentative organizer selection uses pale blue and a check, not the finalized time stamp. Hover is a faint blue wash with no outline. Only tapped read-only state and keyboard focus use inset outlines; white focus separation remains visible on solid blue. Preserve selection controllers, dates, timezone conversion, counts and accessible names. The 24px row and 0.25rem date gutter are scoped to these two poll grids, not weekly patterns.
 
-Preserve drag painting, touch painting, roving focus and arrow/Space/Enter interactions. Counts/names remain available through existing tap/focus/hover and ARIA presentation; do not invent resting in-cell counts. In AvailGrid, the full existing local conflict title is included even when availability counts are absent. A native details/summary readout below and outside the paint container groups contiguous conflicts on visible dates and exposes date/start time/title without changing selection or calling a provider.
+Preserve drag painting, touch painting, roving focus and arrow/Space/Enter interactions. Organizer touch movement uses hit-testing within its own grid while retaining the single-date constraint. Counts/names remain available through existing tap/focus/hover and ARIA presentation; noninteractive tooltips must not intercept painting in nearby dense rows. Do not invent resting in-cell counts. In AvailGrid, the full existing local conflict title is included even when availability counts are absent. A native details/summary readout below and outside the paint container groups contiguous conflicts on visible dates and exposes date/start time/title without changing selection or calling a provider.
+
+**Passive overlay hit-testing rule.** For portalled grid tooltips, disable pointer events on both the visible content and its positioning wrapper, scoped by `.avails-grid-tooltip`; disabling only the content leaves an invisible hit area. Verify the actual `elementFromPoint` target beneath an open, wrapped tooltip and repeat add/remove gestures without dismissing it first. Do not apply this policy to interactive popovers or unrelated tooltips.
+
+**Roving-focus verification rule.** Keyboard navigation applies DOM focus on the next animation frame. Wait for the expected row/column to be the active, focus-visible, `tabIndex=0` cell before reading its outline; do not resolve an arbitrary `:focus-visible` cell and inspect it after focus may have moved away. Reset repeated scenarios through supported keyboard/pointer input or a fresh mount, not DOM `.focus()` alone: programmatic DOM focus does not update the grid's internal navigation coordinates. A failed test setup or unsynchronized sample alone is not evidence of a missing product focus ring.
 
 ### Scheduled stamp
-Solid blue with a white check, thin white separation edge and complete time range at the grid caption size. It spans `rowCount × slotHeight − 2px`, using the same row variable as the grid. “Scheduled” is screen-reader-only inside this compact stamp; the result panel and cell accessible labels state it explicitly. Do not claim a visible word that is not painted.
+Solid blue with a white check and complete unbroken time range at 0.75rem in dated polls, with no additional outline. It spans `rowCount × slotHeight − 2px`, using the same row variable as the grid. “Scheduled” is screen-reader-only inside this compact stamp; the result panel and cell accessible labels state it explicitly. Do not claim a visible word that is not painted.
 
 ## Do's and Don'ts
 
@@ -236,7 +240,7 @@ Solid blue with a white check, thin white separation edge and complete time rang
 - **Do** consume pinned canonical roles and separate grid meanings with intensity, edges, hatching and explicit stamps rather than unrelated hues.
 - **Do** prioritize anonymous phone responders, proportional text, whole-word headings and user font resizing.
 - **Do** preserve keyboard/touch behavior and non-color recovery of counts, names, conflicts and scheduled time.
-- **Do** keep the timetable flat and ruled, with explicit outlines for selection and pending edits.
+- **Do** keep dated timetables compact and borderless, with checks/minus signs for selection/editing and explicit keyboard focus.
 - **Do** retain the existing logo geometry and separate AGPL app, MIT shared-code and OFL font notices.
 
 ### Don't:

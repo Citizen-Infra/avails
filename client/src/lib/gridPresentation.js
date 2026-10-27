@@ -1,7 +1,11 @@
-// Data signal is separate from the brand action/selection palette.
-export function slotColor(count, total) {
-  if (!count || !total) return null
-  const alpha = 0.2 + 0.7 * (count / total)
+// Each vote adds a blue layer. More votes in the poll make each layer lighter;
+// normalize the composite so the largest overlap (not unanimity) is solid blue.
+export function slotColor(count, maxCount) {
+  if (count <= 0 || maxCount <= 0) return null
+  const layerOpacity = 1 / maxCount
+  const composite = 1 - (1 - layerOpacity) ** Math.min(count, maxCount)
+  const peak = 1 - (1 - layerOpacity) ** maxCount
+  const alpha = composite / peak
   return `color-mix(in srgb, var(--cibc-data-high) ${alpha * 100}%, var(--cibc-data-empty))`
 }
 
