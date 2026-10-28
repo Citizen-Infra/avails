@@ -1,3 +1,5 @@
+import { trackCompletion } from './analytics.js';
+
 const API_BASE = '';
 
 export async function apiFetch(path, options = {}) {
@@ -17,11 +19,11 @@ export async function apiFetch(path, options = {}) {
 }
 
 export async function getSession() { return apiFetch('/api/auth/session'); }
-export async function createPoll(data) { return apiFetch('/api/polls', { method: 'POST', body: JSON.stringify(data) }); }
+export async function createPoll(data) { return trackCompletion(apiFetch('/api/polls', { method: 'POST', body: JSON.stringify(data) }), 'poll_created'); }
 export async function getPoll(did, rkey) { return apiFetch(`/api/polls/${did}/${rkey}`); }
-export async function submitResponse(did, rkey, data) { return apiFetch(`/api/polls/${did}/${rkey}/responses`, { method: 'POST', body: JSON.stringify(data) }); }
+export async function submitResponse(did, rkey, data) { return trackCompletion(apiFetch(`/api/polls/${did}/${rkey}/responses`, { method: 'POST', body: JSON.stringify(data) }), 'response_submitted'); }
 export async function updateResponse(did, rkey, responseRkey, data) { return apiFetch(`/api/polls/${did}/${rkey}/responses/${responseRkey}`, { method: 'PUT', body: JSON.stringify(data) }); }
-export async function finalizePoll(did, rkey, finalTime, finalDuration, notifyEmails, meetingUrl) { return apiFetch(`/api/polls/${did}/${rkey}/finalize`, { method: 'PUT', body: JSON.stringify({ finalTime, finalDuration, notifyEmails, ...(meetingUrl !== undefined ? { meetingUrl } : {}) }) }); }
+export async function finalizePoll(did, rkey, finalTime, finalDuration, notifyEmails, meetingUrl) { return trackCompletion(apiFetch(`/api/polls/${did}/${rkey}/finalize`, { method: 'PUT', body: JSON.stringify({ finalTime, finalDuration, notifyEmails, ...(meetingUrl !== undefined ? { meetingUrl } : {}) }) }), 'meeting_finalized'); }
 // Changing the link on an already-scheduled poll re-issues the calendar invite,
 // which is why it is not just another finalize: the server sends "the link
 // changed", not "the meeting is booked". Unchanged values send nothing at all.
