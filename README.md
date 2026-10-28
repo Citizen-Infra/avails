@@ -92,6 +92,20 @@ Use the repo's Node 22 line ([`.node-version`](.node-version)); the shared packa
 
 [`main.jsx`](client/src/main.jsx) imports package `fonts.css` directly so Vite rebases its font URLs; [`globals.css`](client/src/styles/globals.css) imports the canonical tokens and aliases shadcn roles. Keep this font entry path. After an explicitly authorized pin change, `npm run sync-foundation-assets` in `client/` refreshes the public MIT/OFL notice copies and resolves the existing favicon geometry's colors from that pin. App AGPL, shared-code MIT and font OFL licences remain distinct; the package is not relicensed as the app. Visual-check fixtures must stay synthetic and locally intercepted as described in [PRODUCT.md](PRODUCT.md#visual-check-safety).
 
+### Social previews
+
+The homepage and poll links share [`og-image-open-index.png`](client/public/og-image-open-index.png), a 1200×630 Open Index cover. It contains only the existing mark, landing headline and a fixed illustrative grid—not participant names, response counts or availability. Poll links still inject their own escaped title and authored description (or date/time fallback) into document, OG and Twitter metadata. Unavailable polls retain the generic preview. The image alt text describes the shared artwork, not a particular poll.
+
+The editable source is [`client/scripts/social-preview.html`](client/scripts/social-preview.html). It uses the pinned foundation's local Public Sans/tokens, the favicon and the app's `slotOpacity` function; it reads no API or poll data. The source page is development-only, not an application route or a Vite build entry. Production ships the PNG, not the source page.
+
+To regenerate after an artwork change:
+
+1. Start the client with `npm run dev` in `client/` and open `/scripts/social-preview.html` in Chromium. Use a 1200×630 viewport, device scale factor 1 and 100% zoom; wait for `document.fonts.ready` and all 56 `.slot` elements.
+2. Capture the `.social-preview` element as PNG to `client/public/og-image-open-index.png` (Chromium DevTools' **Capture node screenshot**, or Playwright's `locator('.social-preview').screenshot()`). Check the actual output is 1200×630. Preserve an original capture while adding metadata.
+3. Embed truthful PNG text provenance with the source path/hash, foundation pin and renderer settings. With Impeccable installed, use `impeccable embed-prompt <image> --prompt "<render provenance>"`; this is code-rendered artwork, not AI-generated imagery. Keep private design briefs out of shipping files and verify the image pixels are unchanged by metadata embedding.
+4. Inspect the image at 1200, 600 and 360px wide. When checking a newly created public file through Vite, restart the dev server after export or intercept the saved PNG bytes: the dev server's public-file cache can otherwise briefly return HTML instead of the new image.
+5. Run client/server tests and the client build below. Stop the temporary browser/dev server afterward. Never use a real poll screenshot or live PDS resolution as a preview fixture.
+
 ### Tests
 
 Client Node tooling (`shadcn`, the Tailwind PostCSS adapter, Vite and PostCSS)

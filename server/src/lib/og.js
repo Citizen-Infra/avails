@@ -94,7 +94,7 @@ export function buildOgDescription(poll) {
 /**
  * Replace default OG/twitter/title tags in the index.html template with
  * poll-specific values. Uses targeted regexes keyed on property/name so the
- * replacement is tolerant of attribute-order tweaks.
+ * replacement updates the owned template's OG and Twitter tags together.
  */
 export function injectOg(html, { title, description, url, image }) {
   const t = escapeHtml(title);
@@ -103,14 +103,19 @@ export function injectOg(html, { title, description, url, image }) {
   const img = image ? escapeHtml(image) : null;
 
   let out = html
-    .replace(/<title>[\s\S]*?<\/title>/, `<title>${t}</title>`)
-    .replace(/<meta\s+name="description"\s+content="[^"]*"\s*\/?\s*>/i, `<meta name="description" content="${d}" />`)
-    .replace(/<meta\s+property="og:title"\s+content="[^"]*"\s*\/?\s*>/i, `<meta property="og:title" content="${t}" />`)
-    .replace(/<meta\s+property="og:description"\s+content="[^"]*"\s*\/?\s*>/i, `<meta property="og:description" content="${d}" />`)
-    .replace(/<meta\s+property="og:url"\s+content="[^"]*"\s*\/?\s*>/i, `<meta property="og:url" content="${u}" />`);
+    // Callbacks keep authored $& / $` / $' text literal, not replacement syntax.
+    .replace(/<title>[\s\S]*?<\/title>/, () => `<title>${t}</title>`)
+    .replace(/<meta\s+name="description"\s+content="[^"]*"\s*\/?\s*>/i, () => `<meta name="description" content="${d}" />`)
+    .replace(/<meta\s+property="og:title"\s+content="[^"]*"\s*\/?\s*>/i, () => `<meta property="og:title" content="${t}" />`)
+    .replace(/<meta\s+property="og:description"\s+content="[^"]*"\s*\/?\s*>/i, () => `<meta property="og:description" content="${d}" />`)
+    .replace(/<meta\s+property="og:url"\s+content="[^"]*"\s*\/?\s*>/i, () => `<meta property="og:url" content="${u}" />`)
+    .replace(/<meta\s+name="twitter:title"\s+content="[^"]*"\s*\/?\s*>/i, () => `<meta name="twitter:title" content="${t}" />`)
+    .replace(/<meta\s+name="twitter:description"\s+content="[^"]*"\s*\/?\s*>/i, () => `<meta name="twitter:description" content="${d}" />`);
 
   if (img) {
-    out = out.replace(/<meta\s+property="og:image"\s+content="[^"]*"\s*\/?\s*>/i, `<meta property="og:image" content="${img}" />`);
+    out = out
+      .replace(/<meta\s+property="og:image"\s+content="[^"]*"\s*\/?\s*>/i, () => `<meta property="og:image" content="${img}" />`)
+      .replace(/<meta\s+name="twitter:image"\s+content="[^"]*"\s*\/?\s*>/i, () => `<meta name="twitter:image" content="${img}" />`);
   }
 
   return out;
