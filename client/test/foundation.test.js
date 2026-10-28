@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
-import { slotColor, dateCapacity } from '../src/lib/gridPresentation.js'
+import { dateCapacity } from '../src/lib/gridPresentation.js'
 import { paginateDates } from '../src/lib/datePagination.js'
 
 const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8')
@@ -35,47 +35,30 @@ test('both dated grids use the same responsive pages, data scale and row geometr
   for (const name of ['AvailGrid', 'SchedulingGrid']) {
     const source = read(`src/components/${name}.jsx`)
     assert.match(source, /useGridDates/)
-    assert.match(source, /import \{ slotColor \} from '@\/lib\/gridPresentation'/)
+    assert.match(source, /import \{ slotOpacity[^}]*\} from '@\/lib\/gridPresentation'/)
     assert.match(source, /var\(--avails-grid-time-width\)/)
     assert.doesNotMatch(source, /avail-cell h-8|text-\[11px\]|rgba\(34/)
   }
   assert.match(read('src/components/AvailGrid.jsx'), /span} \* var\(--avails-slot-height\)/)
 })
 
-test('vote layers grow monotonically and the largest overlap is solid blue', () => {
-  assert.equal(slotColor(0, 3), null)
-  assert.equal(slotColor(2, 0), null)
-  const amounts = [1, 2, 3].map(count => Number(slotColor(count, 3).match(/ ([\d.]+)%/)[1]))
-  assert.ok(amounts[0] < amounts[1] && amounts[1] < amounts[2])
-  assert.equal(amounts[2], 100)
-  assert.equal(slotColor(1, 1), 'color-mix(in srgb, var(--cibc-data-high) 100%, var(--cibc-data-empty))')
-  assert.equal(slotColor(4, 3), slotColor(3, 3))
-  assert.equal(slotColor(-1, 3), null)
-  const weight = (count, max) => Number(slotColor(count, max).match(/ ([\d.]+)%/)[1])
-  assert.ok(weight(1, 10) < weight(1, 3), 'each vote layer gets lighter as the peak grows')
-  assert.equal(weight(7, 7), 100, 'a non-unanimous maximum still reaches solid blue')
-  for (const max of [1, 2, 10, 1000]) {
-    assert.equal(weight(max, max), 100)
-    assert.ok(weight(1, max) > 0)
-  }
-  assert.match(slotColor(1, 3), /--cibc-data-high/)
-  assert.match(slotColor(1, 3), /--cibc-data-empty/)
-})
-
-test('compact borderless poll grids use a poll-wide peak without changing weekly density', () => {
+test('continuous dated layers share compact tile geometry without changing weekly density', () => {
   for (const name of ['AvailGrid', 'SchedulingGrid']) {
     const source = read(`src/components/${name}.jsx`)
     assert.match(source, /className="avails-dated-grid grid w-full"/)
-    assert.match(source, /Object.values\(heatmap\).reduce/)
-    assert.match(source, /slotColor\(heatCount, maxOverlap\)/)
+    assert.match(source, /slotOpacity\(layerCount\)/)
+    assert.match(source, /--avails-slot-opacity/)
+    assert.doesNotMatch(source, /maxOverlap|MutationObserver/)
     assert.match(source, /aria-pressed=/)
   }
-  assert.match(read('src/styles/open-index.css'), /\.avails-dated-grid \{ --avails-slot-height: 1.5rem; column-gap: 0.25rem; \}/)
+  assert.match(read('src/styles/open-index.css'), /\.avails-dated-grid \{ --avails-slot-height: 1.5rem; column-gap: 0; \}/)
   assert.doesNotMatch(read('src/components/WeeklyPatternGrid.jsx'), /avails-dated-grid/)
   assert.match(read('src/components/SchedulingGrid.jsx'), /document.addEventListener\('pointermove', handlePointerMove\)/)
   assert.match(read('src/components/SchedulingGrid.jsx'), /col: downCell.current.col/)
   const css = read('src/styles/avail-grid.css')
-  assert.match(css, /\.avails-dated-grid \.avail-cell::after\s*\{\s*content: none/)
+  assert.match(css, /\.avails-dated-grid \.avail-cell::after\s*\{\s*content: '';\s*inset: 1px 2px;\s*border: 0;/)
+  assert.match(css, /\.avails-dated-grid \.avail-cell::before,[\s\S]*?inset: 0;[\s\S]*?--avails-slot-opacity/)
+  assert.match(css, /\.avails-dated-grid \.avail-cell--busy::before/)
   assert.match(css, /\.avails-dated-grid \.avail-cell:focus-visible\s*\{\s*outline: 2px solid var\(--cibc-color-text\)/)
 })
 
@@ -87,7 +70,14 @@ test('personal availability has no per-slot glyphs while meeting checks remain',
   assert.ok(participant.includes("readOnly ? (isMine ? ', your availability' : '')"))
   assert.match(participant, /avail-scheduled-card__check/)
   assert.match(read('src/components/SchedulingGrid.jsx'), /avail-cell__mark/)
-  assert.match(read('src/styles/avail-grid.css'), /\.avails-dated-grid \.avail-cell--mine,[\s\S]*?background-color: var\(--cibc-color-selected\)/)
+  assert.match(participant, /myResponseRkey/)
+  assert.match(participant, /slotLayerCount\(heatCount/)
+})
+
+test('both poll views receive viewer-timezone data and personal response identity', () => {
+  const poll = read('src/pages/PollView.jsx')
+  assert.match(poll, /<SchedulingGrid[\s\S]*?responses=\{viewerResponses\}/)
+  assert.match(poll, /<AvailGrid[\s\S]*?myResponseRkey=\{responseRkey\}/)
 })
 
 test('responsive pages cover every date exactly once and balance without losing selection keys', () => {

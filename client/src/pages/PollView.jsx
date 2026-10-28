@@ -913,7 +913,7 @@ export default function PollView() {
                 dates={gridProps.dates}
                 timeRange={gridProps.timeRange}
                 slotMinutes={gridProps.slotMinutes}
-                responses={responses}
+                responses={viewerResponses}
                 onSelect={setSchedulingSlots}
                 onCancel={() => { setSchedulingMode(false); setSchedulingSlots([]) }}
                 onConfirm={handleScheduleConfirm}
@@ -933,6 +933,7 @@ export default function PollView() {
               <AvailGrid
                 {...gridProps}
                 mySlots={mySlots}
+                myResponseRkey={responseRkey}
                 onSlotsChange={setMySlots}
                 readOnly={readOnly(isOpen, submitted, editing)}
                 onHoverSlot={setHoverSlot}

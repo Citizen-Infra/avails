@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { useGridDates } from '@/lib/useGridDates'
-import { slotColor } from '@/lib/gridPresentation'
+import { slotOpacity, slotLayerCount } from '@/lib/gridPresentation'
 import '../styles/avail-grid.css'
 
 function generateSlots(dates, timeRange, slotMinutes) {
@@ -58,6 +58,7 @@ export default function AvailGrid({
   slotMinutes = 30,
   responses = [],
   mySlots,
+  myResponseRkey = null,
   onSlotsChange,
   readOnly = false,
   focusedName = null,
@@ -111,7 +112,7 @@ export default function AvailGrid({
   )
 
   // When a name is focused, filter responses to just that person's — heatmap
-  // becomes a single-person view (cells they picked = full blue, everything
+  // becomes a single-person view (cells they picked = one blue layer, everything
   // else empty). Outline-style per-cell highlighting is gone in favor of this.
   const effectiveResponses = useMemo(() => {
     if (!focusedName) return responses
@@ -125,7 +126,10 @@ export default function AvailGrid({
   )
 
   const totalRespondents = effectiveResponses.length
-  const maxOverlap = useMemo(() => Object.values(heatmap).reduce((max, count) => Math.max(max, count), 0), [heatmap])
+  const savedMySlots = useMemo(() => {
+    const response = myResponseRkey ? responses.find(r => r.uri?.split('/').pop() === myResponseRkey) : null
+    return new Set(response?.slots || [])
+  }, [responses, myResponseRkey])
 
   // A compact in-cell tag cannot carry a full calendar title on a phone.
   // Keep an ordinary native disclosure outside the painting surface, grouped
@@ -436,11 +440,16 @@ export default function AvailGrid({
                 const isBusy = busySlots.has(key)
                 const isScheduled = scheduledSlots.has(key)
                 const heatCount = heatmap[key] || 0
-                const bgColor = heatCount > 0 ? slotColor(heatCount, maxOverlap) : undefined
                 const tooltipText = getTooltipContent(date, time)
 
                 const isPendingAdd = dragState && !dragState.removing && dragState.pending.has(key)
                 const isPendingRemove = dragState && dragState.removing && dragState.pending.has(key)
+                const layerCount = slotLayerCount(heatCount, {
+                  selected: isMine,
+                  saved: savedMySlots.has(key),
+                  editable: !readOnly && !focusedName,
+                  preview: isPendingAdd ? 'add' : isPendingRemove ? 'remove' : null,
+                })
 
                 // Only show event name on the first slot of a contiguous event
                 const eventName = isBusy ? slotEvents[key] : null
@@ -461,6 +470,7 @@ export default function AvailGrid({
                     key={key}
                     data-row={rowIdx}
                     data-col={colIdx}
+                    data-layer-count={layerCount}
                     role="button"
                     aria-label={cellLabel}
                     aria-pressed={readOnly ? undefined : isMine}
@@ -477,16 +487,16 @@ export default function AvailGrid({
                       // Drag preview — highest priority
                       isPendingAdd && 'avail-cell--pending-add',
                       isPendingRemove && 'avail-cell--pending-remove',
-                      // Keep the blue overlap fill and neutral conflict hatching.
-                      // Personal edits use fill previews, not per-slot glyphs.
+                      isBusy && 'avail-cell--busy',
+                      // The continuous paint layer sits above discrete white slots.
+                      // Conflicts remain visible during a personal edit preview.
                       !isPendingAdd && !isPendingRemove && cn(
                         isMine && 'avail-cell--mine',
-                        isBusy && 'avail-cell--busy',
-                        !bgColor && 'avail-cell--empty',
+                        layerCount === 0 && 'avail-cell--empty',
                       ),
                     )}
                     style={{
-                      backgroundColor: isPendingAdd || isPendingRemove ? undefined : bgColor,
+                      '--avails-slot-opacity': `${(slotOpacity(layerCount) * 100).toFixed(4)}%`,
                     }}
                     onPointerDown={(e) => handlePointerDown(e, rowIdx, colIdx)}
                     onPointerEnter={(e) => handlePointerEnter(e, rowIdx, colIdx)}
