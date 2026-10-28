@@ -208,8 +208,8 @@
   outline-style: dashed;
 }
 
-/* Compact dated polls: a borderless blue field. Keep the recurring weekly
-   pattern's existing rules and states outside this scoped refinement. */
+/* Dated polls: discrete white tiles beneath continuous translucent blue paint.
+   Weekly pattern rules/states remain outside this scoped refinement. */
 /* The portalled positioning wrapper also has a hit area. Disabling just its
    child leaves an invisible overlay that can swallow the next paint gesture.
    Scope this to passive grid tooltips, not other popovers or tooltips. */
@@ -218,17 +218,45 @@
 }
 
 .avails-dated-grid .avail-cell {
+  --avails-slot-hover: 0%;
+  background-color: color-mix(in srgb, var(--cibc-color-action) 10%, var(--cibc-color-surface));
+  background-image: none;
   border-radius: 0;
+  animation: none;
 }
 
 .avails-dated-grid .avail-cell::after {
-  content: none;
+  content: '';
+  inset: 1px 2px;
+  border: 0;
+  border-radius: 0.125rem;
+  background: var(--cibc-color-surface);
 }
 
+.avails-dated-grid .avail-cell::before,
 .avails-dated-grid .avail-cell:not(.avail-cell--readonly):hover::before {
+  content: '';
+  position: absolute;
+  inset: 0;
   border: 0;
   outline: 0;
-  background: color-mix(in srgb, var(--cibc-color-action) 8%, transparent);
+  border-radius: 0;
+  background-color: color-mix(in srgb, var(--cibc-color-action) calc(var(--avails-slot-opacity, 0%) + var(--avails-slot-hover)), transparent);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.avails-dated-grid .avail-cell:not(.avail-cell--readonly):hover {
+  --avails-slot-hover: 8%;
+}
+
+/* Neutral strokes sit above the blue paint, not beneath the white tile. */
+.avails-dated-grid .avail-cell--busy::before {
+  background-image: repeating-linear-gradient(135deg,
+    transparent 0 10px,
+    var(--cibc-color-surface) 10px 11px,
+    var(--cibc-color-text) 11px 12px,
+    transparent 12px 14px);
 }
 
 .avails-dated-grid .avail-cell--mine,
@@ -239,14 +267,8 @@
   box-shadow: none;
 }
 
-.avails-dated-grid .avail-cell--mine,
-.avails-dated-grid .avail-cell--pending-add,
-.avails-dated-grid .avail-cell--pending-schedule {
-  background-color: var(--cibc-color-selected);
-}
-
-.avails-dated-grid .avail-cell--pending-remove {
-  background-color: var(--cibc-color-surface);
+.avails-dated-grid .avail-cell--scheduled {
+  background-color: color-mix(in srgb, var(--cibc-color-action) 10%, var(--cibc-color-surface)) !important;
 }
 
 /* Organizer block checks and the blue coaching key share the action palette.

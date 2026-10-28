@@ -1,12 +1,17 @@
-// Each vote adds a blue layer. More votes in the poll make each layer lighter;
-// normalize the composite so the largest overlap (not unanimity) is solid blue.
-export function slotColor(count, maxCount) {
-  if (count <= 0 || maxCount <= 0) return null
-  const layerOpacity = 1 / maxCount
-  const composite = 1 - (1 - layerOpacity) ** Math.min(count, maxCount)
-  const peak = 1 - (1 - layerOpacity) ** maxCount
-  const alpha = composite / peak
-  return `color-mix(in srgb, var(--cibc-data-high) ${alpha * 100}%, var(--cibc-data-empty))`
+// Fixed translucent vote layers: a lone vote never becomes opaque just because
+// it is the poll's maximum. Leave the underlying slot structure visible.
+export function slotOpacity(count) {
+  if (!Number.isFinite(count) || count <= 0) return 0
+  return Math.min(0.88, 1 - 0.78 ** count)
+}
+
+// An edit replaces the saved personal vote, rather than counting it twice.
+// Read-only and focused-person views continue to show only saved responses.
+export function slotLayerCount(count, { selected = false, saved = false, editable = false, preview = null } = {}) {
+  const votes = Number.isFinite(count) ? Math.max(0, count) : 0
+  if (!editable) return votes
+  const own = preview === null ? selected : preview === 'add'
+  return Math.max(0, votes - Number(saved)) + Number(own)
 }
 
 export function dateCapacity(width, rootSize = 16) {

@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { useGridDates } from '@/lib/useGridDates'
-import { slotColor } from '@/lib/gridPresentation'
+import { slotOpacity } from '@/lib/gridPresentation'
 import MeetingLinkField from './MeetingLinkField'
 import '../styles/avail-grid.css'
 
@@ -83,7 +83,6 @@ export default function SchedulingGrid({
     [responses, dates, times]
   )
   const totalRespondents = responses.length
-  const maxOverlap = useMemo(() => Object.values(heatmap).reduce((max, count) => Math.max(max, count), 0), [heatmap])
 
   // Drag state — all refs except selectedSlots which needs to trigger render
   const downCell = useRef(null)
@@ -353,9 +352,9 @@ export default function SchedulingGrid({
               {visibleDates.map((date, colIdx) => {
                 const key = `${date}T${time}`
                 const heatCount = heatmap[key] || 0
-                const bgColor = heatCount > 0 ? slotColor(heatCount, maxOverlap) : undefined
                 const isPending = dragPending && dragPending.has(key)
                 const isSelected = selectedSlots.has(key)
+                const layerCount = heatCount + (isPending || isSelected ? 1 : 0)
                 const fd = formatDate(date)
                 const cellLabel =
                   `${fd.dayName} ${fd.monthDay} at ${time}` +
@@ -367,6 +366,7 @@ export default function SchedulingGrid({
                     key={key}
                     data-row={rowIdx}
                     data-col={colIdx}
+                    data-layer-count={layerCount}
                     role="button"
                     aria-label={cellLabel}
                     aria-pressed={isSelected}
@@ -376,12 +376,12 @@ export default function SchedulingGrid({
                       time.endsWith(':00') && rowIdx > 0 && slotMinutes < 60 && 'avail-cell--hour',
                       rowIdx === 0 && 'rounded-t',
                       rowIdx === times.length - 1 && 'rounded-b',
-                      !bgColor && !isPending && !isSelected && 'avail-cell--empty',
+                      layerCount === 0 && 'avail-cell--empty',
                       isPending && 'avail-cell--pending-schedule',
                       isSelected && !isPending && 'avail-cell--scheduled',
                     )}
                     style={{
-                      backgroundColor: (!isPending && !isSelected) ? bgColor : undefined,
+                      '--avails-slot-opacity': `${(slotOpacity(layerCount) * 100).toFixed(4)}%`,
                     }}
                     onPointerDown={(e) => handlePointerDown(e, rowIdx, colIdx)}
                     onPointerEnter={(e) => handlePointerEnter(e, rowIdx, colIdx)}
