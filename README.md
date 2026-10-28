@@ -106,6 +106,29 @@ To regenerate after an artwork change:
 4. Inspect the image at 1200, 600 and 360px wide. When checking a newly created public file through Vite, restart the dev server after export or intercept the saved PNG bytes: the dev server's public-file cache can otherwise briefly return HTML instead of the new image.
 5. Run client/server tests and the client build below. Stop the temporary browser/dev server afterward. Never use a real poll screenshot or live PDS resolution as a preview fixture.
 
+### Optional product analytics
+
+The approved target is [Avails’ US PostHog project 693844](https://us.posthog.com/project/693844). [`analyticsConfig.js`](client/src/lib/analyticsConfig.js) holds its **public ingestion token**, US ingest host and an explicit `enabled` switch. This is intentionally public browser configuration, not a secret or personal API key. Set `enabled: false` and deploy to disable the integration globally; never substitute a private API key. No PostHog SDK, script, feature-flag request, replay or autocapture is loaded.
+
+[`analytics.js`](client/src/lib/analytics.js) uses PostHog’s [single-event capture API](https://posthog.com/docs/api/capture). It makes no PostHog request and creates no analytics identifier until explicit consent. The document-flow consent panel offers equal-weight allow/off controls and a persistent change-preference entry without covering the poll grid. Consent is stored as `avails.analytics-consent.v1` in local storage; the random, account-unlinked identifier exists **only in page memory** after opt-in. It survives client-side navigation but changes on reload; no analytics identifier is stored in cookies or browser storage. Blocked consent storage falls back to the current tab’s memory. Withdrawal, including withdrawal in another tab, cancels pending requests and discards the identifier. Already-delivered events cannot be recalled by that control.
+
+Keep these lifecycle protections when extending analytics: never recover an identifier from `sessionStorage`, which browsers may copy into a newly opened/duplicated tab; use each storage event’s `newValue` to honor withdrawal transitions even when a later change has already reached local storage. Reading only the final stored value can silently skip revocation. Both cases have regression tests.
+
+Only these events are supported:
+
+| Event | When | Custom properties |
+| --- | --- | --- |
+| `page_viewed` | After consent, on a change of broad page category; duplicate effects are suppressed | `page`: `home`, `poll`, `privacy`, `about`, `terms`, `standing`, `call` or `other` |
+| `poll_created` | Successful browser poll creation | None |
+| `response_submitted` | Successful new browser response; edits do not count again | None |
+| `meeting_finalized` | Successful browser meeting finalization | None |
+
+Payloads are constructed from an allowlist, never copied from API input/results. No poll IDs/content, participant/account identifiers, emails, names, availability, calendar data, raw URLs/referrers, exception text or browser fingerprint properties are added. Requests omit cookies and referrer headers, use a placeholder `$ip`, disable GeoIP/person-profile processing, time out after five seconds and never retry or backfill. The provider still receives network-level information on a direct connection; do not call this complete anonymity. A capture acknowledgement is not independent proof of dashboard visibility or provider-side settings.
+
+These are **consenting page-session counts**, not all traffic, account retention, per-poll conversion or cross-participant funnels. Reloading ends an analytics session; sessions may end before finalization, and multiple roles cannot be joined without the excluded identifiers. API/MCP operations and failed actions are not tracked. Begin analysis with separate event counts and same-page-session steps, and retain this sampling limitation in reports.
+
+The privacy policy separately discloses the existing edge-injected Cloudflare Web Analytics beacon. That beacon is not governed by the optional PostHog choice; no Cloudflare setting is changed by this integration. Tests must intercept all ingestion and scheduling requests, use synthetic fixtures and never create real polls, responses, invitations or account/integration writes. Validate no ingest request before consent/after refusal, permitted payloads after opt-in, route redaction, withdrawal, cross-tab changes, blocked storage and network failures.
+
 ### Tests
 
 Client Node tooling (`shadcn`, the Tailwind PostCSS adapter, Vite and PostCSS)

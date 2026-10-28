@@ -7,6 +7,7 @@ import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
 import StandingAvailability from './pages/StandingAvailability'
 import CallBooking from './pages/CallBooking'
+import AnalyticsConsent from './components/AnalyticsConsent'
 
 function NotFound() {
   return (
@@ -38,6 +39,7 @@ export default function App() {
         <Route path="/p/:did/:rkey" element={<ErrorBoundary><PollView /></ErrorBoundary>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      <AnalyticsConsent />
     </ErrorBoundary>
   )
 }

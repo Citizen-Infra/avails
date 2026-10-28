@@ -76,6 +76,7 @@ Warm, human, communal. Avails should feel like a tool a co-op made for its membe
 - **License: AGPL-3.0.** Stewarded by the **Citizen Infrastructure Builders Club (CIBC)**, not owned by a company.
 - **Live at `avails.citizeninfra.org`.** `avails.zhgnv.com` permanently redirects there as of 2026-08-04; sign-in and MCP answer on the new host only.
 - No advertising, no upsell, no "Book a demo", and no telemetry that would undercut the sovereignty claim.
+- **Approved optional analytics boundary:** explicitly opted-in, account-unlinked page-session events for broad page categories and successful poll creation/response submission/finalization, sent to Avails’ US PostHog project 693844. A random identifier stays only in page memory and changes on reload. No SDK autocapture, replay, raw URLs/referrers, poll IDs/content, names/emails/DIDs, availability or calendar data. Refusal must not impair scheduling; provide persistent withdrawal and no pre-consent events or backfill. The separately existing Cloudflare traffic/performance beacon is retained and disclosed, not controlled by the PostHog choice. These measurements are a consenting sample, not all traffic or per-poll/cross-participant conversion.
 
 ## Visual-check Safety
 
